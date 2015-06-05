@@ -167,6 +167,38 @@ Vector3d CalcBodyToBaseCoordinates (
 }
 
 RBDL_DLLAPI
+Vector3d CalcBodyToBaseCoordinatesSingleFunc (
+		Model &model,
+		const VectorNd &Q,
+		unsigned int body_id,
+		const Vector3d &point_body_coordinates) {
+	if (body_id >= model.fixed_body_discriminator) {
+		std::cerr << "Fixed bodies not yet supported!" << std::endl;
+		abort();
+	}
+
+	// Update the kinematics
+	VectorNd QDot_zero (VectorNd::Zero (model.q_size));
+
+	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
+		unsigned int lambda = model.lambda[i];
+		jcalc (model, i, Q, QDot_zero);
+		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+
+		if (lambda != 0) {
+			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+		}	else {
+			model.X_base[i] = model.X_lambda[i];
+		}
+	}
+
+	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
+	Vector3d body_position = model.X_base[body_id].r;
+
+	return body_position + body_rotation * point_body_coordinates;
+}
+
+RBDL_DLLAPI
 Vector3d CalcBaseToBodyCoordinates (
 		Model &model,
 		const VectorNd &Q,

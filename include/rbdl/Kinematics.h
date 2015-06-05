@@ -86,6 +86,13 @@ Math::Vector3d CalcBodyToBaseCoordinates (
 		const Math::Vector3d &body_point_position,
 		bool update_kinematics = true);
 
+RBDL_DLLAPI
+Math::Vector3d CalcBodyToBaseCoordinatesSingleFunc (
+		Model &model,
+		const Math::VectorNd &Q,
+		unsigned int body_id,
+		const Math::Vector3d &body_point_position);
+
 /** \brief Returns the body coordinates of a point given in base coordinates.
  *
  * \param model the rigid body model
