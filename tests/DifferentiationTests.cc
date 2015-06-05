@@ -22,10 +22,27 @@ struct CartPendulum {
 		ClearLogOutput();
 		model = new Model;
 
-		double pendulum_length = 0.4;
+		double cart_w = 0.5;
+		double cart_d = 0.2;
+		double cart_h = 0.2;
+		double cart_m = 10.0;
+		Vector3d cart_com (0., 0., 0.);
 
-		body_cart = Body (1., Vector3d (0., 0., 0.), Vector3d (0.1, 0.2, 0.5));
-		body_pendulum = Body (0.4, Vector3d (0., 0., 0.5 * pendulum_length), Vector3d (0.1, 0.2, 0.5));
+		double pend_l = 0.5;
+		double pend_r = 0.1;
+		double pend_m = 1.0;
+		Vector3d pend_com (0., 0., pend_l);
+
+		body_cart = Body (cart_m, cart_com, Matrix3d (
+					1. / 12. * cart_m * (cart_h*cart_h + cart_d * cart_d), 0., 0.,
+					0., 1. / 12. * cart_m * (cart_w*cart_w + cart_h * cart_h), 0.,
+					0., 0., 1. / 12. * cart_m * (cart_w*cart_w + cart_d * cart_d)
+					));
+		body_pendulum = Body (pend_m, pend_com, Matrix3d(
+					2. / 5. * pend_m * pend_r, 0., 0.,
+					0., 2. / 5. * pend_m * pend_r, 0.,
+					0., 0., 2. / 5. * pend_m * pend_r
+				));
 
 		joint_cart = Joint (SpatialVector (0., 0., 0., 1., 0., 0.));
 		joint_pendulum = Joint (SpatialVector (0., 1., 0., 0., 0., 0.));
