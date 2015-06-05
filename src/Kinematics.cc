@@ -182,14 +182,20 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 
 	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
 		unsigned int lambda = model.lambda[i];
-		jcalc (model, i, Q, QDot_zero);
+
+		// Calculate joint dependent variables
+		if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
+			model.X_J[i] = Xroty (Q[model.mJoints[i].q_index]);
+		} else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
+			model.X_J[i] = Xtrans (Vector3d (1., 0., 0.));
+		} else {
+			std::cerr << "Unsupported joint! Only RotY and TransX supported!" << std::endl;
+			abort();
+		}
+		
 		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
 
-		if (lambda != 0) {
-			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-		}	else {
-			model.X_base[i] = model.X_lambda[i];
-		}
+		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 	}
 
 	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
