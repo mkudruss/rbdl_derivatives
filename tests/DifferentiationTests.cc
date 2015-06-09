@@ -55,7 +55,7 @@ struct CartPendulum {
 		qddot = VectorNd::Constant ((size_t) model->dof_count, 0.);
 		tau = VectorNd::Constant ((size_t) model->dof_count, 0.);
 
-		body_point.setZero();
+		body_point = Vector3d (0., 0., pend_l);
 
 		ClearLogOutput();
 	}
@@ -116,6 +116,20 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 	return body_position + body_rotation * point_body_coordinates;
 }
 
+inline SpatialTransform dq_Xroty (const double &yrot, const double &dot_yrot) {
+	double s, c;
+	s = sin (yrot) * dot_yrot;
+	c = cos (yrot) * dot_yrot;
+	return SpatialTransform (
+			Matrix3d (
+				-s, 0., -c,
+				0., 0., 0.,
+				c, 0., -s 
+				),
+			Vector3d (0., 0., 0.)
+			);
+}
+
 RBDL_DLLAPI
 Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 		Model &model,
@@ -131,33 +145,86 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 	}
 
 	assert (out.rows() == 3 && out.cols() == model.qdot_size);
-	
+	unsigned int ndirs = q_dirs.cols();
+
+	cout << "body_id = " << body_id << endl;
+	cout << "q_dirs = " << endl << q_dirs.transpose() << endl;
 
 	// Update the kinematics
 	VectorNd QDot_zero (VectorNd::Zero (model.q_size));
+
+	std::vector<MatrixNd> dq_X_J_i (ndirs, MatrixNd::Zero (6,6));
+	std::vector<std::vector<MatrixNd> > dq_X_J (model.mBodies.size(), dq_X_J_i);
+	// dq_X_J[3][5] gives for body 3 the 5th direction
+
+	std::vector<MatrixNd> dq_X_lambda_i (ndirs, MatrixNd::Zero (6,6));
+	std::vector<std::vector<MatrixNd> > dq_X_lambda (model.mBodies.size(), dq_X_lambda_i);
+	// dq_X_lambda[3][5] gives for body 3 the 5th direction
+
+	std::vector<MatrixNd> dq_X_base_i (ndirs, MatrixNd::Zero (6,6));
+	std::vector<std::vector<MatrixNd> > dq_X_base (model.mBodies.size(), dq_X_base_i);
+	// dq_X_base[3][5] gives for body 3 the 5th direction
 
 	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
 		unsigned int lambda = model.lambda[i];
 
 		// Calculate joint dependent variables
 		if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
+			for (unsigned int j = 0; j < ndirs; j++) {
+				if (q_dirs(i-1,j) != 0.) {
+					dq_X_J[i][j] = dq_Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j)).toMatrix();
+				} else {
+					dq_X_J[i][j].setZero();
+				}
+			}
 			model.X_J[i] = Xroty (q[model.mJoints[i].q_index]);
 		} else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
+			for (unsigned int j = 0; j < ndirs; j++) {
+				if (q_dirs(i-1,j) != 0.) {
+					// Special case
+					dq_X_J[i][j] = Xtrans (Vector3d (q_dirs(i-1,j), 0., 0.)).toMatrix();
+				} else {
+					dq_X_J[i][j].setZero();
+				}
+			}
 			model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index]);
 		} else {
 			std::cerr << "Unsupported joint! Only RotY and TransX supported!" << std::endl;
 			abort();
 		}
-		
+	
+		for (unsigned int j = 0; j < ndirs; j++) {
+			dq_X_lambda[i][j] = dq_X_J[i][j] * model.X_T[i].toMatrix();
+		}
 		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
 
+		for (unsigned int j = 0; j < ndirs; j++) {
+			dq_X_base[i][j] = dq_X_lambda[i][j] * model.X_base[lambda].toMatrix() 
+				              + model.X_lambda[i].toMatrix() * dq_X_base[lambda][j];
+			cout << "dq_X_base[" << i << "][" << j << "] = " << j << endl;
+			cout << dq_X_base[i][j] << endl;
+		}
 		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 	}
 
 	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
 	Vector3d body_position = model.X_base[body_id].r;
 
-	return body_position + body_rotation * point_body_coordinates;
+	cout << "== last loop ==" << endl;
+
+	for (unsigned int j = 0; j < ndirs; j++) {
+		cout << "dq_X_base[" << body_id << "][" << j << "] = " << endl;
+		cout << dq_X_base[body_id][j] << endl;
+		SpatialTransform dq_base = SpatialTransform::fromMatrix (dq_X_base[body_id][j]);
+		cout << "||X_err|| = " << (dq_base.toMatrix() - dq_X_base[body_id][j]).squaredNorm() << endl;
+
+		Vector3d vec3 = dq_base.r + dq_base.E.transpose() * point_body_coordinates;
+		cout << "col = " <<  vec3.transpose() << endl;
+
+		out.block<3, 1>(0,j) = vec3;
+	}
+
+	return model.X_base[body_id].r + model.X_base[body_id].E.transpose() * point_body_coordinates;
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumJacobianSimple ) {
@@ -165,13 +232,18 @@ TEST_FIXTURE ( CartPendulum, CartPendulumJacobianSimple ) {
 	MatrixNd jacobian_ref = MatrixNd::Zero(3, model->qdot_size);
 
 	q.setZero();
+	q[0] = 0.0;
+	q[1] = 0.0;
+	body_point = Vector3d (0., 0., 0.);
 
 	CalcPointJacobian (*model, q, id_pendulum, body_point, jacobian_ref);
 
 	MatrixNd q_dirs = MatrixNd::Identity (model->qdot_size, model->qdot_size);
 	Vector3d base_point = dq_CalcBodyToBaseCoordinatesSingleFunc (*model, q, q_dirs, id_pendulum, body_point, jacobian_ad);
 
-	cout << "Jacobian error:" << endl << (jacobian_ref - jacobian_ad).transpose() << endl;
+	cout << "jacobian_ref: " << endl << jacobian_ref << endl;
+	cout << "jacobian_ad: " << endl << jacobian_ad << endl;
+	cout << "Jacobian error:" << endl << (jacobian_ref - jacobian_ad) << endl;
 
 	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model->qdot_size, TEST_PREC);
 //	CHECK_ARRAY_CLOSE (v_fixed_body.data(), v_body.data(), 6, TEST_PREC);
