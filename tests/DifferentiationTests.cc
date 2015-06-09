@@ -181,7 +181,8 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 			for (unsigned int j = 0; j < ndirs; j++) {
 				if (q_dirs(i-1,j) != 0.) {
 					// Special case
-					dq_X_J[i][j] = Xtrans (Vector3d (q_dirs(i-1,j), 0., 0.)).toMatrix();
+					dq_X_J[i][j] = SpatialTransform (Matrix3d::Zero(3,3), Vector3d (q_dirs(i-1,j), 0., 0.)).toMatrix();
+					dq_X_J[i][j] = SpatialTransform (Matrix3d::Identity(3,3), Vector3d (q_dirs(i-1,j), 0., 0.)).toMatrix();
 				} else {
 					dq_X_J[i][j].setZero();
 				}
@@ -268,7 +269,7 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseSimple) {
 	CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, TEST_PREC);
 }
 
-TEST_FIXTURE ( CartPendulum, CartPendulumJacobianSimple ) {
+TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 	MatrixNd jacobian_ad = MatrixNd::Zero(3, model->qdot_size);
 	MatrixNd jacobian_ref = MatrixNd::Zero(3, model->qdot_size);
 	MatrixNd jacobian_fd = MatrixNd::Zero(3, model->qdot_size);
