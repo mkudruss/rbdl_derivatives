@@ -106,12 +106,7 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 		}
 		
 		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
-
-		if (lambda != 0) {
-			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-		} else {
-			model.X_base[i] = model.X_lambda[i];
-		}
+		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 	}
 
 	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
@@ -273,7 +268,6 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseSimple) {
 	CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, TEST_PREC);
 }
 
-/*
 TEST_FIXTURE ( CartPendulum, CartPendulumJacobianSimple ) {
 	MatrixNd jacobian_ad = MatrixNd::Zero(3, model->qdot_size);
 	MatrixNd jacobian_ref = MatrixNd::Zero(3, model->qdot_size);
@@ -287,17 +281,19 @@ TEST_FIXTURE ( CartPendulum, CartPendulumJacobianSimple ) {
 	CalcPointJacobian (*model, q, id_pendulum, body_point, jacobian_ref);
 
 	MatrixNd q_dirs = MatrixNd::Identity (model->qdot_size, model->qdot_size);
-	Vector3d base_point = dq_CalcBodyToBaseCoordinatesSingleFunc (*model, q, q_dirs, id_pendulum, body_point, jacobian_ad);
+	Vector3d base_point_standard = CalcBodyToBaseCoordinates (*model, q, id_pendulum, body_point);
+	Vector3d base_point_ad = dq_CalcBodyToBaseCoordinatesSingleFunc (*model, q, q_dirs, id_pendulum, body_point, jacobian_ad);
 	Vector3d base_point_fd = fd_dq_CalcBodyToBaseCoordinatesSingleFunc (*model, q, q_dirs, id_pendulum, body_point, jacobian_fd);
 
+	cout << "point err = " << (base_point_standard - base_point_ad).transpose() << endl;
+
 	cout << "jacobian_ref: " << endl << jacobian_ref << endl;
-	cout << "jacobian_fd: " << endl << jacobian_fd << endl;
+//	cout << "jacobian_fd: " << endl << jacobian_fd << endl;
 	cout << "jacobian_ad: " << endl << jacobian_ad << endl;
 	cout << "Jacobian error (FD, ref):" << endl << (jacobian_fd - jacobian_ref) << endl;
 	cout << "Jacobian error (AD, ref):" << endl << (jacobian_ad - jacobian_ref) << endl;
-	cout << "Jacobian error (AD, FD):" << endl << (jacobian_ad - jacobian_fd) << endl;
+//	cout << "Jacobian error (AD, FD):" << endl << (jacobian_ad - jacobian_fd) << endl;
 
 	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model->qdot_size, TEST_PREC);
 //	CHECK_ARRAY_CLOSE (v_fixed_body.data(), v_body.data(), 6, TEST_PREC);
 }
-*/
