@@ -259,6 +259,15 @@ TEST(TestSpatialVectorCrossmCrossf) {
 	CHECK_EQUAL (crossf_s_x_t, crossf_s_t);
 }
 
+TEST(TestSpatialTransformFromMatrix) {
+	SpatialTransform X_ref = Xrotx (1.2) * Xroty (0.3) * Xrotz (-0.4) * Xtrans (Vector3d (1., 2., 3.));
+
+	SpatialTransform from_X = SpatialTransform::fromMatrix (X_ref.toMatrix());
+
+	CHECK_ARRAY_CLOSE (X_ref.E.data(), from_X.E.data(), 9, TEST_PREC);
+	CHECK_ARRAY_CLOSE (X_ref.r.data(), from_X.r.data(), 3, TEST_PREC);
+}
+
 TEST(TestSpatialTransformApply) {
 	Vector3d rot (1.1, 1.2, 1.3);
 	Vector3d trans (1.1, 1.2, 1.3);

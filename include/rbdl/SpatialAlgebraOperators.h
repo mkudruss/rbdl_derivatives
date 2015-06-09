@@ -292,6 +292,13 @@ struct RBDL_DLLAPI SpatialTransform {
 		return result;
 	}
 
+	static SpatialTransform fromMatrix (const MatrixNd &matrix) {
+		Matrix3d E (matrix.block<3,3>(0,0));
+		Matrix3d Erx (matrix.block<3,3>(3,0) * -1.);
+		Matrix3d rx (E.transpose() * Erx);
+		return SpatialTransform (E, Vector3d (rx(2,1), -rx(2,0), rx(1,0)));
+	}
+
 	SpatialTransform inverse() const {
 		return SpatialTransform (
 				E.transpose(),
