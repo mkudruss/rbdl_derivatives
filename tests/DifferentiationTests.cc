@@ -115,18 +115,37 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 	return body_position + body_rotation * point_body_coordinates;
 }
 
-inline SpatialTransform dq_Xroty (const double &yrot, const double &dot_yrot) {
+inline SpatialMatrix dq_Xroty (const double &yrot, const double &dot_yrot) {
+	SpatialMatrix result (SpatialMatrix::Zero(6,6));
+
 	double s, c;
 	s = sin (yrot) * dot_yrot;
 	c = cos (yrot) * dot_yrot;
-	return SpatialTransform (
-			Matrix3d (
+	Matrix3d E(
 				-s, 0., -c,
 				0., 0., 0.,
 				c, 0., -s 
-				),
-			Vector3d (0., 0., 0.)
-			);
+				);
+
+	result.block<3,3>(0,0) = E;
+	result.block<3,3>(3,3) = E;
+
+	return result;
+}
+
+inline SpatialMatrix dq_Xtrans (const Vector3d &dq_trans) {
+	SpatialMatrix result (SpatialMatrix::Zero(6,6));
+
+	result(3,1) = -dq_trans[2];
+	result(3,2) =  dq_trans[1];
+
+	result(4,0) =  dq_trans[2];
+	result(4,2) = -dq_trans[0];
+
+	result(5,0) = -dq_trans[1];
+	result(5,1) =  dq_trans[0];
+
+	return result;
 }
 
 RBDL_DLLAPI
@@ -171,7 +190,7 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 		if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
 			for (unsigned int j = 0; j < ndirs; j++) {
 				if (q_dirs(i-1,j) != 0.) {
-					dq_X_J[i][j] = dq_Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j)).toMatrix();
+					dq_X_J[i][j] = dq_Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
 				} else {
 					dq_X_J[i][j].setZero();
 				}
@@ -181,8 +200,7 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 			for (unsigned int j = 0; j < ndirs; j++) {
 				if (q_dirs(i-1,j) != 0.) {
 					// Special case
-					dq_X_J[i][j] = SpatialTransform (Matrix3d::Zero(3,3), Vector3d (q_dirs(i-1,j), 0., 0.)).toMatrix();
-					dq_X_J[i][j] = SpatialTransform (Matrix3d::Identity(3,3), Vector3d (q_dirs(i-1,j), 0., 0.)).toMatrix();
+					dq_X_J[i][j] = dq_Xtrans (Vector3d (q_dirs(i-1, j), 0., 0.));
 				} else {
 					dq_X_J[i][j].setZero();
 				}
@@ -199,15 +217,8 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
 
 		for (unsigned int j = 0; j < ndirs; j++) {
-			if (lambda != 0) {
-				dq_X_base[i][j] = dq_X_lambda[i][j] * model.X_base[lambda].toMatrix() 
-					+ model.X_lambda[i].toMatrix() * dq_X_base[lambda][j];
-				cout << "dq_X_base[" << i << "][" << j << "] = " << j << endl;
-				cout << dq_X_base[i][j] << endl;
-			} else {
-				dq_X_base[i][j] = dq_X_lambda[i][j] * model.X_base[lambda].toMatrix() 
-					+ model.X_lambda[i].toMatrix() * dq_X_base[lambda][j];
-			}
+			dq_X_base[i][j] = dq_X_lambda[i][j] * model.X_base[lambda].toMatrix() 
+				+ model.X_lambda[i].toMatrix() * dq_X_base[lambda][j];
 		}
 		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 	}
@@ -221,7 +232,6 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 		cout << "dq_X_base[" << body_id << "][" << j << "] = " << endl;
 		cout << dq_X_base[body_id][j] << endl;
 		SpatialTransform dq_base = SpatialTransform::fromMatrix (dq_X_base[body_id][j]);
-		cout << "||X_err|| = " << (dq_base.toMatrix() - dq_X_base[body_id][j]).squaredNorm() << endl;
 
 		Vector3d vec3 = dq_base.r + dq_base.E.transpose() * point_body_coordinates;
 		cout << "col = " <<  vec3.transpose() << endl;
