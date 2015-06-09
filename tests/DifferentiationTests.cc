@@ -55,6 +55,8 @@ struct CartPendulum {
 		qddot = VectorNd::Constant ((size_t) model->dof_count, 0.);
 		tau = VectorNd::Constant ((size_t) model->dof_count, 0.);
 
+		body_point.setZero();
+
 		ClearLogOutput();
 	}
 	~CartPendulum () {
@@ -71,8 +73,106 @@ struct CartPendulum {
 	RigidBodyDynamics::Math::VectorNd qdot;
 	RigidBodyDynamics::Math::VectorNd qddot;
 	RigidBodyDynamics::Math::VectorNd tau;
+
+
+	Vector3d body_point;
 };
 
-TEST_FIXTURE ( CartPendulum, CartPendulumSimple ) {
+RBDL_DLLAPI
+Vector3d CalcBodyToBaseCoordinatesSingleFunc (
+		Model &model,
+		const VectorNd &Q,
+		unsigned int body_id,
+		const Vector3d &point_body_coordinates) {
+	if (body_id >= model.fixed_body_discriminator) {
+		std::cerr << "Fixed bodies not yet supported!" << std::endl;
+		abort();
+	}
+
+	// Update the kinematics
+	VectorNd QDot_zero (VectorNd::Zero (model.q_size));
+
+	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
+		unsigned int lambda = model.lambda[i];
+
+		// Calculate joint dependent variables
+		if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
+			model.X_J[i] = Xroty (Q[model.mJoints[i].q_index]);
+		} else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
+			model.X_J[i] = Xtrans (Vector3d (1., 0., 0.));
+		} else {
+			std::cerr << "Unsupported joint! Only RotY and TransX supported!" << std::endl;
+			abort();
+		}
+		
+		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+
+		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+	}
+
+	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
+	Vector3d body_position = model.X_base[body_id].r;
+
+	return body_position + body_rotation * point_body_coordinates;
+}
+
+RBDL_DLLAPI
+Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
+		Model &model,
+		const VectorNd &q,
+		const MatrixNd &q_dirs,
+		unsigned int body_id,
+		const Vector3d &point_body_coordinates,
+		MatrixNd &out
+		) {
+	if (body_id >= model.fixed_body_discriminator) {
+		std::cerr << "Fixed bodies not yet supported!" << std::endl;
+		abort();
+	}
+
+	assert (out.rows() == 3 && out.cols() == model.qdot_size);
+	
+
+	// Update the kinematics
+	VectorNd QDot_zero (VectorNd::Zero (model.q_size));
+
+	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
+		unsigned int lambda = model.lambda[i];
+
+		// Calculate joint dependent variables
+		if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
+			model.X_J[i] = Xroty (q[model.mJoints[i].q_index]);
+		} else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
+			model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index]);
+		} else {
+			std::cerr << "Unsupported joint! Only RotY and TransX supported!" << std::endl;
+			abort();
+		}
+		
+		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+
+		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+	}
+
+	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
+	Vector3d body_position = model.X_base[body_id].r;
+
+	return body_position + body_rotation * point_body_coordinates;
+}
+
+TEST_FIXTURE ( CartPendulum, CartPendulumJacobianSimple ) {
+	MatrixNd jacobian_ad = MatrixNd::Zero(3, model->qdot_size);
+	MatrixNd jacobian_ref = MatrixNd::Zero(3, model->qdot_size);
+
+	q.setZero();
+
+	CalcPointJacobian (*model, q, id_pendulum, body_point, jacobian_ref);
+
+	MatrixNd q_dirs = MatrixNd::Identity (model->qdot_size, model->qdot_size);
+	Vector3d base_point = dq_CalcBodyToBaseCoordinatesSingleFunc (*model, q, q_dirs, id_pendulum, body_point, jacobian_ad);
+
+	cout << "Jacobian error:" << endl << (jacobian_ref - jacobian_ad).transpose() << endl;
+
+	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model->qdot_size, TEST_PREC);
 //	CHECK_ARRAY_CLOSE (v_fixed_body.data(), v_body.data(), 6, TEST_PREC);
 }

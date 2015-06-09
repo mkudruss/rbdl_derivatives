@@ -167,44 +167,6 @@ Vector3d CalcBodyToBaseCoordinates (
 }
 
 RBDL_DLLAPI
-Vector3d CalcBodyToBaseCoordinatesSingleFunc (
-		Model &model,
-		const VectorNd &Q,
-		unsigned int body_id,
-		const Vector3d &point_body_coordinates) {
-	if (body_id >= model.fixed_body_discriminator) {
-		std::cerr << "Fixed bodies not yet supported!" << std::endl;
-		abort();
-	}
-
-	// Update the kinematics
-	VectorNd QDot_zero (VectorNd::Zero (model.q_size));
-
-	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
-		unsigned int lambda = model.lambda[i];
-
-		// Calculate joint dependent variables
-		if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
-			model.X_J[i] = Xroty (Q[model.mJoints[i].q_index]);
-		} else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
-			model.X_J[i] = Xtrans (Vector3d (1., 0., 0.));
-		} else {
-			std::cerr << "Unsupported joint! Only RotY and TransX supported!" << std::endl;
-			abort();
-		}
-		
-		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
-
-		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-	}
-
-	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
-	Vector3d body_position = model.X_base[body_id].r;
-
-	return body_position + body_rotation * point_body_coordinates;
-}
-
-RBDL_DLLAPI
 Vector3d CalcBaseToBodyCoordinates (
 		Model &model,
 		const VectorNd &Q,
