@@ -136,14 +136,14 @@ inline SpatialMatrix dq_Xroty (const double &yrot, const double &dot_yrot) {
 inline SpatialMatrix dq_Xtrans (const Vector3d &dq_trans) {
 	SpatialMatrix result (SpatialMatrix::Zero(6,6));
 
-	result(3,1) = -dq_trans[2];
-	result(3,2) =  dq_trans[1];
+	result(3,1) =  dq_trans[2];
+	result(3,2) = -dq_trans[1];
 
-	result(4,0) =  dq_trans[2];
-	result(4,2) = -dq_trans[0];
+	result(4,0) = -dq_trans[2];
+	result(4,2) =  dq_trans[0];
 
-	result(5,0) = -dq_trans[1];
-	result(5,1) =  dq_trans[0];
+	result(5,0) =  dq_trans[1];
+	result(5,1) = -dq_trans[0];
 
 	return result;
 }
