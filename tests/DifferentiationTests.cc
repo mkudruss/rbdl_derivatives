@@ -99,7 +99,7 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 		if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
 			model.X_J[i] = Xroty (Q[model.mJoints[i].q_index]);
 		} else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
-			model.X_J[i] = Xtrans (Vector3d (1., 0., 0.));
+			model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * Q[model.mJoints[i].q_index]);
 		} else {
 			std::cerr << "Unsupported joint! Only RotY and TransX supported!" << std::endl;
 			abort();
@@ -107,7 +107,11 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 		
 		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
 
-		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+		if (lambda != 0) {
+			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+		} else {
+			model.X_base[i] = model.X_lambda[i];
+		}
 	}
 
 	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
@@ -199,10 +203,15 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
 
 		for (unsigned int j = 0; j < ndirs; j++) {
-			dq_X_base[i][j] = dq_X_lambda[i][j] * model.X_base[lambda].toMatrix() 
-				              + model.X_lambda[i].toMatrix() * dq_X_base[lambda][j];
-			cout << "dq_X_base[" << i << "][" << j << "] = " << j << endl;
-			cout << dq_X_base[i][j] << endl;
+			if (lambda != 0) {
+				dq_X_base[i][j] = dq_X_lambda[i][j] * model.X_base[lambda].toMatrix() 
+					+ model.X_lambda[i].toMatrix() * dq_X_base[lambda][j];
+				cout << "dq_X_base[" << i << "][" << j << "] = " << j << endl;
+				cout << dq_X_base[i][j] << endl;
+			} else {
+				dq_X_base[i][j] = dq_X_lambda[i][j] * model.X_base[lambda].toMatrix() 
+					+ model.X_lambda[i].toMatrix() * dq_X_base[lambda][j];
+			}
 		}
 		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 	}
@@ -227,24 +236,68 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 	return model.X_base[body_id].r + model.X_base[body_id].E.transpose() * point_body_coordinates;
 }
 
+RBDL_DLLAPI
+Vector3d fd_dq_CalcBodyToBaseCoordinatesSingleFunc (
+		Model &model,
+		const VectorNd &q,
+		const MatrixNd &q_dirs,
+		unsigned int body_id,
+		const Vector3d &point_body_coordinates,
+		MatrixNd &out
+		) {
+	Vector3d ref = CalcBodyToBaseCoordinatesSingleFunc (model, q, body_id, point_body_coordinates);
+
+	unsigned int ndirs = q_dirs.cols();
+	double h = 1.0e-8;
+	for (unsigned int j = 0; j < ndirs; j++) {
+		VectorNd q_dir = q_dirs.block(0,j, model.qdot_size, 1);
+		Vector3d res_hd = CalcBodyToBaseCoordinatesSingleFunc (model, q + h * q_dir, body_id, point_body_coordinates);
+		Vector3d res_hd_rbdl = CalcBodyToBaseCoordinates (model, q + h * q_dir, body_id, point_body_coordinates);
+
+		cout << "calc_body err = " << (res_hd - res_hd_rbdl).transpose() << endl;
+
+		out.block<3,1>(0,j) = (res_hd - ref) / h;
+	}
+
+	return ref;
+}
+
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseSimple) {
+	q[0] = 0.3;
+	q[1] = -0.2;
+	Vector3d point_body_coordinates (0.1, 3.2, 4.2);
+
+	Vector3d point_single_func = CalcBodyToBaseCoordinatesSingleFunc (*model, q, id_pendulum, point_body_coordinates);
+	Vector3d point_default = CalcBodyToBaseCoordinates (*model, q, id_pendulum, point_body_coordinates);
+
+	CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, TEST_PREC);
+}
+
+/*
 TEST_FIXTURE ( CartPendulum, CartPendulumJacobianSimple ) {
 	MatrixNd jacobian_ad = MatrixNd::Zero(3, model->qdot_size);
 	MatrixNd jacobian_ref = MatrixNd::Zero(3, model->qdot_size);
+	MatrixNd jacobian_fd = MatrixNd::Zero(3, model->qdot_size);
 
 	q.setZero();
-	q[0] = 0.0;
-	q[1] = 0.0;
-	body_point = Vector3d (0., 0., 0.);
+	q[0] = 2.0;
+	q[1] = 0.3;
+	body_point = Vector3d (0., 0., 0.6);
 
 	CalcPointJacobian (*model, q, id_pendulum, body_point, jacobian_ref);
 
 	MatrixNd q_dirs = MatrixNd::Identity (model->qdot_size, model->qdot_size);
 	Vector3d base_point = dq_CalcBodyToBaseCoordinatesSingleFunc (*model, q, q_dirs, id_pendulum, body_point, jacobian_ad);
+	Vector3d base_point_fd = fd_dq_CalcBodyToBaseCoordinatesSingleFunc (*model, q, q_dirs, id_pendulum, body_point, jacobian_fd);
 
 	cout << "jacobian_ref: " << endl << jacobian_ref << endl;
+	cout << "jacobian_fd: " << endl << jacobian_fd << endl;
 	cout << "jacobian_ad: " << endl << jacobian_ad << endl;
-	cout << "Jacobian error:" << endl << (jacobian_ref - jacobian_ad) << endl;
+	cout << "Jacobian error (FD, ref):" << endl << (jacobian_fd - jacobian_ref) << endl;
+	cout << "Jacobian error (AD, ref):" << endl << (jacobian_ad - jacobian_ref) << endl;
+	cout << "Jacobian error (AD, FD):" << endl << (jacobian_ad - jacobian_fd) << endl;
 
 	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model->qdot_size, TEST_PREC);
 //	CHECK_ARRAY_CLOSE (v_fixed_body.data(), v_body.data(), 6, TEST_PREC);
 }
+*/
