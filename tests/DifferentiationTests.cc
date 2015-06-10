@@ -62,7 +62,7 @@ struct CartPendulum {
 	~CartPendulum () {
 		delete model;
 	}
-	
+
 	RigidBodyDynamics::Model *model;
 
 	unsigned int id_cart, id_pendulum;
@@ -104,7 +104,7 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 			std::cerr << "Unsupported joint! Only RotY and TransX supported!" << std::endl;
 			abort();
 		}
-		
+
 		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
 		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 	}
@@ -124,7 +124,7 @@ inline SpatialMatrix dq_Xroty (const double &yrot, const double &dot_yrot) {
 	Matrix3d E(
 				-s, 0., -c,
 				0., 0., 0.,
-				c, 0., -s 
+				c, 0., -s
 				);
 
 	result.block<3,3>(0,0) = E;
@@ -136,14 +136,14 @@ inline SpatialMatrix dq_Xroty (const double &yrot, const double &dot_yrot) {
 inline SpatialMatrix dq_Xtrans (const Vector3d &dq_trans) {
 	SpatialMatrix result (SpatialMatrix::Zero(6,6));
 
-	result(3,1) = -dq_trans[2];
-	result(3,2) =  dq_trans[1];
+	result(3,1) =  dq_trans[2];
+	result(3,2) = -dq_trans[1];
 
-	result(4,0) =  dq_trans[2];
-	result(4,2) = -dq_trans[0];
+	result(4,0) = -dq_trans[2];
+	result(4,2) =  dq_trans[0];
 
-	result(5,0) = -dq_trans[1];
-	result(5,1) =  dq_trans[0];
+	result(5,0) =  dq_trans[1];
+	result(5,1) = -dq_trans[0];
 
 	return result;
 }
@@ -170,57 +170,114 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 
 	// Update the kinematics
 	VectorNd QDot_zero (VectorNd::Zero (model.q_size));
+	VectorNd fd_out (MatrixNd::Zero (3, model.q_size));
 
 	std::vector<MatrixNd> dq_X_J_i (ndirs, MatrixNd::Zero (6,6));
 	std::vector<std::vector<MatrixNd> > dq_X_J (model.mBodies.size(), dq_X_J_i);
+	std::vector<std::vector<MatrixNd> > fd_X_J (model.mBodies.size(), dq_X_J_i);
 	// dq_X_J[3][5] gives for body 3 the 5th direction
 
 	std::vector<MatrixNd> dq_X_lambda_i (ndirs, MatrixNd::Zero (6,6));
 	std::vector<std::vector<MatrixNd> > dq_X_lambda (model.mBodies.size(), dq_X_lambda_i);
+	std::vector<std::vector<MatrixNd> > fd_X_lambda (model.mBodies.size(), dq_X_lambda_i);
 	// dq_X_lambda[3][5] gives for body 3 the 5th direction
 
 	std::vector<MatrixNd> dq_X_base_i (ndirs, MatrixNd::Zero (6,6));
 	std::vector<std::vector<MatrixNd> > dq_X_base (model.mBodies.size(), dq_X_base_i);
+	std::vector<std::vector<MatrixNd> > fd_X_base (model.mBodies.size(), dq_X_base_i);
 	// dq_X_base[3][5] gives for body 3 the 5th direction
 
 	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
 		unsigned int lambda = model.lambda[i];
-
 		// Calculate joint dependent variables
-		if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
+		cout << "== BEGIN == " << endl;
+		cout << "== X_J == " << endl;
+		//if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
+		if (model.S[i] == SpatialVector (0., 1., 0., 0., 0., 0.)) {
+			cout << "Revolute" << endl;
 			for (unsigned int j = 0; j < ndirs; j++) {
-				if (q_dirs(i-1,j) != 0.) {
-					dq_X_J[i][j] = dq_Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
-				} else {
-					dq_X_J[i][j].setZero();
-				}
+				cout << "q[" << i << "] = " << q[model.mJoints[i].q_index] << endl;
+				cout << "q_dirs[" << i << ", " << j << "] = " << q_dirs(i-1, j) << endl;
+				// FD TEST
+				fd_X_J[i][j] = (
+					Xroty (q[model.mJoints[i].q_index] + 1e-08 * q_dirs(i-1, j)).toMatrix()
+					- Xroty (q[model.mJoints[i].q_index]).toMatrix()
+					) / 1e-08;
+				//
+				dq_X_J[i][j] = dq_Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+				cout << "fd_X_J[" << i << "][" << j << "] = " << endl;
+				cout << fd_X_J[i][j] << endl;
+				cout << "dq_X_J[" << i << "][" << j << "] = " << endl;
+				cout << dq_X_J[i][j] << endl;
 			}
 			model.X_J[i] = Xroty (q[model.mJoints[i].q_index]);
 		} else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
+			cout << "Trans" << endl;
 			for (unsigned int j = 0; j < ndirs; j++) {
-				if (q_dirs(i-1,j) != 0.) {
-					// Special case
-					dq_X_J[i][j] = dq_Xtrans (Vector3d (q_dirs(i-1, j), 0., 0.));
-				} else {
-					dq_X_J[i][j].setZero();
-				}
+				cout << "q[" << i << "] = " << q[model.mJoints[i].q_index] << endl;
+				cout << "q_dirs[" << i << ", " << j << "] = " << q_dirs(i-1, j) << endl;
+				// FD TEST
+				fd_X_J[i][j] = (
+					Xtrans (Vector3d(q[model.mJoints[i].q_index] + 1e-08 * q_dirs(i-1, j), 0. , 0.)).toMatrix()
+					- Xtrans (Vector3d (q[model.mJoints[i].q_index], 0., 0.)).toMatrix()
+					) / 1e-08;
+				//
+				dq_X_J[i][j] = dq_Xtrans (Vector3d (q_dirs(i-1, j), 0., 0.));
+				cout << "fd_X_J[" << i << "][" << j << "] = " << endl;
+				cout << fd_X_J[i][j] << endl;
+				cout << "dq_X_J[" << i << "][" << j << "] = " << endl;
+				cout << dq_X_J[i][j] << endl;
 			}
 			model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index]);
 		} else {
 			std::cerr << "Unsupported joint! Only RotY and TransX supported!" << std::endl;
 			abort();
 		}
-	
+		cout << "== END == " << endl;
+
+		cout << "== BEGIN == " << endl;
+		cout << "== X_lambda == " << endl;
 		for (unsigned int j = 0; j < ndirs; j++) {
 			dq_X_lambda[i][j] = dq_X_J[i][j] * model.X_T[i].toMatrix();
+			cout << "dq_X_lambda[" << i << "][" << j << "] = " << endl;
+			cout << dq_X_lambda[i][j] << endl;
+			// BEGIN FD TEST
+			fd_X_lambda[i][j] = (
+				(model.X_J[i].toMatrix() + 1e-08 * fd_X_J[i][j]) * model.X_T[i].toMatrix()
+				- model.X_J[i].toMatrix() * model.X_T[i].toMatrix()
+				) / 1e-08;
+			//
+			cout << "fd_X_lambda[" << i << "][" << j << "] = " << endl;
+			cout << fd_X_lambda[i][j] << endl;
+			// END FD TEST
 		}
 		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+		cout << "== END == " << endl;
 
+		cout << "== BEGIN == " << endl;
+		cout << "== X_base == " << endl;
 		for (unsigned int j = 0; j < ndirs; j++) {
-			dq_X_base[i][j] = dq_X_lambda[i][j] * model.X_base[lambda].toMatrix() 
+			dq_X_base[i][j] = dq_X_lambda[i][j] * model.X_base[lambda].toMatrix()
 				+ model.X_lambda[i].toMatrix() * dq_X_base[lambda][j];
+			cout << "dq_X_base[" << i << "][" << j << "] = " << endl;
+			cout << dq_X_base[i][j] << endl;
+			// BEGIN FD TEST
+			fd_X_base[i][j] = (
+					(
+						model.X_lambda[i].toMatrix() + 1e-08 * dq_X_lambda[i][j] - model.X_lambda[i].toMatrix()
+					) * model.X_base[lambda].toMatrix()
+					+
+					model.X_lambda[i].toMatrix() * (
+						model.X_base[lambda].toMatrix() + 1e-08 * dq_X_base[lambda][j] - model.X_base[lambda].toMatrix()
+					)
+				) / 1e-08;
+			//
+			cout << "fd_X_base[" << i << "][" << j << "] = " << endl;
+			cout << fd_X_base[i][j] << endl;
+			// END FD TEST
 		}
 		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+		cout << "== END == " << endl;
 	}
 
 	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
@@ -229,13 +286,9 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 	cout << "== last loop ==" << endl;
 
 	for (unsigned int j = 0; j < ndirs; j++) {
-		cout << "dq_X_base[" << body_id << "][" << j << "] = " << endl;
-		cout << dq_X_base[body_id][j] << endl;
 		SpatialTransform dq_base = SpatialTransform::fromMatrix (dq_X_base[body_id][j]);
-
 		Vector3d vec3 = dq_base.r + dq_base.E.transpose() * point_body_coordinates;
 		cout << "col = " <<  vec3.transpose() << endl;
-
 		out.block<3, 1>(0,j) = vec3;
 	}
 
@@ -299,10 +352,9 @@ TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 	cout << "point err = " << (base_point_standard - base_point_ad).transpose() << endl;
 
 	cout << "jacobian_ref: " << endl << jacobian_ref << endl;
-//	cout << "jacobian_fd: " << endl << jacobian_fd << endl;
 	cout << "jacobian_ad: " << endl << jacobian_ad << endl;
-	cout << "Jacobian error (FD, ref):" << endl << (jacobian_fd - jacobian_ref) << endl;
 	cout << "Jacobian error (AD, ref):" << endl << (jacobian_ad - jacobian_ref) << endl;
+	cout << "Jacobian error (FD, ref):" << endl << (jacobian_fd - jacobian_ref) << endl;
 //	cout << "Jacobian error (AD, FD):" << endl << (jacobian_ad - jacobian_fd) << endl;
 
 	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model->qdot_size, TEST_PREC);
