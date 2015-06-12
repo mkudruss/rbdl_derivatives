@@ -1,4 +1,4 @@
- # ennable pretty printing
+# enable pretty printing
 from sympy import pprint
 
 # sympy linear algebra
@@ -225,4 +225,4 @@ if __name__ == '__main__':
 #    r = Xm_calc_r (X)
 #    show (r.diff (q0))
 
-    
+
