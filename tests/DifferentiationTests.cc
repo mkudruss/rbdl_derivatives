@@ -172,8 +172,8 @@ Vector3d dq_r_from_Matrix(const SpatialMatrix X, const SpatialMatrix X_dot ) {
 
 	Matrix3d Erx_dot = Matrix3d::Zero();
 	Matrix3d Erx = Matrix3d::Zero();
-	Erx_dot = -X_dot.block<3,3>(3,0);
-	Erx = -X.block<3,3>(3,0);
+	Erx_dot = X_dot.block<3,3>(3,0);
+	Erx = X.block<3,3>(3,0);
 
 	Matrix3d rx_dot = E_dot.transpose() * Erx + E.transpose() * Erx_dot;
 	Matrix3d rx = E.transpose() * Erx;
