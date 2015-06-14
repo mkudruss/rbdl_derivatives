@@ -78,6 +78,24 @@ struct CartPendulum {
 	Vector3d body_point;
 };
 
+Matrix3d E_from_Matrix(const SpatialMatrix X) {
+	Matrix3d E = Matrix3d::Zero();
+	E = X.block<3, 3>(0,0);
+	return E;
+}
+
+Vector3d r_from_Matrix(const SpatialMatrix X) {
+	Matrix3d E = E_from_Matrix(X);
+	Matrix3d Erx = Matrix3d::Zero();
+	Erx = X.block<3,3>(3,0);
+	Matrix3d rx = E.transpose() * Erx;
+	Vector3d r = Vector3d::Zero();
+	r(0) = -rx(2,1);
+	r(1) =  rx(2,0);
+	r(2) = -rx(1,0);
+	return r;
+}
+
 RBDL_DLLAPI
 Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 		Model &model,
@@ -109,10 +127,10 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 	}
 
-	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
-	Vector3d body_position = model.X_base[body_id].r;
+	Matrix3d body_rotation = E_from_Matrix(model.X_base[body_id].toMatrix());
+	Vector3d body_position = r_from_Matrix(model.X_base[body_id].toMatrix());
 
-	return body_position + body_rotation * point_body_coordinates;
+	return body_position + body_rotation.transpose() * point_body_coordinates;
 }
 
 inline SpatialMatrix dq_Xroty (const double &yrot, const double &dot_yrot) {
@@ -146,6 +164,32 @@ inline SpatialMatrix dq_Xtrans (const Vector3d &dq_trans) {
 	result(5,1) = -dq_trans[0];
 
 	return result;
+}
+
+Vector3d dq_r_from_Matrix(
+	const SpatialMatrix X, const SpatialMatrix X_dot, Vector3d& r_dot
+) {
+	Matrix3d E_dot = E_from_Matrix(X_dot);
+	Matrix3d E = E_from_Matrix(X);
+
+	Matrix3d Erx_dot = Matrix3d::Zero();
+	Matrix3d Erx = Matrix3d::Zero();
+	Erx_dot = -X_dot.block<3,3>(3,0);
+	Erx = -X.block<3,3>(3,0);
+
+	Matrix3d rx_dot = E_dot.transpose() * Erx + E.transpose() * Erx_dot;
+	Matrix3d rx = E.transpose() * Erx;
+
+	Vector3d r = Vector3d::Zero();
+	r(0) = -rx(2,1);
+	r(1) =  rx(2,0);
+	r(2) = -rx(1,0);
+
+	r_dot(0) = -rx_dot(2,1);
+	r_dot(1) =  rx_dot(2,0);
+	r_dot(2) = -rx_dot(1,0);
+
+	return r;
 }
 
 RBDL_DLLAPI
@@ -280,19 +324,21 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 		cout << "== END == " << endl;
 	}
 
-	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
-	Vector3d body_position = model.X_base[body_id].r;
-
 	cout << "== last loop ==" << endl;
 
 	for (unsigned int j = 0; j < ndirs; j++) {
-		SpatialTransform dq_base = SpatialTransform::fromMatrix (dq_X_base[body_id][j]);
-		Vector3d vec3 = dq_base.r + dq_base.E.transpose() * point_body_coordinates;
-		cout << "col = " <<  vec3.transpose() << endl;
-		out.block<3, 1>(0,j) = vec3;
+		SpatialMatrix X_base_ib = model.X_base[body_id].toMatrix();
+		Vector3d dq_r = Vector3d::Zero();
+		Matrix3d dq_E = E_from_Matrix(dq_X_base[body_id][j]);
+		Vector3d r = dq_r_from_Matrix(X_base_ib, dq_X_base[body_id][j], dq_r);
+
+		out.block<3,1>(0,j) = dq_r + dq_E.transpose() * point_body_coordinates;
 	}
 
-	return model.X_base[body_id].r + model.X_base[body_id].E.transpose() * point_body_coordinates;
+	Matrix3d body_rotation = E_from_Matrix(model.X_base[body_id].toMatrix());
+	Vector3d body_position = r_from_Matrix(model.X_base[body_id].toMatrix());
+
+	return body_position + body_rotation.transpose() * point_body_coordinates;
 }
 
 RBDL_DLLAPI
