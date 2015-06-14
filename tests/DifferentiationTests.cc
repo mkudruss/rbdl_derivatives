@@ -166,9 +166,7 @@ inline SpatialMatrix dq_Xtrans (const Vector3d &dq_trans) {
 	return result;
 }
 
-Vector3d dq_r_from_Matrix(
-	const SpatialMatrix X, const SpatialMatrix X_dot, Vector3d& r_dot
-) {
+Vector3d dq_r_from_Matrix(const SpatialMatrix X, const SpatialMatrix X_dot ) {
 	Matrix3d E_dot = E_from_Matrix(X_dot);
 	Matrix3d E = E_from_Matrix(X);
 
@@ -180,16 +178,12 @@ Vector3d dq_r_from_Matrix(
 	Matrix3d rx_dot = E_dot.transpose() * Erx + E.transpose() * Erx_dot;
 	Matrix3d rx = E.transpose() * Erx;
 
-	Vector3d r = Vector3d::Zero();
-	r(0) = -rx(2,1);
-	r(1) =  rx(2,0);
-	r(2) = -rx(1,0);
-
+	Vector3d r_dot = Vector3d::Zero();
 	r_dot(0) = -rx_dot(2,1);
 	r_dot(1) =  rx_dot(2,0);
 	r_dot(2) = -rx_dot(1,0);
 
-	return r;
+	return r_dot;
 }
 
 RBDL_DLLAPI
@@ -234,103 +228,36 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
 		unsigned int lambda = model.lambda[i];
 		// Calculate joint dependent variables
-		cout << "== BEGIN == " << endl;
-		cout << "== X_J == " << endl;
-		//if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
-		if (model.S[i] == SpatialVector (0., 1., 0., 0., 0., 0.)) {
-			cout << "Revolute" << endl;
+		if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
 			for (unsigned int j = 0; j < ndirs; j++) {
-				cout << "q[" << i << "] = " << q[model.mJoints[i].q_index] << endl;
-				cout << "q_dirs[" << i << ", " << j << "] = " << q_dirs(i-1, j) << endl;
-				// FD TEST
-				fd_X_J[i][j] = (
-					Xroty (q[model.mJoints[i].q_index] + 1e-08 * q_dirs(i-1, j)).toMatrix()
-					- Xroty (q[model.mJoints[i].q_index]).toMatrix()
-					) / 1e-08;
-				//
 				dq_X_J[i][j] = dq_Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
-				cout << "fd_X_J[" << i << "][" << j << "] = " << endl;
-				cout << fd_X_J[i][j] << endl;
-				cout << "dq_X_J[" << i << "][" << j << "] = " << endl;
-				cout << dq_X_J[i][j] << endl;
 			}
 			model.X_J[i] = Xroty (q[model.mJoints[i].q_index]);
 		} else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
-			cout << "Trans" << endl;
 			for (unsigned int j = 0; j < ndirs; j++) {
-				cout << "q[" << i << "] = " << q[model.mJoints[i].q_index] << endl;
-				cout << "q_dirs[" << i << ", " << j << "] = " << q_dirs(i-1, j) << endl;
-				// FD TEST
-				fd_X_J[i][j] = (
-					Xtrans (Vector3d(q[model.mJoints[i].q_index] + 1e-08 * q_dirs(i-1, j), 0. , 0.)).toMatrix()
-					- Xtrans (Vector3d (q[model.mJoints[i].q_index], 0., 0.)).toMatrix()
-					) / 1e-08;
-				//
 				dq_X_J[i][j] = dq_Xtrans (Vector3d (q_dirs(i-1, j), 0., 0.));
-				cout << "fd_X_J[" << i << "][" << j << "] = " << endl;
-				cout << fd_X_J[i][j] << endl;
-				cout << "dq_X_J[" << i << "][" << j << "] = " << endl;
-				cout << dq_X_J[i][j] << endl;
 			}
 			model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index]);
 		} else {
 			std::cerr << "Unsupported joint! Only RotY and TransX supported!" << std::endl;
 			abort();
 		}
-		cout << "== END == " << endl;
 
-		cout << "== BEGIN == " << endl;
-		cout << "== X_lambda == " << endl;
 		for (unsigned int j = 0; j < ndirs; j++) {
 			dq_X_lambda[i][j] = dq_X_J[i][j] * model.X_T[i].toMatrix();
-			cout << "dq_X_lambda[" << i << "][" << j << "] = " << endl;
-			cout << dq_X_lambda[i][j] << endl;
-			// BEGIN FD TEST
-			fd_X_lambda[i][j] = (
-				(model.X_J[i].toMatrix() + 1e-08 * fd_X_J[i][j]) * model.X_T[i].toMatrix()
-				- model.X_J[i].toMatrix() * model.X_T[i].toMatrix()
-				) / 1e-08;
-			//
-			cout << "fd_X_lambda[" << i << "][" << j << "] = " << endl;
-			cout << fd_X_lambda[i][j] << endl;
-			// END FD TEST
 		}
 		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
-		cout << "== END == " << endl;
 
-		cout << "== BEGIN == " << endl;
-		cout << "== X_base == " << endl;
 		for (unsigned int j = 0; j < ndirs; j++) {
-			dq_X_base[i][j] = dq_X_lambda[i][j] * model.X_base[lambda].toMatrix()
-				+ model.X_lambda[i].toMatrix() * dq_X_base[lambda][j];
-			cout << "dq_X_base[" << i << "][" << j << "] = " << endl;
-			cout << dq_X_base[i][j] << endl;
-			// BEGIN FD TEST
-			fd_X_base[i][j] = (
-					(
-						model.X_lambda[i].toMatrix() + 1e-08 * dq_X_lambda[i][j] - model.X_lambda[i].toMatrix()
-					) * model.X_base[lambda].toMatrix()
-					+
-					model.X_lambda[i].toMatrix() * (
-						model.X_base[lambda].toMatrix() + 1e-08 * dq_X_base[lambda][j] - model.X_base[lambda].toMatrix()
-					)
-				) / 1e-08;
-			//
-			cout << "fd_X_base[" << i << "][" << j << "] = " << endl;
-			cout << fd_X_base[i][j] << endl;
-			// END FD TEST
+			dq_X_base[i][j] = dq_X_lambda[i][j] * model.X_base[lambda].toMatrix() + model.X_lambda[i].toMatrix() * dq_X_base[lambda][j];
 		}
 		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-		cout << "== END == " << endl;
 	}
-
-	cout << "== last loop ==" << endl;
 
 	for (unsigned int j = 0; j < ndirs; j++) {
 		SpatialMatrix X_base_ib = model.X_base[body_id].toMatrix();
-		Vector3d dq_r = Vector3d::Zero();
 		Matrix3d dq_E = E_from_Matrix(dq_X_base[body_id][j]);
-		Vector3d r = dq_r_from_Matrix(X_base_ib, dq_X_base[body_id][j], dq_r);
+		Vector3d dq_r = dq_r_from_Matrix(X_base_ib, dq_X_base[body_id][j]);
 
 		out.block<3,1>(0,j) = dq_r + dq_E.transpose() * point_body_coordinates;
 	}
