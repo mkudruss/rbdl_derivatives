@@ -203,9 +203,6 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 	assert (out.rows() == 3 && out.cols() == model.qdot_size);
 	unsigned int ndirs = q_dirs.cols();
 
-	cout << "body_id = " << body_id << endl;
-	cout << "q_dirs = " << endl << q_dirs.transpose() << endl;
-
 	// Update the kinematics
 	VectorNd QDot_zero (VectorNd::Zero (model.q_size));
 	VectorNd fd_out (MatrixNd::Zero (3, model.q_size));
