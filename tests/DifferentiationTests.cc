@@ -330,3 +330,20 @@ TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model->qdot_size, TEST_PREC);
 //	CHECK_ARRAY_CLOSE (v_fixed_body.data(), v_body.data(), 6, TEST_PREC);
 }
+
+TEST (TestE_from_Matrix) {
+	SpatialTransform X = Xroty (0.2) * Xrotx (-0.45) * Xrotz(0.1);
+	Matrix3d E_ref = X.E;
+	Matrix3d E = E_from_Matrix (X.toMatrix());
+
+	CHECK_ARRAY_CLOSE (E_ref.data(), E.data(), 9, TEST_PREC);
+}
+
+TEST (Testr_from_Matrix) {
+	SpatialTransform X = Xtrans (Vector3d (0.1, 0.4, 0.6)) * Xroty (0.2) * Xrotx (-0.45) * Xrotz(0.1);
+	Vector3d r_ref = X.r;
+	Vector3d r = r_from_Matrix (X.toMatrix());
+
+	CHECK_ARRAY_CLOSE (r_ref.data(), r.data(), 3, TEST_PREC);
+}
+
