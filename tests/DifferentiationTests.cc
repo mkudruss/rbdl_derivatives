@@ -308,9 +308,9 @@ TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 	MatrixNd jacobian_fd = MatrixNd::Zero(3, model->qdot_size);
 
 	q.setZero();
-	q[0] = 2.0;
-	q[1] = 0.3;
-	body_point = Vector3d (0., 0., 0.6);
+	q[0] = -1.0;
+	q[1] = -0.3;
+	body_point = Vector3d (1.0, 2.0, 3.0);
 
 	CalcPointJacobian (*model, q, id_pendulum, body_point, jacobian_ref);
 
@@ -324,26 +324,9 @@ TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 	cout << "jacobian_ref: " << endl << jacobian_ref << endl;
 	cout << "jacobian_ad: " << endl << jacobian_ad << endl;
 	cout << "Jacobian error (AD, ref):" << endl << (jacobian_ad - jacobian_ref) << endl;
-	cout << "Jacobian error (FD, ref):" << endl << (jacobian_fd - jacobian_ref) << endl;
+	// cout << "Jacobian error (FD, ref):" << endl << (jacobian_fd - jacobian_ref) << endl;
 //	cout << "Jacobian error (AD, FD):" << endl << (jacobian_ad - jacobian_fd) << endl;
 
 	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model->qdot_size, TEST_PREC);
 //	CHECK_ARRAY_CLOSE (v_fixed_body.data(), v_body.data(), 6, TEST_PREC);
 }
-
-TEST (TestE_from_Matrix) {
-	SpatialTransform X = Xroty (0.2) * Xrotx (-0.45) * Xrotz(0.1);
-	Matrix3d E_ref = X.E;
-	Matrix3d E = E_from_Matrix (X.toMatrix());
-
-	CHECK_ARRAY_CLOSE (E_ref.data(), E.data(), 9, TEST_PREC);
-}
-
-TEST (Testr_from_Matrix) {
-	SpatialTransform X = Xtrans (Vector3d (0.1, 0.4, 0.6)) * Xroty (0.2) * Xrotx (-0.45) * Xrotz(0.1);
-	Vector3d r_ref = X.r;
-	Vector3d r = r_from_Matrix (X.toMatrix());
-
-	CHECK_ARRAY_CLOSE (r_ref.data(), r.data(), 3, TEST_PREC);
-}
-
