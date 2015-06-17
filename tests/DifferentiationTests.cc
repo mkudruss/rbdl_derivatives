@@ -97,6 +97,51 @@ Vector3d r_from_Matrix(const SpatialMatrix X) {
 }
 
 RBDL_DLLAPI
+void ad_jcalc (
+	Model &model,
+	unsigned int joint_id,
+	const VectorNd &q,
+	const MatrixNd &q_dirs,
+	const VectorNd &qdot,
+	const MatrixNd &qdot_dirs,
+	std::vector<MatrixNd> &ad_X_Ji,
+	std::vector<SpatialVector> &ad_S_i,
+	std::vector<SpatialVector> &ad_v_Ji,
+	std::vector<SpatialVector> &ad_c_Ji
+) {
+	unsigned int ndirs = q_dirs.cols();
+	cout << "IN: " << __func__ << endl;
+	cout << "ndirs: " << ndirs << endl;
+	cout << "q_dirs.cols(): " << q_dirs.cols() << endl;
+	cout << "qdot_dirs.cols(): " << qdot_dirs.cols() << endl;
+
+	// check input dimensions
+	if (q_dirs.cols() != qdot_dirs.cols()) {
+		std::cerr << "directions have different dimensions: " << "#q_dirs = " << q_dirs.cols() << " != " << qdot_dirs.cols() << " = #qdot_dirs." << std::endl;
+		std::cerr << "In: " << __func__ << endl;
+		abort();
+	}
+	// check output dimensions
+	if (ad_X_Ji.size() != ndirs) {
+		std::cerr << "derivative does not have proper dimensions " << "#ad_X_Ji.size() = " << ad_X_Ji.size() << " != " << ndirs << " = ndirs." << std::endl;
+		std::cerr << "In: " << __func__ << endl;
+		abort();
+	}
+	if (ad_S_i.size() != ndirs) {
+		std::cerr << "derivative does not have proper dimensions " << "#ad_S_i.size() = " << ad_S_i.size() << " != " << ndirs << " = ndirs." << std::endl;
+		std::cerr << "In: " << __func__ << endl;
+		abort();
+	}
+	if (ad_c_Ji.size() != ndirs) {
+		std::cerr << "derivative does not have proper dimensions " << "#ad_c_Ji.size() = " << ad_c_Ji.size() << " != " << ndirs << " = ndirs." << std::endl;
+		std::cerr << "In: " << __func__ << endl;
+		abort();
+	}
+
+};
+
+
+RBDL_DLLAPI
 Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 		Model &model,
 		const VectorNd &Q,
@@ -266,6 +311,69 @@ Vector3d dq_CalcBodyToBaseCoordinatesSingleFunc (
 }
 
 RBDL_DLLAPI
+Vector3d fd_jcalc(
+	Model &model,
+	unsigned int joint_id,
+	const VectorNd &q,
+	const MatrixNd &q_dirs,
+	const VectorNd &qdot,
+	const MatrixNd &qdot_dirs,
+	std::vector<MatrixNd> &ad_X_Ji,
+	std::vector<SpatialVector> &ad_S_i,
+	std::vector<SpatialVector> &ad_v_Ji,
+	std::vector<SpatialVector> &ad_c_Ji
+) {
+	double h = 1.0e-8;
+	unsigned int ndirs = q_dirs.cols();
+
+	// check input dimensions
+	if (q_dirs.cols() != qdot_dirs.cols()) {
+		std::cerr << "directions have different dimensions: " << "#q_dirs = " << q_dirs.cols() << " != " << qdot_dirs.cols() << " = #qdot_dirs." << std::endl;
+		std::cerr << "In: " << __func__ << endl;
+		abort();
+	}
+	// check output dimensions
+	if (ad_X_Ji.size() != ndirs) {
+		std::cerr << "derivative does not have proper dimensions " << "#ad_X_Ji.size() = " << ad_X_Ji.size() << " != " << ndirs << " = ndirs." << std::endl;
+		std::cerr << "In: " << __func__ << endl;
+		abort();
+	}
+	if (ad_S_i.size() != ndirs) {
+		std::cerr << "derivative does not have proper dimensions " << "#ad_S_i.size() = " << ad_S_i.size() << " != " << ndirs << " = ndirs." << std::endl;
+		std::cerr << "In: " << __func__ << endl;
+		abort();
+	}
+	if (ad_c_Ji.size() != ndirs) {
+		std::cerr << "derivative does not have proper dimensions " << "#ad_c_Ji.size() = " << ad_c_Ji.size() << " != " << ndirs << " = ndirs." << std::endl;
+		std::cerr << "In: " << __func__ << endl;
+		abort();
+	}
+
+	// calculate y(t)
+	jcalc (model, joint_id, q, qdot);
+	MatrixNd ref_X_Ji = model.X_J[joint_id].toMatrix();
+	SpatialVector ref_S_i = model.S[joint_id];
+	SpatialVector ref_v_Ji = model.v_J[joint_id];
+	SpatialVector ref_c_Ji = model.c_J[joint_id];
+
+	for (unsigned int j = 0; j < ndirs; j++) {
+		VectorNd q_dir = q_dirs.block(0,j, model.qdot_size, 1);
+		VectorNd qdot_dir = qdot_dirs.block(0,j, model.qdot_size, 1);
+		jcalc (model, joint_id, q + h * q_dir, qdot + h * qdot_dir);
+
+		MatrixNd hd_X_Ji = model.X_J[joint_id].toMatrix();
+		SpatialVector hd_S_i = model.S[joint_id];
+		SpatialVector hd_v_Ji = model.v_J[joint_id];
+		SpatialVector hd_c_Ji = model.c_J[joint_id];
+
+		ad_X_Ji[j] = (hd_X_Ji - ref_X_Ji) / h;
+		ad_S_i[j]  = (hd_S_i  - ref_S_i)  / h;
+		ad_v_Ji[j] = (hd_v_Ji - ref_v_Ji) / h;
+		ad_c_Ji[j] = (hd_c_Ji - ref_c_Ji) / h;
+	}
+};
+
+RBDL_DLLAPI
 Vector3d fd_dq_CalcBodyToBaseCoordinatesSingleFunc (
 		Model &model,
 		const VectorNd &q,
@@ -289,6 +397,133 @@ Vector3d fd_dq_CalcBodyToBaseCoordinatesSingleFunc (
 	}
 
 	return ref;
+}
+
+TEST_FIXTURE (CartPendulum, jcalcNominalSolutionTest) {
+	// set nominal values
+	q.setZero();
+	q[0] = 0.3;
+	q[1] = -0.2;
+
+	qdot.setZero();
+	qdot[0] = 0.3;
+	qdot[1] = -0.2;
+
+	// set directions
+	unsigned int ndirs = model->q_size + model->qdot_size;
+	cout << "ndirs: " << ndirs << endl;
+	MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+	MatrixNd q_dirs = x.block(0, 0, model->q_size, ndirs);
+	MatrixNd qdot_dirs = x.block(model->q_size, 0, model->qdot_size, ndirs);
+
+	// set derivative outputs
+	std::vector<MatrixNd> ad_X_Ji (ndirs, MatrixNd::Zero (6,6));
+	std::vector<std::vector<MatrixNd> > ad_X_J (model->mBodies.size(), ad_X_Ji);
+
+	std::vector<SpatialVector> ad_V (ndirs, SpatialVector::Zero (6));
+	std::vector<std::vector<SpatialVector> > ad_S (model->mBodies.size(), ad_V);
+	std::vector<std::vector<SpatialVector> > ad_v_J (model->mBodies.size(), ad_V);
+	std::vector<std::vector<SpatialVector> > ad_c_J (model->mBodies.size(), ad_V);
+
+	for (unsigned int joint_id = 1; joint_id < model->mBodies.size(); joint_id++) {
+		// evaluate nominal solution
+		jcalc (*model, joint_id, q, qdot);
+		MatrixNd ref_X_Ji = model->X_J[joint_id].toMatrix();
+		SpatialVector ref_S_i = model->S[joint_id];
+		SpatialVector ref_v_Ji = model->v_J[joint_id];
+		SpatialVector ref_c_Ji = model->c_J[joint_id];
+
+		// evaluate AD nominal solution
+		ad_jcalc (*model, joint_id, q, q_dirs, qdot, qdot_dirs,
+			ad_X_J[joint_id], ad_S[joint_id], ad_v_J[joint_id], ad_c_J[joint_id]);
+		MatrixNd test_X_Ji = model->X_J[joint_id].toMatrix();
+		SpatialVector test_S_i = model->S[joint_id];
+		SpatialVector test_v_Ji = model->v_J[joint_id];
+		SpatialVector test_c_Ji = model->c_J[joint_id];
+
+		CHECK_ARRAY_CLOSE (ref_X_Ji.data(), test_X_Ji.data(), 36, TEST_PREC);
+		CHECK_ARRAY_CLOSE (ref_S_i.data(),  test_S_i.data(),   6, TEST_PREC);
+		CHECK_ARRAY_CLOSE (ref_v_Ji.data(), test_v_Ji.data(),  6, TEST_PREC);
+		CHECK_ARRAY_CLOSE (ref_c_Ji.data(), test_c_Ji.data(),  6, TEST_PREC);
+		cout << "ref_X_Ji: " << endl << ref_X_Ji << endl;
+		cout << "test_X_Ji: " << endl << test_X_Ji << endl;
+		cout << "error_X_Ji: " << endl << ref_X_Ji - test_X_Ji << endl;
+
+		cout << "ref_S_i: " << endl << ref_S_i << endl;
+		cout << "test_S_i: " << endl << test_S_i << endl;
+		cout << "error_S_i: " << endl << ref_S_i - test_S_i << endl;
+
+		cout << "ref_v_Ji: " << endl << ref_v_Ji << endl;
+		cout << "test_v_Ji: " << endl << test_v_Ji << endl;
+		cout << "error_v_Ji: " << endl << ref_v_Ji - test_v_Ji << endl;
+
+		cout << "ref_c_Ji: " << endl << ref_c_Ji << endl;
+		cout << "test_c_Ji: " << endl << test_c_Ji << endl;
+		cout << "error_c_Ji: " << endl << ref_c_Ji - test_c_Ji << endl;
+	}
+}
+
+TEST_FIXTURE (CartPendulum, jcalcFDvsADTest) {
+	// set nominal values
+	q.setZero();
+	q[0] = 0.3;
+	q[1] = -0.2;
+
+	qdot.setZero();
+	qdot[0] = 0.3;
+	qdot[1] = -0.2;
+
+	// set directions
+	unsigned int ndirs = model->q_size + model->qdot_size;
+	MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+	MatrixNd q_dirs = x.block(0, 0, model->q_size, ndirs);
+	MatrixNd qdot_dirs = x.block(model->q_size, 0, model->qdot_size, ndirs);
+
+	// set derivative outputs
+	std::vector<MatrixNd> ad_X_Ji (ndirs, MatrixNd::Zero (6,6));
+	std::vector<std::vector<MatrixNd> > fd_X_J (model->mBodies.size(), ad_X_Ji);
+	std::vector<std::vector<MatrixNd> > ad_X_J (model->mBodies.size(), ad_X_Ji);
+
+	std::vector<SpatialVector> ad_V (ndirs, SpatialVector::Zero (6));
+	std::vector<std::vector<SpatialVector> > fd_S (model->mBodies.size(), ad_V);
+	std::vector<std::vector<SpatialVector> > fd_v_J (model->mBodies.size(), ad_V);
+	std::vector<std::vector<SpatialVector> > fd_c_J (model->mBodies.size(), ad_V);
+
+	std::vector<std::vector<SpatialVector> > ad_S (model->mBodies.size(), ad_V);
+	std::vector<std::vector<SpatialVector> > ad_v_J (model->mBodies.size(), ad_V);
+	std::vector<std::vector<SpatialVector> > ad_c_J (model->mBodies.size(), ad_V);
+
+	for (unsigned int joint_id = 1; joint_id < model->mBodies.size(); joint_id++) {
+		// evaluate nominal solution
+		fd_jcalc (*model, joint_id, q, q_dirs, qdot, qdot_dirs,
+			fd_X_J[joint_id], fd_S[joint_id], fd_v_J[joint_id], fd_c_J[joint_id]);
+
+		// evaluate AD nominal solution
+		ad_jcalc (*model, joint_id, q, q_dirs, qdot, qdot_dirs,
+			ad_X_J[joint_id], ad_S[joint_id], ad_v_J[joint_id], ad_c_J[joint_id]);
+
+		for (int idir = 0; idir < ndirs; ++idir) {
+			CHECK_ARRAY_CLOSE (fd_X_J[joint_id][idir].data(), ad_X_J[joint_id][idir].data(), 36, TEST_PREC);
+			CHECK_ARRAY_CLOSE (fd_S[joint_id][idir].data(),   ad_S[joint_id][idir].data(),    6, TEST_PREC);
+			CHECK_ARRAY_CLOSE (fd_v_J[joint_id][idir].data(), ad_v_J[joint_id][idir].data(),  6, TEST_PREC);
+			CHECK_ARRAY_CLOSE (fd_c_J[joint_id][idir].data(), ad_c_J[joint_id][idir].data(),  6, TEST_PREC);
+			cout << "fd_X_J[" << joint_id << "][" << idir << "]: " << endl << fd_X_J[joint_id][idir] << endl;
+			cout << "ad_X_J[" << joint_id << "][" << idir << "]: " << endl << ad_X_J[joint_id][idir] << endl;
+			cout << "error_X_J: " << endl << fd_X_J[joint_id][idir] - ad_X_J[joint_id][idir] << endl;
+
+			cout << "fd_S[" << joint_id << "][" << idir << "]: " << endl << fd_S[joint_id][idir] << endl;
+			cout << "ad_S[" << joint_id << "][" << idir << "]: " << endl << ad_S[joint_id][idir] << endl;
+			cout << "error_S: " << endl << fd_S[joint_id][idir] - ad_S[joint_id][idir] << endl;
+
+			cout << "fd_v_J[" << joint_id << "][" << idir << "]: " << endl << fd_v_J[joint_id][idir] << endl;
+			cout << "ad_v_J[" << joint_id << "][" << idir << "]: " << endl << ad_v_J[joint_id][idir] << endl;
+			cout << "error_v_J: " << endl << fd_v_J[joint_id][idir] - ad_v_J[joint_id][idir] << endl;
+
+			cout << "fd_c_J[" << joint_id << "][" << idir << "]: " << endl << fd_c_J[joint_id][idir] << endl;
+			cout << "ad_c_J[" << joint_id << "][" << idir << "]: " << endl << ad_c_J[joint_id][idir] << endl;
+			cout << "error_c_J: " << endl << fd_c_J[joint_id][idir] - ad_c_J[joint_id][idir] << endl;
+		}
+	}
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseSimple) {
@@ -318,14 +553,6 @@ TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 	Vector3d base_point_standard = CalcBodyToBaseCoordinates (*model, q, id_pendulum, body_point);
 	Vector3d base_point_ad = dq_CalcBodyToBaseCoordinatesSingleFunc (*model, q, q_dirs, id_pendulum, body_point, jacobian_ad);
 	Vector3d base_point_fd = fd_dq_CalcBodyToBaseCoordinatesSingleFunc (*model, q, q_dirs, id_pendulum, body_point, jacobian_fd);
-
-	cout << "point err = " << (base_point_standard - base_point_ad).transpose() << endl;
-
-	cout << "jacobian_ref: " << endl << jacobian_ref << endl;
-	cout << "jacobian_ad: " << endl << jacobian_ad << endl;
-	cout << "Jacobian error (AD, ref):" << endl << (jacobian_ad - jacobian_ref) << endl;
-	// cout << "Jacobian error (FD, ref):" << endl << (jacobian_fd - jacobian_ref) << endl;
-//	cout << "Jacobian error (AD, FD):" << endl << (jacobian_ad - jacobian_fd) << endl;
 
 	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model->qdot_size, TEST_PREC);
 //	CHECK_ARRAY_CLOSE (v_fixed_body.data(), v_body.data(), 6, TEST_PREC);
