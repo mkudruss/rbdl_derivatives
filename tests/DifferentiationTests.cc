@@ -411,21 +411,111 @@ Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
 	return body_position + body_rotation.transpose() * point_body_coordinates;
 }
 
+RBDL_DLLAPI
+void ad_UpdateKinematics (
+	Model &model,
+	ADModel &ad_model,
+	const VectorNd &Q,
+	const MatrixNd &q_dirs,
+	const VectorNd &QDot,
+	const MatrixNd &qdot_dirs,
+	const VectorNd &QDDot,
+	const MatrixNd &qddot_dirs
+) {
+	LOG << "-------- " << __func__ << " --------" << std::endl;
+
+	unsigned int i;
+
+	SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
+
+	model.a[0].setZero();
+	//model.a[0] = spatial_gravity;
+
+	for (i = 1; i < model.mBodies.size(); i++) {
+		unsigned int q_index = model.mJoints[i].q_index;
+
+		Joint joint = model.mJoints[i];
+		unsigned int lambda = model.lambda[i];
+
+		jcalc (model, i, Q, QDot);
+
+		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+
+		if (lambda != 0) {
+			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+			model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
+		}	else {
+			model.X_base[i] = model.X_lambda[i];
+			model.v[i] = model.v_J[i];
+		}
+
+		model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
+		model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
+
+		if (model.mJoints[i].mDoFCount == 3) {
+			Vector3d omegadot_temp (QDDot[q_index], QDDot[q_index + 1], QDDot[q_index + 2]);
+			model.a[i] = model.a[i] + model.multdof3_S[i] * omegadot_temp;
+		} else {
+			model.a[i] = model.a[i] + model.S[i] * QDDot[q_index];
+		}
+	}
+
+	for (i = 1; i < model.mBodies.size(); i++) {
+		LOG << "a[" << i << "] = " << model.a[i].transpose() << std::endl;
+	}
+}
+
 Math::Vector3d ad_CalcPointAcceleration (
 		Model &model,
 		ADModel &ad_model,
 		const Math::VectorNd &q,
-		const Math::VectorNd &q_dirs,
+		const Math::MatrixNd &q_dirs,
 		const Math::VectorNd &qdot,
-		const Math::VectorNd &qdot_dirs,
+		const Math::MatrixNd &qdot_dirs,
 		const Math::VectorNd &qddot,
-		const Math::VectorNd &qddot_dirs,
+		const Math::MatrixNd &qddot_dirs,
 		unsigned int body_id,
 		const Math::Vector3d &point_position,
 		const Math::MatrixNd &fd_derivative,
 		bool update_kinematics = true
 ) {
-	return Vector3d::Zero();
+	LOG << "-------- " << __func__ << " --------" << std::endl;
+
+	unsigned int ndirs = q_dirs.cols();
+	ad_model.resize_directions(ndirs);
+
+	// Reset the velocity of the root body
+	model.v[0].setZero();
+	model.a[0].setZero();
+
+	if (update_kinematics) {
+		ad_UpdateKinematics (model, ad_model, q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs);
+		UpdateKinematics (model, q, qdot, qddot);
+	}
+
+	LOG << std::endl;
+
+	unsigned int reference_body_id = body_id;
+	Vector3d reference_point = point_position;
+
+	if (model.IsFixedBodyId(body_id)) {
+		unsigned int fbody_id = body_id - model.fixed_body_discriminator;
+		reference_body_id = model.mFixedBodies[fbody_id].mMovableParent;
+		Vector3d base_coords = CalcBodyToBaseCoordinates (model, q, body_id, point_position, false);
+		reference_point = CalcBaseToBodyCoordinates (model, q, reference_body_id, base_coords, false);
+	}
+
+	SpatialTransform p_X_i (CalcBodyWorldOrientation (model, q, reference_body_id, false).transpose(), reference_point);
+
+	SpatialVector p_v_i = p_X_i.apply(model.v[reference_body_id]);
+	Vector3d a_dash = Vector3d (p_v_i[0], p_v_i[1], p_v_i[2]).cross(Vector3d (p_v_i[3], p_v_i[4], p_v_i[5]));
+	SpatialVector p_a_i = p_X_i.apply(model.a[reference_body_id]);
+
+	return Vector3d (
+			p_a_i[3] + a_dash[0],
+			p_a_i[4] + a_dash[1],
+			p_a_i[5] + a_dash[2]
+			);
 };
 
 RBDL_DLLAPI
@@ -516,6 +606,47 @@ Vector3d fd_CalcBodyToBaseCoordinatesSingleFunc (
 
 	return ref;
 }
+
+/*
+void fd_UpdateKinematics (
+		Model &model,
+		const Math::VectorNd &q,
+		const Math::VectorNd &q_dirs,
+		const Math::VectorNd &qdot,
+		const Math::VectorNd &qdot_dirs,
+		const Math::VectorNd &qddot,
+		const Math::VectorNd &qddot_dirs,
+		unsigned int body_id,
+		const Math::Vector3d &point_position,
+		const Math::MatrixNd &fd_derivative,
+		bool update_kinematics = true
+) {
+	// evaluate y(t)
+	Vector3d ref = CalcPointAcceleration (model, q, qdot, qddot, body_id, point_position);
+
+	unsigned int ndirs = q_dirs.cols();
+	double h = 1.0e-8;
+
+	for (unsigned int j = 0; j < ndirs; j++) {
+		VectorNd q_dir = q_dirs.block(0, j, model.q_size, 1);
+		VectorNd qdot_dir = qdot_dirs.block(0, j, model.q_size, 1);
+		VectorNd qddot_dir = qddot_dirs.block(0, j, model.q_size, 1);
+
+		// evaluate y(t+h*d)
+		Vector3d res_hd = CalcPointAcceleration (
+			model,
+			q + h * q_dir,
+			qdot + h * qdot_dir,
+			qddot + h * qddot_dir,
+			body_id, point_position
+		);
+
+		//fd_derivative.block<3,1>(0, j) = (res_hd - ref) / h;
+	}
+
+	return ref;
+};
+*/
 
 Math::Vector3d fd_CalcPointAcceleration (
 		Model &model,
