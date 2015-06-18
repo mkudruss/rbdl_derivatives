@@ -1118,7 +1118,6 @@ TEST_FIXTURE (CartPendulum, jcalcNominalSolutionTest) {
 }
 
 TEST_FIXTURE (CartPendulum, jcalcFDvsADTest) {
-	cout << "Derivative Evaluation Test" << endl;
 	double TEST_PREC = 1.0e-08;
 
 	// set nominal values
