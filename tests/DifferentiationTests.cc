@@ -120,9 +120,7 @@ struct CartPendulum {
 		qddot = VectorNd::Constant ((size_t) model.dof_count, 0.);
 		tau = VectorNd::Constant ((size_t) model.dof_count, 0.);
 
-		ad_model = ADModel();
 		ad_model = ADModel(model);
-		//ad_model = ADModel::fromModel(model);
 
 		body_point = Vector3d (0., 0., pend_l);
 
@@ -413,6 +411,23 @@ Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
 	return body_position + body_rotation.transpose() * point_body_coordinates;
 }
 
+Math::Vector3d ad_CalcPointAcceleration (
+		Model &model,
+		ADModel &ad_model,
+		const Math::VectorNd &q,
+		const Math::VectorNd &q_dirs,
+		const Math::VectorNd &qdot,
+		const Math::VectorNd &qdot_dirs,
+		const Math::VectorNd &qddot,
+		const Math::VectorNd &qddot_dirs,
+		unsigned int body_id,
+		const Math::Vector3d &point_position,
+		const Math::MatrixNd &fd_derivative,
+		bool update_kinematics = true
+) {
+	return Vector3d::Zero();
+};
+
 RBDL_DLLAPI
 Vector3d fd_jcalc(
 	Model &model,
@@ -477,7 +492,7 @@ Vector3d fd_jcalc(
 };
 
 RBDL_DLLAPI
-Vector3d fd_dq_CalcBodyToBaseCoordinatesSingleFunc (
+Vector3d fd_CalcBodyToBaseCoordinatesSingleFunc (
 		Model &model,
 		const VectorNd &q,
 		const MatrixNd &q_dirs,
@@ -501,6 +516,45 @@ Vector3d fd_dq_CalcBodyToBaseCoordinatesSingleFunc (
 
 	return ref;
 }
+
+Math::Vector3d fd_CalcPointAcceleration (
+		Model &model,
+		const Math::VectorNd &q,
+		const Math::VectorNd &q_dirs,
+		const Math::VectorNd &qdot,
+		const Math::VectorNd &qdot_dirs,
+		const Math::VectorNd &qddot,
+		const Math::VectorNd &qddot_dirs,
+		unsigned int body_id,
+		const Math::Vector3d &point_position,
+		const Math::MatrixNd &fd_derivative,
+		bool update_kinematics = true
+) {
+	// evaluate y(t)
+	Vector3d ref = CalcPointAcceleration (model, q, qdot, qddot, body_id, point_position);
+
+	unsigned int ndirs = q_dirs.cols();
+	double h = 1.0e-8;
+
+	for (unsigned int j = 0; j < ndirs; j++) {
+		VectorNd q_dir = q_dirs.block(0, j, model.q_size, 1);
+		VectorNd qdot_dir = qdot_dirs.block(0, j, model.q_size, 1);
+		VectorNd qddot_dir = qddot_dirs.block(0, j, model.q_size, 1);
+
+		// evaluate y(t+h*d)
+		Vector3d res_hd = CalcPointAcceleration (
+			model,
+			q + h * q_dir,
+			qdot + h * qdot_dir,
+			qddot + h * qddot_dir,
+			body_id, point_position
+		);
+
+		//fd_derivative.block<3,1>(0, j) = (res_hd - ref) / h;
+	}
+
+	return ref;
+};
 
 TEST_FIXTURE (CartPendulum, jcalcNominalSolutionTest) {
 	cout << "Nominal Evaluation Test" << endl;
@@ -637,7 +691,93 @@ TEST_FIXTURE (CartPendulum, jcalcFDvsADTest) {
 	}
 }
 
-TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseSimple) {
+TEST_FIXTURE (CartPendulum, CalcPointAccelerationNominalTest) {
+	// set nominal values
+	q.setZero();
+	q[0] = 0.3;
+	q[1] = -0.2;
+
+	qdot.setZero();
+	qdot[0] = 0.3;
+	qdot[1] = -0.2;
+
+	qddot.setZero();
+	qddot[0] = 0.3;
+	qddot[1] = -0.2;
+
+	Vector3d point_body_coordinates (0.1, 3.2, 4.2);
+
+	// set directions
+	unsigned int ndirs = 3*model.q_size;
+	MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+	MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+	MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+	MatrixNd qddot_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
+
+	// set derivative output
+	MatrixNd ad_jacobian = MatrixNd::Zero(3, ndirs);
+
+	// evaluate nominal solution
+	Vector3d ref_acc = CalcPointAcceleration (
+		model, q, qdot, qddot, id_pendulum, point_body_coordinates
+	);
+
+	Vector3d ad_acc = ad_CalcPointAcceleration (
+		model, ad_model,
+		q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs,
+		id_pendulum, point_body_coordinates,
+		ad_jacobian
+	);
+
+	CHECK_ARRAY_CLOSE (ref_acc.data(), ad_acc.data(), 3, TEST_PREC);
+}
+
+/*
+TEST_FIXTURE (CartPendulum, CalcPointAccelerationFDvsADTest) {
+	// set nominal values
+	q.setZero();
+	q[0] = 0.3;
+	q[1] = -0.2;
+
+	qdot.setZero();
+	qdot[0] = 0.3;
+	qdot[1] = -0.2;
+
+	qddot.setZero();
+	qddot[0] = 0.3;
+	qddot[1] = -0.2;
+
+	// set directions
+	unsigned int ndirs = model.q_size + model.qdot_size + model.qddot_size;
+	MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+	MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+	MatrixNd qdot_dirs = x.block(model.q_size, 0, model.qdot_size, ndirs);
+	MatrixNd qddot_dirs = x.block(model.q_size + model.qdot_size, 0, model.qddot_size, ndirs);
+
+	// set derivative output
+	MatrixNd fd_jacobian = MatrixNd::Zero(3, ndirs);
+	MatrixNd ad_jacobian = MatrixNd::Zero(3, ndirs);
+
+		// evaluate nominal solution
+	Vector3d ref_acc = fd_CalcPointAcceleration (
+		model,
+		q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs,
+		id_pendulum, point_body_coordinates,
+		ad_jacobian
+	);
+
+	Vector3d ad_acc = ad_CalcPointAcceleration (
+		model, ad_model,
+		q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs,
+		id_pendulum, point_body_coordinates,
+		ad_jacobian
+	);
+
+	CHECK_ARRAY_CLOSE (ref_acc.data(), ad_acc.data(), 3, TEST_PREC);
+}
+*/
+
+TEST_FIXTURE (CartPendulum, CartPendulumCalcBodyToBaseSimple) {
 	q[0] = 0.3;
 	q[1] = -0.2;
 	Vector3d point_body_coordinates (0.1, 3.2, 4.2);
@@ -648,7 +788,7 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseSimple) {
 	CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, TEST_PREC);
 }
 
-TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
+TEST_FIXTURE (CartPendulum, CartPendulumJacobianADSimple ) {
 	MatrixNd jacobian_ad = MatrixNd::Zero(3, model.qdot_size);
 	MatrixNd jacobian_ref = MatrixNd::Zero(3, model.qdot_size);
 	MatrixNd jacobian_fd = MatrixNd::Zero(3, model.qdot_size);
@@ -663,7 +803,7 @@ TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 	MatrixNd q_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
 	Vector3d base_point_standard = CalcBodyToBaseCoordinates (model, q, id_pendulum, body_point);
 	Vector3d base_point_ad = ad_CalcBodyToBaseCoordinatesSingleFunc (model, ad_model, q, q_dirs, id_pendulum, body_point, jacobian_ad);
-	Vector3d base_point_fd = fd_dq_CalcBodyToBaseCoordinatesSingleFunc (model, q, q_dirs, id_pendulum, body_point, jacobian_fd);
+	Vector3d base_point_fd = fd_CalcBodyToBaseCoordinatesSingleFunc (model, q, q_dirs, id_pendulum, body_point, jacobian_fd);
 
 	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model.qdot_size, TEST_PREC);
 //	CHECK_ARRAY_CLOSE (v_fixed_body.data(), v_body.data(), 6, TEST_PREC);
