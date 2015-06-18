@@ -7,6 +7,7 @@
 
 #include "rbdl/Model.h"
 #include "rbdl/Kinematics.h"
+#include "rbdl/Dynamics.h"
 
 using namespace std;
 using namespace RigidBodyDynamics;
@@ -35,6 +36,9 @@ struct ADModel {
 		ad_S.resize(model.mBodies.size(), ad_v);
 		ad_v_J.resize(model.mBodies.size(), ad_v);
 		ad_c_J.resize(model.mBodies.size(), ad_v);
+		
+		ad_I_ci.resize(model.mBodies.size(), ad_X);
+		ad_F.resize(model.mBodies.size(), ad_v);
 	};
 
 	unsigned int ndirs;
@@ -48,6 +52,9 @@ struct ADModel {
 	std::vector<std::vector<SpatialVector> > ad_S;
 	std::vector<std::vector<SpatialVector> > ad_v_J;
 	std::vector<std::vector<SpatialVector> > ad_c_J;
+
+	std::vector<std::vector<SpatialMatrix> > ad_I_ci;
+	std::vector<std::vector<SpatialVector> > ad_F;
 
 	void resize_directions (unsigned requested_ndirs){
 		if (ndirs < requested_ndirs) {
@@ -607,6 +614,155 @@ Vector3d fd_CalcBodyToBaseCoordinatesSingleFunc (
 	return ref;
 }
 
+void fd_CompositeRigidBodyAlgorithm (
+					Model &model,
+					const VectorNd &q,
+					const MatrixNd &q_dirs,
+					std::vector<MatrixNd> &fd_out
+					) {
+
+	MatrixNd inertia_ref = MatrixNd::Zero(q.size(),q.size());
+	MatrixNd inertia_fd = MatrixNd::Zero(q.size(),q.size());
+
+	CompositeRigidBodyAlgorithm(model, q, inertia_ref, true);
+	unsigned int ndirs = q_dirs.cols();
+	double h = 1.0e-8;
+	for (unsigned int j = 0; j < ndirs; j++) {
+		VectorNd q_dir = q_dirs.block(0,j, model.qdot_size, 1);
+		CompositeRigidBodyAlgorithm(model, q+h*q_dir, inertia_fd, true);
+		fd_out.push_back( (inertia_fd - inertia_ref) / h);
+	}
+}
+
+
+void ad_CompositeRigidBodyAlgorithm (
+						 Model &model,
+						 ADModel &ad_model,
+						 const VectorNd &q,
+						 const MatrixNd &q_dirs,
+						 MatrixNd &H,
+						 std::vector<MatrixNd> &out,
+						 bool update_kinematics = true
+						 ) {
+	
+// 	double h = 1.0e-8;
+	size_t ndirs = q_dirs.cols();
+	
+	ad_model.resize_directions(ndirs);
+	
+	for(unsigned i = 1; i < model.mBodies.size(); i++)
+		ad_jcalc(model,ad_model,i,q,q_dirs,VectorNd::Zero(model.q_size),MatrixNd::Zero(model.q_size,ndirs));
+	
+	// --- derivative quantities ----------------------------------------------------------------------
+	
+	assert (H.rows() == model.dof_count && H.cols() == model.dof_count);
+
+	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
+		if (update_kinematics) {
+			jcalc_X_lambda_S (model, i, q);
+		}
+		// ad code
+		for (size_t j = 0; j < ndirs; j++) {
+			ad_model.ad_I_ci[i][j] = SpatialMatrix::Zero();
+//			 fd_I_ci[i][j] = SpatialMatrix::Zero();
+		}
+		// normal quantity code
+		model.Ic[i] = model.I[i];
+	}
+	
+	for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
+		//if (model.lambda[i] != 0) {
+			// ad code
+			for(size_t j = 0; j < ndirs; j++) {
+				ad_model.ad_I_ci[model.lambda[i]][j] = ad_model.ad_I_ci[model.lambda[i]][j] + model.X_lambda[i].toMatrixTranspose()*ad_model.ad_I_ci[i][j]*model.X_lambda[i].toMatrix() + ad_model.ad_X_lambda[i][j].transpose()*model.Ic[i].toMatrix()*model.X_lambda[i].toMatrix() + model.X_lambda[i].toMatrixTranspose()*model.Ic[i].toMatrix()*ad_model.ad_X_lambda[i][j];
+// 	fd_I_ci[model.lambda[i]][j] = fd_I_ci[model.lambda[i]][j] + model.X_lambda[i].toMatrixTranspose()*fd_I_ci[i][j]*model.X_lambda[i].toMatrix() + (fd_per_X_lambda[i][j].transpose()*model.Ic[i].toMatrix()*fd_per_X_lambda[i][j] - model.X_lambda[i].toMatrixTranspose()*model.Ic[i].toMatrix()*model.X_lambda[i].toMatrix())/h;
+
+// 	cout << "fd - ad: " << endl << fd_I_ci[model.lambda[i]][j] - ad_I_ci[model.lambda[i]][j] << endl;
+			}
+			// normal quantity code
+			model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + model.X_lambda[i].applyTranspose(model.Ic[i]);
+			
+			
+		//}
+
+		unsigned int dof_index_i = model.mJoints[i].q_index;
+		assert( model.mJoints[i].mDoFCount == 1);
+		// if (model.mJoints[i].mDoFCount == 3) {
+		// 	Matrix63 F_63 = model.Ic[i].toMatrix() * model.multdof3_S[i];
+		// 	H.block<3,3>(dof_index_i, dof_index_i) = model.multdof3_S[i].toMatrixTranspose() * F_63;
+
+		// 	unsigned int j = i;
+		// 	unsigned int dof_index_j = dof_index_i;
+
+		// 	while (model.lambda[j] != 0) {
+		// 		F_63 = model.X_lambda[j].toMatrixTranspose() * (F_63);
+		// 		j = model.lambda[j];
+		// 		dof_index_j = model.mJoints[j].q_index;
+
+		// 		if (model.mJoints[j].mDoFCount == 3) {
+		// 			Matrix3d H_temp2 = F_63.transpose() * (model.multdof3_S[j]);
+
+		// 			H.block<3,3>(dof_index_i,dof_index_j) = H_temp2;
+		// 			H.block<3,3>(dof_index_j,dof_index_i) = H_temp2.transpose();
+		// 		} else {
+		// 			Vector3d H_temp2 = F_63.transpose() * (model.S[j]);
+
+		// 			H.block<3,1>(dof_index_i,dof_index_j) = H_temp2;
+		// 			H.block<1,3>(dof_index_j,dof_index_i) = H_temp2.transpose();
+		// 		}
+		// 	}
+		// } else {
+		
+		// ad code
+		for (size_t j = 0; j < ndirs; j++) {
+			ad_model.ad_F[i][j] = ad_model.ad_I_ci[i][j]*model.S[i]+model.Ic[i].toMatrix()*ad_model.ad_S[i][j];
+		}
+		// normal quantity code
+		SpatialVector F = model.Ic[i] * model.S[i];
+		
+		// ad code
+		for (size_t j = 0; j < ndirs; j++) {
+			out[j](dof_index_i, dof_index_i) = ad_model.ad_S[i][j].dot(F)+model.S[i].dot(ad_model.ad_F[i][j]);
+		}
+		// normal quantity code
+		H(dof_index_i, dof_index_i) = model.S[i].dot(F);
+		unsigned int j = i;
+		unsigned int dof_index_j = dof_index_i;
+
+		while (model.lambda[j] != 0) {
+			// ad code
+			for (size_t ndir = 0; ndir < ndirs; ndir++) {
+				ad_model.ad_F[i][ndir] = ad_model.ad_X_lambda[j][ndir].transpose()*F+model.X_lambda[j].toMatrixTranspose()*ad_model.ad_F[i][ndir];
+			}
+			// normal quantity code
+			F = model.X_lambda[j].applyTranspose(F);
+			j = model.lambda[j];
+			dof_index_j = model.mJoints[j].q_index;
+			assert(model.mJoints[j].mDoFCount == 1);
+			// if (model.mJoints[j].mDoFCount == 3) {
+			//	 Vector3d H_temp2 = (F.transpose() * model.multdof3_S[j]).transpose();
+
+			//	 LOG << F.transpose() << std::endl << model.multdof3_S[j] << std::endl;
+			//	 LOG << H_temp2.transpose() << std::endl;
+
+			//	 H.block<1,3>(dof_index_i,dof_index_j) = H_temp2.transpose();
+			//	 H.block<3,1>(dof_index_j,dof_index_i) = H_temp2;
+			// } else {
+			// normal quantity code
+			H(dof_index_i,dof_index_j) = F.dot(model.S[j]);
+			H(dof_index_j,dof_index_i) = H(dof_index_i,dof_index_j);
+			// ad code
+			for (size_t ndir = 0; ndir < ndirs; ndir++) {
+				out[ndir](dof_index_i,dof_index_j) = ad_model.ad_F[i][ndir].dot(model.S[j])+F.dot(ad_model.ad_S[j][ndir]);
+				out[ndir](dof_index_j,dof_index_i) = out[ndir](dof_index_i,dof_index_j);
+			}
+		
+			//}
+		}
+		// }
+	}
+}
+
 /*
 void fd_UpdateKinematics (
 		Model &model,
@@ -688,8 +844,6 @@ Math::Vector3d fd_CalcPointAcceleration (
 };
 
 TEST_FIXTURE (CartPendulum, jcalcNominalSolutionTest) {
-	cout << "Nominal Evaluation Test" << endl;
-
 	// set nominal values
 	q.setZero();
 	q[0] = 0.3;
@@ -908,7 +1062,7 @@ TEST_FIXTURE (CartPendulum, CalcPointAccelerationFDvsADTest) {
 }
 */
 
-TEST_FIXTURE (CartPendulum, CartPendulumCalcBodyToBaseSimple) {
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseSimple) {
 	q[0] = 0.3;
 	q[1] = -0.2;
 	Vector3d point_body_coordinates (0.1, 3.2, 4.2);
@@ -919,7 +1073,7 @@ TEST_FIXTURE (CartPendulum, CartPendulumCalcBodyToBaseSimple) {
 	CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, TEST_PREC);
 }
 
-TEST_FIXTURE (CartPendulum, CartPendulumJacobianADSimple ) {
+TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 	MatrixNd jacobian_ad = MatrixNd::Zero(3, model.qdot_size);
 	MatrixNd jacobian_ref = MatrixNd::Zero(3, model.qdot_size);
 	MatrixNd jacobian_fd = MatrixNd::Zero(3, model.qdot_size);
@@ -938,4 +1092,28 @@ TEST_FIXTURE (CartPendulum, CartPendulumJacobianADSimple ) {
 
 	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model.qdot_size, TEST_PREC);
 //	CHECK_ARRAY_CLOSE (v_fixed_body.data(), v_body.data(), 6, TEST_PREC);
+}
+
+TEST_FIXTURE( CartPendulum, CompositeRigidBodyAlgorithmADTest) {
+	MatrixNd q_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
+
+	MatrixNd H = MatrixNd::Zero(model.q_size,model.q_size);
+	std::vector<MatrixNd> fd_out;
+	std::vector<MatrixNd> ad_out(q_dirs.cols(),MatrixNd::Zero(model.q_size,model.q_size));
+	ADModel ad_model(model);
+	
+	VectorNd qrandom = VectorNd::Random(model.qdot_size);
+	fd_CompositeRigidBodyAlgorithm(model, qrandom, q_dirs, fd_out);
+	ad_CompositeRigidBodyAlgorithm(model, ad_model, qrandom, q_dirs, H, ad_out);
+		
+	MatrixNd inertia_test = MatrixNd::Zero(qrandom.size(),qrandom.size());
+	CompositeRigidBodyAlgorithm(model, qrandom, inertia_test, true);
+	for (size_t nIdx = 0; nIdx < fd_out.size(); nIdx++) {
+// 		cout << "Dir " << nIdx << endl; 
+// 		cout << "fd_CRBA: " << endl << fd_out[nIdx] << std::endl << std::endl;
+// 		cout << "ad_CRBA: " << endl << ad_out[nIdx] << std::endl << std::endl;
+// 		cout << "ad_CRBA error (fd,ad)" << endl << (fd_out[nIdx] - ad_out[nIdx]) << std::endl;
+		CHECK_ARRAY_CLOSE (inertia_test.data(), H.data(), model.q_size*model.q_size, 1e-08);
+		CHECK_ARRAY_CLOSE (fd_out[nIdx].data(), ad_out[nIdx].data(), model.q_size*model.q_size, 1e-08);
+	}
 }
