@@ -15,52 +15,69 @@ using namespace RigidBodyDynamics::Math;
 const double TEST_PREC = 1.0e-12;
 
 struct ADModel {
-	/* CONVENTION FOR AD CODE
-		1) use ADModel.fromModel() to initialize the data structure
-		2) in functions where AD data structures are filled use fail-safe getter
-		   methods get_ad_<data structure>(ndirs) to get a data structure with
-		   proper dimensions
-		3) in functions where AD data structures are accessed directly access
-		   the member variable ad_model.ad_<data structure>, but use it in a
-		   for loop over the actual number of directions.
-	*/
-
-	ADModel () {};
-	static ADModel fromModel (Model& model) {
-		// NOTE: old initialization values
-		//std::vector<MatrixNd> ad_X_lambda_i (ndirs, MatrixNd::Zero (6,6));
-		//std::vector<MatrixNd> ad_X_Ji (ndirs, MatrixNd::Zero (6,6));
-		// std::vector<SpatialVector> ad_V (ndirs, SpatialVector::Zero (6));
+	ADModel () {
+		// TODO: should not be called, I think!
+		//std::cerr << "Data structure can only be initialized with argument RigidBodyDynamics::Model!" << std::endl;
+		//throw std::exception;
 	};
+
+	ADModel (Model& model) {
+		ndirs = 4*model.dof_count;
+
+		// NOTE: old initialization values
+		std::vector<SpatialMatrix> ad_X(ndirs, SpatialMatrix::Zero());
+		std::vector<SpatialVector> ad_v(ndirs, SpatialVector::Zero());
+
+		ad_X_lambda.resize(model.mBodies.size(), ad_X);
+		ad_X_base.resize(model.mBodies.size(), ad_X);
+		ad_X_J.resize(model.mBodies.size(), ad_X);
+
+		ad_S.resize(model.mBodies.size(), ad_v);
+		ad_v_J.resize(model.mBodies.size(), ad_v);
+		ad_c_J.resize(model.mBodies.size(), ad_v);
+	};
+
+	unsigned int ndirs;
 
 	// derivative values
 	// TODO: remove ad_ prefix?
-	std::vector<std::vector<MatrixNd> > ad_X_lambda; // (model.mBodies.size(), ad_X_lambda_i);
-	std::vector<std::vector<MatrixNd> > ad_X_J; // (model.mBodies.size(), ad_X_Ji);
+	std::vector<std::vector<SpatialMatrix> > ad_X_lambda;
+	std::vector<std::vector<SpatialMatrix> > ad_X_base;
+	std::vector<std::vector<SpatialMatrix> > ad_X_J;
 
-	std::vector<std::vector<SpatialVector> > ad_S;   //(model.mBodies.size(), ad_V);
-	std::vector<std::vector<SpatialVector> > ad_v_J; //(model.mBodies.size(), ad_V);
-	std::vector<std::vector<SpatialVector> > ad_c_J; //(model.mBodies.size(), ad_V);
+	std::vector<std::vector<SpatialVector> > ad_S;
+	std::vector<std::vector<SpatialVector> > ad_v_J;
+	std::vector<std::vector<SpatialVector> > ad_c_J;
 
-	// fail-safe getters for AD data structures
-	// /brief get reference to AD data structure but check if dimensions fit else resize
-	std::vector<std::vector<MatrixNd> >& get_ad_X_lambda(unsigned int ndirs) {
-		for (int i = 0; i < ad_X_lambda.size(); ++i) {
-			if (ad_X_lambda[i].size() < ndirs){
-				ad_X_lambda[i].resize(ndirs);
+	void resize_directions (unsigned requested_ndirs){
+		if (ndirs < requested_ndirs) {
+			ndirs = requested_ndirs;
+
+			for (int i = 0; i < ad_X_lambda.size(); ++i) {
+				ad_X_lambda[i].resize(ndirs, SpatialMatrix::Zero());
 			}
-			// TODO: initialize to zero?
-		}
-	};
 
-	std::vector<std::vector<MatrixNd> >& get_ad_X_J(unsigned int ndirs) {
-		for (int i = 0; i < ad_X_J.size(); ++i) {
-			if (ad_X_J[i].size() < ndirs){
-				ad_X_J[i].resize(ndirs);
+			for (int i = 0; i < ad_X_base.size(); ++i) {
+				ad_X_base[i].resize(ndirs, SpatialMatrix::Zero());
 			}
-			// TODO: initialize to zero?
+
+			for (int i = 0; i < ad_X_J.size(); ++i) {
+				ad_X_J[i].resize(ndirs, SpatialMatrix::Zero());
+			}
+
+			for (int i = 0; i < ad_S.size(); ++i) {
+				ad_S[i].resize(ndirs, SpatialVector::Zero());
+			}
+
+			for (int i = 0; i < ad_v_J.size(); ++i) {
+				ad_v_J[i].resize(ndirs, SpatialVector::Zero());
+			}
+
+			for (int i = 0; i < ad_c_J.size(); ++i) {
+				ad_c_J[i].resize(ndirs, SpatialVector::Zero());
+			}
 		}
-	};
+	}
 };
 
 struct CartPendulum {
@@ -103,6 +120,8 @@ struct CartPendulum {
 		qddot = VectorNd::Constant ((size_t) model.dof_count, 0.);
 		tau = VectorNd::Constant ((size_t) model.dof_count, 0.);
 
+		ad_model = ADModel();
+		ad_model = ADModel(model);
 		//ad_model = ADModel::fromModel(model);
 
 		body_point = Vector3d (0., 0., pend_l);
@@ -204,39 +223,14 @@ void ad_jcalc (
 	const VectorNd &q,
 	const MatrixNd &q_dirs,
 	const VectorNd &qdot,
-	const MatrixNd &qdot_dirs,
-	std::vector<MatrixNd> &ad_X_Ji,
-	std::vector<SpatialVector> &ad_S_i,
-	std::vector<SpatialVector> &ad_v_Ji,
-	std::vector<SpatialVector> &ad_c_Ji
+	const MatrixNd &qdot_dirs
 ) {
 	unsigned int ndirs = q_dirs.cols();
-
-	// derivative intermediate values
-	std::vector<MatrixNd> ad_X_lambda_i (ndirs, MatrixNd::Zero (6,6));
-	std::vector<std::vector<MatrixNd> > ad_X_lambda (model.mBodies.size(), ad_X_lambda_i);
-
-	//std::vector<std::vector<MatrixNd> >& ad_X_lambda = ad_model.get_ad_X_lambda(ndirs);
+	ad_model.resize_directions(ndirs);
 
 	// check input dimensions
 	if (q_dirs.cols() != qdot_dirs.cols()) {
 		std::cerr << "directions have different dimensions: " << "#q_dirs = " << q_dirs.cols() << " != " << qdot_dirs.cols() << " = #qdot_dirs." << std::endl;
-		std::cerr << "In: " << __func__ << endl;
-		abort();
-	}
-	// check output dimensions
-	if (ad_X_Ji.size() != ndirs) {
-		std::cerr << "derivative does not have proper dimensions " << "#ad_X_Ji.size() = " << ad_X_Ji.size() << " != " << ndirs << " = ndirs." << std::endl;
-		std::cerr << "In: " << __func__ << endl;
-		abort();
-	}
-	if (ad_S_i.size() != ndirs) {
-		std::cerr << "derivative does not have proper dimensions " << "#ad_S_i.size() = " << ad_S_i.size() << " != " << ndirs << " = ndirs." << std::endl;
-		std::cerr << "In: " << __func__ << endl;
-		abort();
-	}
-	if (ad_c_Ji.size() != ndirs) {
-		std::cerr << "derivative does not have proper dimensions " << "#ad_c_Ji.size() = " << ad_c_Ji.size() << " != " << ndirs << " = ndirs." << std::endl;
 		std::cerr << "In: " << __func__ << endl;
 		abort();
 	}
@@ -250,10 +244,10 @@ void ad_jcalc (
 	} else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteY) {
 		// derivative code
 		for (int idir = 0; idir < ndirs; ++idir) {
-			ad_X_Ji[idir] = ad_Xroty (q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir));
-			ad_S_i[idir]  = SpatialVector::Zero(); // S = [0., 1., 0., 0., 0., 0.]
-			ad_v_Ji[idir][1] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
-			ad_c_Ji[idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
+			ad_model.ad_X_J[joint_id][idir] = ad_Xroty (q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir));
+			ad_model.ad_S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 1., 0., 0., 0., 0.]
+			ad_model.ad_v_J[joint_id][idir][1] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
+			ad_model.ad_c_J[joint_id][idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
 		}
 		// nominal code
 		model.X_J[joint_id] = Xroty (q[model.mJoints[joint_id].q_index]);
@@ -264,10 +258,10 @@ void ad_jcalc (
 	} else if (model.S[joint_id] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
 		// derivative code
 		for (int idir = 0; idir < ndirs; ++idir) {
-			ad_X_Ji[idir] = ad_Xtrans (Vector3d (q_dirs(model.mJoints[joint_id].q_index, idir), 0.0, 0.0));
-			ad_S_i[idir]  = SpatialVector::Zero(); // S = [0., 0., 0., 1., 0., 0.]
-			ad_v_Ji[idir][3] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
-			ad_c_Ji[idir] = SpatialVector::Zero(); // v_J = Sdot*qdot
+			ad_model.ad_X_J[joint_id][idir] = ad_Xtrans (Vector3d (q_dirs(model.mJoints[joint_id].q_index, idir), 0.0, 0.0));
+			ad_model.ad_S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 0., 0., 1., 0., 0.]
+			ad_model.ad_v_J[joint_id][idir][3] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
+			ad_model.ad_c_J[joint_id][idir] = SpatialVector::Zero(); // v_J = Sdot*qdot
 		}
 		// nominal code
 		model.X_J[joint_id] = Xtrans (Vector3d (q[model.mJoints[joint_id].q_index], 0., 0.));
@@ -296,8 +290,7 @@ void ad_jcalc (
 	}
 	// derivative code
 	for (int idir = 0; idir < ndirs; ++idir) {
-		// TODO: we need ad_X_lambda in ad data structures
-		ad_X_lambda[joint_id][idir] = ad_X_Ji[idir] * model.X_T[joint_id].toMatrix();
+		ad_model.ad_X_lambda[joint_id][idir] = ad_model.ad_X_J[joint_id][idir] * model.X_T[joint_id].toMatrix();
 	}
 	// nominal code
 	model.X_lambda[joint_id] = model.X_J[joint_id] * model.X_T[joint_id];
@@ -344,6 +337,7 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 RBDL_DLLAPI
 Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
 		Model &model,
+		ADModel &ad_model,
 		const VectorNd &q,
 		const MatrixNd &q_dirs,
 		unsigned int body_id,
@@ -362,18 +356,17 @@ Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
 	VectorNd QDot_zero (VectorNd::Zero (model.q_size));
 	VectorNd fd_out (MatrixNd::Zero (3, model.q_size));
 
+	ad_model.resize_directions(ndirs);
+
 	std::vector<MatrixNd> ad_X_J_i (ndirs, MatrixNd::Zero (6,6));
-	std::vector<std::vector<MatrixNd> > ad_X_J (model.mBodies.size(), ad_X_J_i);
 	std::vector<std::vector<MatrixNd> > fd_X_J (model.mBodies.size(), ad_X_J_i);
 	// ad_X_J[3][5] gives for body 3 the 5th direction
 
 	std::vector<MatrixNd> ad_X_lambda_i (ndirs, MatrixNd::Zero (6,6));
-	std::vector<std::vector<MatrixNd> > ad_X_lambda (model.mBodies.size(), ad_X_lambda_i);
 	std::vector<std::vector<MatrixNd> > fd_X_lambda (model.mBodies.size(), ad_X_lambda_i);
 	// ad_X_lambda[3][5] gives for body 3 the 5th direction
 
 	std::vector<MatrixNd> ad_X_base_i (ndirs, MatrixNd::Zero (6,6));
-	std::vector<std::vector<MatrixNd> > ad_X_base (model.mBodies.size(), ad_X_base_i);
 	std::vector<std::vector<MatrixNd> > fd_X_base (model.mBodies.size(), ad_X_base_i);
 	// ad_X_base[3][5] gives for body 3 the 5th direction
 
@@ -382,12 +375,12 @@ Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
 		// Calculate joint dependent variables
 		if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
 			for (unsigned int j = 0; j < ndirs; j++) {
-				ad_X_J[i][j] = ad_Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+				ad_model.ad_X_J[i][j] = ad_Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
 			}
 			model.X_J[i] = Xroty (q[model.mJoints[i].q_index]);
 		} else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
 			for (unsigned int j = 0; j < ndirs; j++) {
-				ad_X_J[i][j] = ad_Xtrans (Vector3d (q_dirs(i-1, j), 0., 0.));
+				ad_model.ad_X_J[i][j] = ad_Xtrans (Vector3d (q_dirs(i-1, j), 0., 0.));
 			}
 			model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index]);
 		} else {
@@ -396,20 +389,20 @@ Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
 		}
 
 		for (unsigned int j = 0; j < ndirs; j++) {
-			ad_X_lambda[i][j] = ad_X_J[i][j] * model.X_T[i].toMatrix();
+			ad_model.ad_X_lambda[i][j] = ad_model.ad_X_J[i][j] * model.X_T[i].toMatrix();
 		}
 		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
 
 		for (unsigned int j = 0; j < ndirs; j++) {
-			ad_X_base[i][j] = ad_X_lambda[i][j] * model.X_base[lambda].toMatrix() + model.X_lambda[i].toMatrix() * ad_X_base[lambda][j];
+			ad_model.ad_X_base[i][j] = ad_model.ad_X_lambda[i][j] * model.X_base[lambda].toMatrix() + model.X_lambda[i].toMatrix() * ad_model.ad_X_base[lambda][j];
 		}
 		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 	}
 
 	for (unsigned int j = 0; j < ndirs; j++) {
 		SpatialMatrix X_base_ib = model.X_base[body_id].toMatrix();
-		Matrix3d ad_E = E_from_Matrix(ad_X_base[body_id][j]);
-		Vector3d ad_r = ad_r_from_Matrix(X_base_ib, ad_X_base[body_id][j]);
+		Matrix3d ad_E = E_from_Matrix(ad_model.ad_X_base[body_id][j]);
+		Vector3d ad_r = ad_r_from_Matrix(X_base_ib, ad_model.ad_X_base[body_id][j]);
 
 		out.block<3,1>(0,j) = ad_r + ad_E.transpose() * point_body_coordinates;
 	}
@@ -545,8 +538,7 @@ TEST_FIXTURE (CartPendulum, jcalcNominalSolutionTest) {
 		SpatialVector ref_c_Ji = model.c_J[joint_id];
 
 		// evaluate AD nominal solution
-		ad_jcalc (model, ad_model, joint_id, q, q_dirs, qdot, qdot_dirs,
-			ad_X_J[joint_id], ad_S[joint_id], ad_v_J[joint_id], ad_c_J[joint_id]);
+		ad_jcalc (model, ad_model, joint_id, q, q_dirs, qdot, qdot_dirs);
 		MatrixNd test_X_Ji = model.X_J[joint_id].toMatrix();
 		SpatialVector test_S_i = model.S[joint_id];
 		SpatialVector test_v_Ji = model.v_J[joint_id];
@@ -604,16 +596,11 @@ TEST_FIXTURE (CartPendulum, jcalcFDvsADTest) {
 	// set derivative outputs
 	std::vector<MatrixNd> ad_X_Ji (ndirs, MatrixNd::Zero (6,6));
 	std::vector<std::vector<MatrixNd> > fd_X_J (model.mBodies.size(), ad_X_Ji);
-	std::vector<std::vector<MatrixNd> > ad_X_J (model.mBodies.size(), ad_X_Ji);
 
 	std::vector<SpatialVector> ad_V (ndirs, SpatialVector::Zero (6));
 	std::vector<std::vector<SpatialVector> > fd_S (model.mBodies.size(), ad_V);
 	std::vector<std::vector<SpatialVector> > fd_v_J (model.mBodies.size(), ad_V);
 	std::vector<std::vector<SpatialVector> > fd_c_J (model.mBodies.size(), ad_V);
-
-	std::vector<std::vector<SpatialVector> > ad_S (model.mBodies.size(), ad_V);
-	std::vector<std::vector<SpatialVector> > ad_v_J (model.mBodies.size(), ad_V);
-	std::vector<std::vector<SpatialVector> > ad_c_J (model.mBodies.size(), ad_V);
 
 	for (unsigned int joint_id = 1; joint_id < model.mBodies.size(); joint_id++) {
 		// evaluate nominal solution
@@ -621,14 +608,13 @@ TEST_FIXTURE (CartPendulum, jcalcFDvsADTest) {
 			fd_X_J[joint_id], fd_S[joint_id], fd_v_J[joint_id], fd_c_J[joint_id]);
 
 		// evaluate AD nominal solution
-		ad_jcalc (model, ad_model, joint_id, q, q_dirs, qdot, qdot_dirs,
-			ad_X_J[joint_id], ad_S[joint_id], ad_v_J[joint_id], ad_c_J[joint_id]);
+		ad_jcalc (model, ad_model, joint_id, q, q_dirs, qdot, qdot_dirs);
 
 		for (int idir = 0; idir < ndirs; ++idir) {
-			CHECK_ARRAY_CLOSE (fd_X_J[joint_id][idir].data(), ad_X_J[joint_id][idir].data(), 36, TEST_PREC);
-			CHECK_ARRAY_CLOSE (fd_S[joint_id][idir].data(),   ad_S[joint_id][idir].data(),    6, TEST_PREC);
-			CHECK_ARRAY_CLOSE (fd_v_J[joint_id][idir].data(), ad_v_J[joint_id][idir].data(),  6, TEST_PREC);
-			CHECK_ARRAY_CLOSE (fd_c_J[joint_id][idir].data(), ad_c_J[joint_id][idir].data(),  6, TEST_PREC);
+			CHECK_ARRAY_CLOSE (fd_X_J[joint_id][idir].data(), ad_model.ad_X_J[joint_id][idir].data(), 36, TEST_PREC);
+			CHECK_ARRAY_CLOSE (fd_S[joint_id][idir].data(),   ad_model.ad_S[joint_id][idir].data(),    6, TEST_PREC);
+			CHECK_ARRAY_CLOSE (fd_v_J[joint_id][idir].data(), ad_model.ad_v_J[joint_id][idir].data(),  6, TEST_PREC);
+			CHECK_ARRAY_CLOSE (fd_c_J[joint_id][idir].data(), ad_model.ad_c_J[joint_id][idir].data(),  6, TEST_PREC);
 			/* DEBUG OUTPUT
 			cout << "===== joint_id: " << joint_id << ", idir: " << idir << " =====" << endl;
 			cout << "fd_X_J[" << joint_id << "][" << idir << "]: " << endl << fd_X_J[joint_id][idir] << endl;
@@ -676,7 +662,7 @@ TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 
 	MatrixNd q_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
 	Vector3d base_point_standard = CalcBodyToBaseCoordinates (model, q, id_pendulum, body_point);
-	Vector3d base_point_ad = ad_CalcBodyToBaseCoordinatesSingleFunc (model, q, q_dirs, id_pendulum, body_point, jacobian_ad);
+	Vector3d base_point_ad = ad_CalcBodyToBaseCoordinatesSingleFunc (model, ad_model, q, q_dirs, id_pendulum, body_point, jacobian_ad);
 	Vector3d base_point_fd = fd_dq_CalcBodyToBaseCoordinatesSingleFunc (model, q, q_dirs, id_pendulum, body_point, jacobian_fd);
 
 	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model.qdot_size, TEST_PREC);
