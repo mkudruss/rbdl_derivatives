@@ -556,7 +556,7 @@ Vector3d fd_dq_CalcBodyToBaseCoordinatesSingleFunc (
 	return ref;
 }
 
-void fd_ad_CompositeRigidBodyAlgorithm (
+void fd_CompositeRigidBodyAlgorithm (
 					Model &model,
 					const VectorNd &q,
 					const MatrixNd &q_dirs,
@@ -926,7 +926,7 @@ TEST_FIXTURE( CartPendulum, CompositeRigidBodyAlgorithmADTest) {
 	std::vector<MatrixNd> ad_out(q_dirs.cols(),MatrixNd::Zero(model.q_size,model.q_size));
 	
 	VectorNd qrandom = VectorNd::Random(model.qdot_size);
-	fd_ad_CompositeRigidBodyAlgorithm(model, qrandom, q_dirs, fd_out);
+	fd_CompositeRigidBodyAlgorithm(model, qrandom, q_dirs, fd_out);
 	ad_CompositeRigidBodyAlgorithm(model, qrandom, q_dirs, H, ad_out);
 		
 	MatrixNd inertia_test = MatrixNd::Zero(qrandom.size(),qrandom.size());
