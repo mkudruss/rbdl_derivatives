@@ -41,7 +41,7 @@ struct ADModel {
 		ad_a.resize(model.mBodies.size(), ad_vec);
 		
 		ad_I_ci.resize(model.mBodies.size(), ad_X);
-		ad_F.resize(model.mBodies.size(), ad_v);
+		ad_F.resize(model.mBodies.size(), ad_vec);
 		ad_c.resize(model.mBodies.size(), ad_vec);
 		ad_f.resize(model.mBodies.size(), ad_vec);
 	};
