@@ -891,10 +891,10 @@ TEST_FIXTURE( CartPendulum, CompositeRigidBodyAlgorithmADTest) {
 	MatrixNd inertia_test = MatrixNd::Zero(qrandom.size(),qrandom.size());
 	CompositeRigidBodyAlgorithm(model, qrandom, inertia_test, true);
 	for (size_t nIdx = 0; nIdx < fd_out.size(); nIdx++) {
-		cout << "Dir " << nIdx << endl; 
-		cout << "fd_CRBA: " << endl << fd_out[nIdx] << std::endl << std::endl;
-		cout << "ad_CRBA: " << endl << ad_out[nIdx] << std::endl << std::endl;
-		cout << "ad_CRBA error (fd,ad)" << endl << (fd_out[nIdx] - ad_out[nIdx]) << std::endl;
+// 		cout << "Dir " << nIdx << endl; 
+// 		cout << "fd_CRBA: " << endl << fd_out[nIdx] << std::endl << std::endl;
+// 		cout << "ad_CRBA: " << endl << ad_out[nIdx] << std::endl << std::endl;
+// 		cout << "ad_CRBA error (fd,ad)" << endl << (fd_out[nIdx] - ad_out[nIdx]) << std::endl;
 		CHECK_ARRAY_CLOSE (inertia_test.data(), H.data(), model.q_size*model.q_size, 1e-08);
 		CHECK_ARRAY_CLOSE (fd_out[nIdx].data(), ad_out[nIdx].data(), model.q_size*model.q_size, 1e-08);
 	}
