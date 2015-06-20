@@ -28,6 +28,7 @@ struct ADModel {
 		// NOTE: old initialization values
 		std::vector<SpatialMatrix> ad_X(ndirs, SpatialMatrix::Zero());
 		std::vector<SpatialVector> ad_vec(ndirs, SpatialVector::Zero());
+		//std::vector<double> ad_double(ndirs, 0.0);
 
 		ad_X_lambda.resize(model.mBodies.size(), ad_X);
 		ad_X_base.resize(model.mBodies.size(), ad_X);
@@ -44,6 +45,14 @@ struct ADModel {
 		ad_F.resize(model.mBodies.size(), ad_vec);
 		ad_c.resize(model.mBodies.size(), ad_vec);
 		ad_f.resize(model.mBodies.size(), ad_vec);
+		
+		ad_pA.resize(model.mBodies.size(), ad_vec);
+		ad_U.resize(model.mBodies.size(), ad_vec);
+		ad_IA.resize(model.mBodies.size(), ad_X);
+		//ad_u.resize(model.mBodies.size(), ad_double);
+		//ad_d.resize(model.mBodies.size(), ad_double);
+		ad_u.resize(model.q_size, ndirs);
+		ad_d.resize(model.q_size, ndirs);
 	};
 
 	unsigned int ndirs;
@@ -65,6 +74,14 @@ struct ADModel {
 
 	std::vector<std::vector<SpatialMatrix> > ad_I_ci;
 	std::vector<std::vector<SpatialVector> > ad_F;
+	
+	std::vector<std::vector<SpatialVector> > ad_pA;
+	std::vector<std::vector<SpatialVector> > ad_U;
+	std::vector<std::vector<SpatialMatrix> > ad_IA;
+	//std::vector<std::vector<double> > ad_u;
+	//std::vector<std::vector<double> > ad_d;
+	MatrixNd ad_u;
+	MatrixNd ad_d;
 
 	void resize_directions (unsigned requested_ndirs){
 		if (ndirs < requested_ndirs) {
@@ -113,6 +130,37 @@ struct ADModel {
 			for (int i = 0; i < ad_c_J.size(); ++i) {
 				ad_f[i].resize(ndirs, SpatialVector::Zero());
 			}
+			
+			for (int i = 0; i < ad_I_ci.size(); ++i) {
+				ad_I_ci[i].resize(ndirs, SpatialMatrix::Zero());
+			}
+
+			for (int i = 0; i < ad_F.size(); ++i) {
+				ad_F[i].resize(ndirs, SpatialVector::Zero());
+			}
+			
+			for(int i = 0; i < ad_pA.size(); ++i) {
+				ad_pA[i].resize(ndirs, SpatialVector::Zero());
+			}
+			
+			for(int i = 0; i < ad_U.size(); ++i) {
+				ad_U[i].resize(ndirs, SpatialVector::Zero());
+			}
+			
+			for (int i = 0; i < ad_IA.size(); ++i) {
+				ad_IA[i].resize(ndirs, SpatialMatrix::Zero());
+			}
+			
+			// for(int i = 0; i < ad_u.size(); ++i) {
+			// 	ad_u[i].resize(ndirs, 0.0);
+			// }
+			
+			// for (int i = 0; i < ad_d.size(); ++i) {
+			// 	ad_d[i].resize(ndirs, 0.0);
+			// }
+
+			ad_u.resize(ad_u.rows(), ndirs);
+			ad_d.resize(ad_d.rows(), ndirs);
 		}
 	}
 };
@@ -722,9 +770,10 @@ void ad_InverseDynamics(Model& model,
 				qdot,
 				qdot_dirs);
 
-		for(unsigned int j = 0; j < ndirs; j++) {
-			ad_model.ad_X_lambda[i][j] = ad_model.ad_X_J[i][j] * model.X_T[i].toMatrix();
-		}
+// 		Done in ad_jcalc
+// 		for(unsigned int j = 0; j < ndirs; j++) {
+// 			ad_model.ad_X_lambda[i][j] = ad_model.ad_X_J[i][j] * model.X_T[i].toMatrix();
+// 		}
 
 		if (lambda != 0) {
 			for(unsigned int j = 0; j < ndirs; j++) {
@@ -864,6 +913,8 @@ void ad_CompositeRigidBodyAlgorithm (
 	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
 		if (update_kinematics) {
 			jcalc_X_lambda_S (model, i, q);
+			// this works for single dof joint
+			cerr << "No ad_jcalc_X_lambda_S implemented yet" << endl;
 		}
 		// ad code
 		for (size_t j = 0; j < ndirs; j++) {
@@ -945,10 +996,6 @@ void ad_CompositeRigidBodyAlgorithm (
 			assert(model.mJoints[j].mDoFCount == 1);
 			// if (model.mJoints[j].mDoFCount == 3) {
 			//	 Vector3d H_temp2 = (F.transpose() * model.multdof3_S[j]).transpose();
-
-			//	 LOG << F.transpose() << std::endl << model.multdof3_S[j] << std::endl;
-			//	 LOG << H_temp2.transpose() << std::endl;
-
 			//	 H.block<1,3>(dof_index_i,dof_index_j) = H_temp2.transpose();
 			//	 H.block<3,1>(dof_index_j,dof_index_i) = H_temp2;
 			// } else {
@@ -1046,6 +1093,252 @@ Math::Vector3d fd_CalcPointAcceleration (
 
 	return ref;
 };
+
+void fd_ForwardDynamics(
+	Model& model,
+	const VectorNd& q,
+	const MatrixNd& q_dirs,
+	const VectorNd& qdot,
+	const MatrixNd& qdot_dirs,
+	const VectorNd& tau,
+	const MatrixNd& tau_dirs,
+	VectorNd& qddot,
+	MatrixNd& fd_qddot) {
+	assert(q_dirs.cols() == qdot_dirs.cols() 
+		&& q_dirs.cols() == fd_qddot.cols() 
+		&& tau_dirs.cols() == q_dirs.cols()
+		&& "q_dirs, qdot_dirs, tau_dirs, fd_qddot have different dimensions");
+	
+	double h = sqrt(1e-16);
+	unsigned int ndirs = q_dirs.cols();
+	
+	ForwardDynamics(model, q, qdot, tau, qddot);
+	
+	VectorNd hd_qddot(qddot);
+	VectorNd q_dir(q);
+	VectorNd qdot_dir(qdot);
+	VectorNd tau_dir(tau);
+	
+	for(unsigned int i = 0; i < ndirs; ++i) {
+		q_dir = q_dirs.block(0,i, model.q_size, 1);
+		qdot_dir = qdot_dirs.block(0,i, model.q_size, 1);
+		tau_dir = tau_dirs.block(0,i, model.q_size, 1);
+		ForwardDynamics(model, q + h*q_dir, qdot + h*qdot_dir, tau + h*tau_dir, hd_qddot);
+		
+		fd_qddot.block(0, i, hd_qddot.rows(), 1) = (hd_qddot - qddot) / h;
+	}
+}
+
+void ad_ForwardDynamics (
+	Model& model,
+	ADModel& ad_model,
+	const VectorNd& q,
+	const MatrixNd& q_dirs,
+	const VectorNd& qdot,
+	const MatrixNd& qdot_dirs,
+	const VectorNd& tau,
+	const MatrixNd& tau_dirs,
+	VectorNd& qddot,
+	MatrixNd& ad_qddot,
+	std::vector<SpatialVector>* f_ext) {
+	SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
+
+	unsigned int ndirs = q_dirs.cols();
+	ad_model.resize_directions(ndirs);
+	
+	unsigned int i = 0;
+
+	// Reset the velocity of the root body
+	model.v[0].setZero();
+
+	for (i = 1; i < model.mBodies.size(); i++) {
+		unsigned int lambda = model.lambda[i];
+		
+		ad_jcalc(model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
+		
+		if (lambda != 0) {
+			for(unsigned int j = 0; j < ndirs; j++) {
+				ad_model.ad_X_base[i][j] = ad_model.ad_X_lambda[i][j] * model.X_base[lambda].toMatrix() 
+					+ model.X_lambda[i].toMatrix() * ad_model.ad_X_base[i][j];
+			}
+			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+		} else {
+			for(unsigned int j = 0; j < ndirs; j++) {
+				ad_model.ad_X_base[i][j] = ad_model.ad_X_lambda[i][j];
+			}
+			model.X_base[i] = model.X_lambda[i];
+		}
+
+		for(unsigned int j = 0; j < ndirs; j++) {
+			ad_model.ad_v[i][j] = ad_model.ad_X_lambda[i][j] * model.v[lambda] 
+				+ model.X_lambda[i].apply(ad_model.ad_v[lambda][j]) 
+				+ ad_model.ad_v_J[i][j];
+		}
+		model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
+
+		for(unsigned int j = 0; j < ndirs; j++) {
+			ad_model.ad_c[i][j] = ad_model.ad_c_J[i][j]
+				+ crossm(ad_model.ad_v[i][j],model.v_J[i]) 
+				+ crossm(model.v[i],ad_model.ad_v_J[i][j]);
+		}
+		model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
+		
+		for(unsigned int j = 0; j < ndirs; j++) {
+				ad_model.ad_IA[i][j].setZero();
+		}
+		model.I[i].setSpatialMatrix(model.IA[i]);
+
+		for(unsigned int j = 0; j < ndirs; j++) {
+			ad_model.ad_pA[i][j] = crossf(ad_model.ad_v[i][j],model.I[i] * model.v[i])
+				+ crossf(model.v[i],model.I[i] * ad_model.ad_v[i][j]);;
+		}
+		model.pA[i] = crossf(model.v[i],model.I[i] * model.v[i]);
+
+		if (f_ext != NULL && (*f_ext)[i] != SpatialVectorZero) {
+			for(unsigned int j = 0; j < ndirs; j++) {
+				SpatialMatrix ad_X_base_force(ad_model.ad_X_base[i][j]);
+				ad_X_base_force.block<3,3>(3,0) = Matrix3d::Zero();
+				ad_X_base_force.block<3,3>(0,3) = ad_model.ad_X_base[i][j].block<3,3>(3,0);
+				ad_model.ad_pA[i][j] -= ad_X_base_force * (*f_ext)[i];
+			}
+			model.pA[i] -= model.X_base[i].toMatrixAdjoint() * (*f_ext)[i];
+		}
+	}
+
+	for (i = model.mBodies.size() - 1; i > 0; i--) {
+		unsigned int q_index = model.mJoints[i].q_index;
+
+		if (model.mJoints[i].mDoFCount == 3) {
+			cerr << "Multi-dof not supported." << endl;
+			abort();
+// 			model.multdof3_U[i] = model.IA[i] * model.multdof3_S[i];
+// #ifdef EIGEN_CORE_H
+// 			model.multdof3_Dinv[i] = (model.multdof3_S[i].transpose() * model.multdof3_U[i]).inverse().eval();
+// #else
+// 			model.multdof3_Dinv[i] = (model.multdof3_S[i].transpose() * model.multdof3_U[i]).inverse();
+// #endif
+// 			Vector3d tau_temp (Tau[q_index], Tau[q_index + 1], Tau[q_index + 2]);
+// 
+// 			model.multdof3_u[i] = tau_temp - model.multdof3_S[i].transpose() * model.pA[i];
+// 
+// //			LOG << "multdof3_u[" << i << "] = " << model.multdof3_u[i].transpose() << std::endl;
+// 			unsigned int lambda = model.lambda[i];
+// 			if (lambda != 0) {
+// 				SpatialMatrix Ia = model.IA[i] - model.multdof3_U[i] * model.multdof3_Dinv[i] * model.multdof3_U[i].transpose();
+// 				SpatialVector pa = model.pA[i] + Ia * model.c[i] + model.multdof3_U[i] * model.multdof3_Dinv[i] * model.multdof3_u[i];
+// #ifdef EIGEN_CORE_H
+// 				model.IA[lambda].noalias() += model.X_lambda[i].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix();
+// 				model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
+// #else
+// 				model.IA[lambda] += model.X_lambda[i].toMatrixTranspose() * Ia * model.X_lambda[i].tadoMatrix();
+// 				model.pA[lambda] += model.X_lambda[i].applyTranspose(pa);
+// #endif
+// 				LOG << "pA[" << lambda << "] = " << model.pA[lambda].transpose() << std::endl;
+// 			}
+		} 
+		else {
+			for(unsigned int j = 0; j < ndirs; j++) {
+				ad_model.ad_U[i][j] = model.IA[i] * ad_model.ad_S[i][j];
+				//	+ ad_model.ad_IA[i][j] * model.S[i];
+			}
+			model.U[i] = model.IA[i] * model.S[i];
+			
+			for(unsigned int j = 0; j < ndirs; j++) {
+				ad_model.ad_d(i,j) = ad_model.ad_S[i][j].dot(model.U[i]) + model.S[i].dot(ad_model.ad_U[i][j]);
+			}
+			model.d[i] = model.S[i].dot(model.U[i]);
+			
+			for(unsigned int j = 0; j < ndirs; j++) {
+				ad_model.ad_u(i,j) = tau_dirs(q_index,j) 
+					- ad_model.ad_S[i][j].dot(model.pA[i]) 
+					- model.S[i].dot(ad_model.ad_pA[i][j]);
+			}
+			model.u[i] = tau[q_index] - model.S[i].dot(model.pA[i]);
+
+			unsigned int lambda = model.lambda[i];
+			if (lambda != 0) {
+				vector<SpatialMatrix> ad_Ia(ndirs, SpatialMatrix::Zero());
+				for(unsigned int j = 0; j < ndirs; j++) {
+					ad_Ia[j] = ad_model.ad_IA[i][j] 
+						- ad_model.ad_U[i][j] * (model.U[i] / model.d[i]).transpose()
+						- model.U[i] * (ad_model.ad_U[i][j] / model.d[i]).transpose()
+						- model.U[i] * (model.U[i] * ad_model.ad_d(i,j) / model.d[i]).transpose();
+				}
+				SpatialMatrix Ia = model.IA[i] - model.U[i] * (model.U[i] / model.d[i]).transpose();
+				
+				vector<SpatialVector> ad_pa(ndirs, SpatialVector::Zero());
+				for(unsigned int j = 0; j < ndirs; j++) {
+					ad_pa[j] = ad_model.ad_pA[i][j]
+						+ ad_Ia[j] * model.c[i]
+						+ Ia * ad_model.ad_c[i][j] 
+						+ ad_model.ad_U[i][j] * model.u[i] / model.d[i]
+						+ model.U[i] * ad_model.ad_u(i,j) / model.d[i]
+						+ model.U[i] * model.u[i] * ad_model.ad_d(i,j) / model.d[i];
+				}
+				SpatialVector pa = model.pA[i] + Ia * model.c[i] + model.U[i] * model.u[i] / model.d[i];
+#ifdef EIGEN_CORE_H
+				for(unsigned int j = 0; j < ndirs; j++) {
+					ad_model.ad_IA[lambda][j].noalias() += 
+						ad_model.ad_X_lambda[i][j].transpose() * Ia * model.X_lambda[i].toMatrix()
+						+ model.X_lambda[i].toMatrixTranspose() * ad_Ia[j] * model.X_lambda[i].toMatrix()
+						+ model.X_lambda[i].toMatrixTranspose() * Ia * ad_model.ad_X_lambda[i][j];
+				}
+				model.IA[lambda].noalias() += model.X_lambda[i].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix();
+				
+				for(unsigned int j = 0; j < ndirs; j++) {
+					ad_model.ad_pA[lambda][j].noalias() += ad_model.ad_X_lambda[i][j].transpose() * pa
+						+ model.X_lambda[i].applyTranspose(ad_pa[j]);
+				}
+				model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
+#else
+				cerr << "Simple math not yet supported." << endl;
+				abort();
+				//model.IA[lambda] += model.X_lambda[i].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix();
+				//model.pA[lambda] += model.X_lambda[i].applyTranspose(pa);
+#endif
+			}
+		}
+	}
+
+	model.a[0] = spatial_gravity * -1.;
+
+	for (i = 1; i < model.mBodies.size(); i++) {
+		unsigned int q_index = model.mJoints[i].q_index;
+		unsigned int lambda = model.lambda[i];
+		SpatialTransform X_lambda = model.X_lambda[i];
+
+		for(unsigned int j = 0; j < ndirs; j++) {
+			ad_model.ad_a[i][j] = ad_model.ad_X_lambda[i][j] * model.a[lambda]
+				+ X_lambda.apply(ad_model.ad_a[lambda][j]) 
+				+ ad_model.ad_c[i][j];
+		}
+		model.a[i] = X_lambda.apply(model.a[lambda]) + model.c[i];
+
+		if (model.mJoints[i].mDoFCount == 3) {
+			cerr << "Multi-dof joints not supported." << endl;
+			abort();
+// 			Vector3d qdd_temp = model.multdof3_Dinv[i] * (model.multdof3_u[i] - model.multdof3_U[i].transpose() * model.a[i]);
+// 			qddot[q_index] = qdd_temp[0];
+// 			qddot[q_index + 1] = qdd_temp[1];
+// 			qddot[q_index + 2] = qdd_temp[2];
+// 			model.a[i] = model.a[i] + model.multdof3_S[i] * qdd_temp;
+		} 
+		else {
+			for(unsigned int j = 0; j < ndirs; j++) {
+				ad_qddot(q_index,j) = (ad_model.ad_d(i,j)/model.d[i]) * (model.u[i] - model.U[i].dot(model.a[i]))
+					+ (1./model.d[i]) * (ad_model.ad_u(i,j) - ad_model.ad_U[i][j].dot(model.a[i]) - model.U[i].dot(ad_model.ad_a[i][j]));
+			}
+			qddot[q_index] = (1./model.d[i]) * (model.u[i] - model.U[i].dot(model.a[i]));
+			
+			for(unsigned int j = 0; j < ndirs; j++) {
+				ad_model.ad_a[i][j] = ad_model.ad_a[i][j]
+					+ ad_model.ad_S[i][j] * qddot[q_index]
+					+ model.S[i] * ad_qddot(q_index,j);
+			}
+			model.a[i] = model.a[i] + model.S[i] * qddot[q_index];
+		}
+	}
+}
 
 TEST_FIXTURE (CartPendulum, jcalcNominalSolutionTest) {
 	// set nominal values
@@ -1367,4 +1660,28 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 	CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), 1e-7);
 }
 
+TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest){
+	srand((unsigned int) time(0));
+
+	for(unsigned int trial = 0; trial < 10; trial++) {
+		q = VectorNd::Random(model.q_size);
+		qdot = VectorNd::Random(model.q_size);
+		tau = VectorNd::Random(model.q_size);
+
+		MatrixNd q_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
+		MatrixNd qdot_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
+		MatrixNd tau_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
+
+		double h = sqrt(1.0e-16);
+
+		MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
+		MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, model.qdot_size); 
+
+		fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot);    
+
+		ad_ForwardDynamics(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, NULL);
+
+		CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
+	}
+}
 
