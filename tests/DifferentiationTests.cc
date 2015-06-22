@@ -1761,28 +1761,31 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 }
 
 TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest){
-	srand((unsigned int) time(0));
+  srand((unsigned int) time(0));
 
-	for(unsigned int trial = 0; trial < 10; trial++) {
-		q = VectorNd::Random(model.q_size);
-		qdot = VectorNd::Random(model.q_size);
-		tau = VectorNd::Random(model.q_size);
+  for(unsigned int trial = 0; trial < 10; trial++) {
+    VectorNd q = VectorNd::Random(model.q_size);
+    VectorNd qdot = VectorNd::Random(model.q_size);
+    VectorNd tau = VectorNd::Random(model.q_size);
 
-		MatrixNd q_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
-		MatrixNd qdot_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
-		MatrixNd tau_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
+    unsigned int ndirs = 3 * model.q_size;
+    MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+    MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+    MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+    MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
 
-		double h = sqrt(1.0e-16);
+    double h = sqrt(1.0e-16);
 
-		MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
-		MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, model.qdot_size); 
+    MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
+    MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, ndirs); 
 
-		fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot);    
 
-		ad_ForwardDynamics(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, NULL);
+    fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot);    
 
-		CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
-	}
+    ad_ForwardDynamics(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, NULL);
+
+    CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
+  }
 }
 
 TEST_FIXTURE (CartPendulum, ForwardDynamicsCholesky) {
@@ -1816,26 +1819,26 @@ TEST_FIXTURE (CartPendulum, ForwardDynamicsCholesky) {
 
 TEST_FIXTURE(CartPendulum, ForwardDynamicsCholeskyADTest){
 
-		q = VectorNd::Random(model.q_size);
-		qdot = VectorNd::Random(model.q_size);
-		tau = VectorNd::Random(model.q_size);
-		qddot = VectorNd::Zero(model.q_size);
+  VectorNd q = VectorNd::Random(model.q_size);
+  VectorNd qdot = VectorNd::Random(model.q_size);
+  VectorNd tau = VectorNd::Random(model.q_size);
+  VectorNd qddot = VectorNd::Zero(model.q_size);
 
-		unsigned int ndirs = 3 * model.q_size;
-		MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
-		MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
-		MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
-		MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
+  unsigned int ndirs = 3 * model.q_size;
+  MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+  MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+  MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+  MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
 
-		double h = sqrt(1.0e-16);
+  double h = sqrt(1.0e-16);
 
-		MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
-		MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, model.qdot_size); 
+  MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
+  MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, ndirs); 
 
-		fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot);    
+  fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot);    
 
-		ad_ForwardDynamicsCholesky(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, NULL);
+  ad_ForwardDynamicsCholesky(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, NULL);
 
-		CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
-	}
+  CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
+}
 
