@@ -1055,6 +1055,40 @@ void fd_UpdateKinematics (
 };
 */
 
+/*This functin shall compute the Forward Dynamics by solving M qddot = tau - N(q,qdot)*/
+void ForwardDynamicsCholesky (
+			      Model &model,
+			      const VectorNd &q,
+			      const VectorNd &qdot,
+			      const VectorNd &tau,
+			      VectorNd &qddot,
+			      std::vector<SpatialVector> *f_ext
+			      ){
+  qddot.setZero();
+
+  VectorNd zero_vector (VectorNd::Zero (tau.size()));
+
+  //Here we geht the zero_vector by calling Inverse dynamics with qddot = 0
+  InverseDynamics(model,q,qdot,zero_vector,qddot,f_ext);
+  // cout << "qddot: " << qddot << endl;
+  // cout << "zero_vector: " << zero_vector << endl;
+  // cout << "tau: " << tau << endl;
+
+  MatrixNd M = MatrixNd::Zero(qddot.size(),qddot.size());
+  CompositeRigidBodyAlgorithm (model, q, M);  //bool update kinematics?? Works without it
+  //  cout << "Mass Matrix: " << M << endl;
+
+  SparseFactorizeLTL(model,M);
+  
+  qddot = tau - qddot;
+  SparseSolveLTx(model,M,qddot);
+  SparseSolveLx(model,M,qddot);
+
+};
+
+
+
+
 Math::Vector3d fd_CalcPointAcceleration (
 		Model &model,
 		const Math::VectorNd &q,
@@ -1685,3 +1719,46 @@ TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest){
 	}
 }
 
+TEST_FIXTURE (CartPendulum, ForwardDynamicsCholesky) {
+	// set nominal values
+	q.setZero();
+	q[0] = 0.3;
+	q[1] = -0.2;
+
+	qdot.setZero();
+	qdot[0] = 0.3;
+	qdot[1] = -0.2;
+
+	qddot.setZero();
+	qddot[0] = 0.3;
+	qddot[1] = -0.2;
+
+	tau.setZero();
+	tau[0] =  0.4;
+	tau[1] = -2.0;
+
+	SpatialVector force (0.,0.,0.,1.,0.,0.);
+	std::vector<SpatialVector> f_ext (model.mBodies.size(),force);
+
+	// set directions
+	unsigned int ndirs = 3*model.q_size;
+	MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+	MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+	MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+	MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
+	VectorNd qddot_ref (VectorNd::Zero (model.q_size));
+	//gravity must still be implemented in ForwardDynamicsCholesky
+	model.gravity=Vector3d (0., 0., 0.);
+
+	
+	ForwardDynamicsCholesky(model,q,qdot,tau,qddot,&f_ext);
+		
+	ForwardDynamics(model,q,qdot,tau,qddot_ref,&f_ext);
+	
+	CHECK_ARRAY_CLOSE (qddot, qddot_ref, model.q_size, TEST_PREC);
+	/*cout << "qddot_ref: " << endl << qddot_ref << endl;
+	cout << "qddot_test: " << endl << qddot << endl;
+	cout << "error qddot: " << endl << qddot_ref - qddot << endl;
+	cout << "gravity: " << endl << model.gravity << endl;*/
+	
+}
