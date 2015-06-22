@@ -739,16 +739,16 @@ void fd_InverseDynamics(Model& model,
 						
 //==============================================================================
 void ad_InverseDynamics(Model& model,
-					  ADModel &ad_model,
-						const Math::VectorNd& q,
-						const Math::MatrixNd& q_dirs,
-						const Math::VectorNd& qdot,
-						const Math::MatrixNd& qdot_dirs,
-						const Math::VectorNd& qddot,
-						const Math::MatrixNd& qddot_dirs,
-						Math::VectorNd& tau,
-						Math::MatrixNd& ad_tau,
-						std::vector<Math::SpatialVector> *f_ext){
+			ADModel &ad_model,
+			const Math::VectorNd& q,
+			const Math::MatrixNd& q_dirs,
+			const Math::VectorNd& qdot,
+			const Math::MatrixNd& qdot_dirs,
+			const Math::VectorNd& qddot,
+			const Math::MatrixNd& qddot_dirs,
+			Math::VectorNd& tau,
+			Math::MatrixNd& ad_tau,
+			std::vector<Math::SpatialVector> *f_ext){
 
 	model.v[0].setZero();
 	model.a[0].set (0., 0., 0., 
@@ -1062,7 +1062,7 @@ void ForwardDynamicsCholesky (
 			      const VectorNd &qdot,
 			      const VectorNd &tau,
 			      VectorNd &qddot,
-			      std::vector<SpatialVector> *f_ext
+			      std::vector<SpatialVector>* f_ext
 			      ){
   qddot.setZero();
 
@@ -1086,6 +1086,72 @@ void ForwardDynamicsCholesky (
 
 };
 
+void ad_ForwardDynamicsCholesky (
+				 Model& model,
+				 ADModel& ad_model,
+				 const VectorNd& q,
+				 const MatrixNd& q_dirs,
+				 const VectorNd& qdot,
+				 const MatrixNd& qdot_dirs,
+				 const VectorNd& tau,
+				 const MatrixNd& tau_dirs,
+				 VectorNd& qddot,
+				 MatrixNd& ad_qddot,
+				 std::vector<SpatialVector>* f_ext) {
+
+  unsigned int ndirs = q_dirs.cols();
+  ad_model.resize_directions(ndirs);
+
+	
+  VectorNd zero_vector (VectorNd::Zero (q.size()));
+  MatrixNd zero_vector_dirs (MatrixNd::Zero(q.size(),ndirs));
+
+  /*Here we get the coriolis term by calling Inverse dynamics with accelerations = 0.
+    The result is stored in qddot. */
+
+  ad_InverseDynamics(model,
+		     ad_model,
+		     q,
+		     q_dirs,
+		     qdot,
+		     qdot_dirs,
+		     zero_vector,
+		     zero_vector_dirs,
+		     qddot,
+		     ad_qddot,
+		     f_ext);    
+
+  MatrixNd M = MatrixNd::Zero(qddot.size(),qddot.size());
+  std::vector<MatrixNd> ad_M (q_dirs.cols(),MatrixNd::Zero(model.q_size,model.q_size));
+
+  ad_CompositeRigidBodyAlgorithm(model,
+				 ad_model,
+				 q,
+				 q_dirs,
+				 M,
+				 ad_M);
+	
+  //	CompositeRigidBodyAlgorithm (model, q, M);  //bool update kinematics?? Works without it
+  //  cout << "Mass Matrix: " << M << endl;
+
+  SparseFactorizeLTL(model,M);
+  
+  qddot = tau - qddot;
+  SparseSolveLTx(model,M,qddot);
+  SparseSolveLx(model,M,qddot);
+
+  
+  for (unsigned int j = 0; j < ndirs; j++) {
+    ad_qddot.block(0,j, model.q_size, 1)=tau_dirs.block(0,j, model.q_size, 1) - ad_qddot.block(0,j, model.q_size, 1)-ad_M[j]*qddot;
+
+    zero_vector=ad_qddot.block(0,j, model.q_size, 1);
+    SparseSolveLTx(model,M,zero_vector);
+    SparseSolveLx(model,M,zero_vector);
+    ad_qddot.block(0,j, model.q_size, 1)=zero_vector;
+	    }
+	
+
+};
 
 
 
@@ -1720,45 +1786,56 @@ TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest){
 }
 
 TEST_FIXTURE (CartPendulum, ForwardDynamicsCholesky) {
-	// set nominal values
-	q.setZero();
-	q[0] = 0.3;
-	q[1] = -0.2;
+  // set nominal values
 
-	qdot.setZero();
-	qdot[0] = 0.3;
-	qdot[1] = -0.2;
+  q = VectorNd::Random(model.q_size);
+  qdot = VectorNd::Random(model.q_size);
+  qddot = VectorNd::Random(model.q_size);
+  tau = VectorNd::Random(model.q_size);
 
-	qddot.setZero();
-	qddot[0] = 0.3;
-	qddot[1] = -0.2;
+  
+  std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+  for (int i = 0; i < model.mBodies.size(); ++i) {
+    f_ext[i]=SpatialVector::Random(model.q_size);
+  }
 
-	tau.setZero();
-	tau[0] =  0.4;
-	tau[1] = -2.0;
 
-	SpatialVector force (0.,0.,0.,1.,0.,0.);
-	std::vector<SpatialVector> f_ext (model.mBodies.size(),force);
-
-	// set directions
-	unsigned int ndirs = 3*model.q_size;
-	MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
-	MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
-	MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
-	MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
-	VectorNd qddot_ref (VectorNd::Zero (model.q_size));
-	//gravity must still be implemented in ForwardDynamicsCholesky
-	model.gravity=Vector3d (0., 0., 0.);
-
+  VectorNd qddot_ref (VectorNd::Zero (model.q_size));
 	
-	ForwardDynamicsCholesky(model,q,qdot,tau,qddot,&f_ext);
+  ForwardDynamicsCholesky(model,q,qdot,tau,qddot,&f_ext);
 		
-	ForwardDynamics(model,q,qdot,tau,qddot_ref,&f_ext);
+  ForwardDynamics(model,q,qdot,tau,qddot_ref,&f_ext);
 	
-	CHECK_ARRAY_CLOSE (qddot, qddot_ref, model.q_size, TEST_PREC);
-	/*cout << "qddot_ref: " << endl << qddot_ref << endl;
-	cout << "qddot_test: " << endl << qddot << endl;
-	cout << "error qddot: " << endl << qddot_ref - qddot << endl;
-	cout << "gravity: " << endl << model.gravity << endl;*/
-	
+  CHECK_ARRAY_CLOSE (qddot, qddot_ref, model.q_size, TEST_PREC);
+  /*cout << "qddot_ref: " << endl << qddot_ref << endl;
+    cout << "qddot_test: " << endl << qddot << endl;
+    cout << "error qddot: " << endl << qddot_ref - qddot << endl;
+    cout << "gravity: " << endl << model.gravity << endl;*/
 }
+
+
+TEST_FIXTURE(CartPendulum, ForwardDynamicsCholeskyADTest){
+
+		q = VectorNd::Random(model.q_size);
+		qdot = VectorNd::Random(model.q_size);
+		tau = VectorNd::Random(model.q_size);
+		qddot = VectorNd::Zero(model.q_size);
+
+		unsigned int ndirs = 3 * model.q_size;
+		MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+		MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+		MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+		MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
+
+		double h = sqrt(1.0e-16);
+
+		MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
+		MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, model.qdot_size); 
+
+		fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot);    
+
+		ad_ForwardDynamicsCholesky(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, NULL);
+
+		CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
+	}
+
