@@ -1140,15 +1140,16 @@ void ad_ForwardDynamicsCholesky (
   SparseSolveLTx(model,M,qddot);
   SparseSolveLx(model,M,qddot);
 
-  
-  for (unsigned int j = 0; j < ndirs; j++) {
-    ad_qddot.block(0,j, model.q_size, 1)=tau_dirs.block(0,j, model.q_size, 1) - ad_qddot.block(0,j, model.q_size, 1)-ad_M[j]*qddot;
 
-    zero_vector=ad_qddot.block(0,j, model.q_size, 1);
-    SparseSolveLTx(model,M,zero_vector);
-    SparseSolveLx(model,M,zero_vector);
-    ad_qddot.block(0,j, model.q_size, 1)=zero_vector;
-	    }
+  
+  for (unsigned int j = 0; j < ndirs; j++)
+    {
+      ad_qddot.col(j)=tau_dirs.col(j) - ad_qddot.col(j)-ad_M[j]*qddot;
+      zero_vector=ad_qddot.col(j);
+      SparseSolveLTx(model,M,zero_vector);
+      SparseSolveLx(model,M,zero_vector);
+      ad_qddot.col(j)=zero_vector;
+    }
 	
 
 };
@@ -1203,7 +1204,8 @@ void fd_ForwardDynamics(
 	const VectorNd& tau,
 	const MatrixNd& tau_dirs,
 	VectorNd& qddot,
-	MatrixNd& fd_qddot) {
+	MatrixNd& fd_qddot,
+	std::vector<SpatialVector>* f_ext) {
 	assert(q_dirs.cols() == qdot_dirs.cols() 
 		&& q_dirs.cols() == fd_qddot.cols() 
 		&& tau_dirs.cols() == q_dirs.cols()
@@ -1212,7 +1214,7 @@ void fd_ForwardDynamics(
 	double h = sqrt(1e-16);
 	unsigned int ndirs = q_dirs.cols();
 	
-	ForwardDynamics(model, q, qdot, tau, qddot);
+	ForwardDynamics(model, q, qdot, tau, qddot,f_ext);
 	
 	VectorNd hd_qddot(qddot);
 	VectorNd q_dir(q);
@@ -1220,12 +1222,12 @@ void fd_ForwardDynamics(
 	VectorNd tau_dir(tau);
 	
 	for(unsigned int i = 0; i < ndirs; ++i) {
-		q_dir = q_dirs.block(0,i, model.q_size, 1);
-		qdot_dir = qdot_dirs.block(0,i, model.q_size, 1);
-		tau_dir = tau_dirs.block(0,i, model.q_size, 1);
-		ForwardDynamics(model, q + h*q_dir, qdot + h*qdot_dir, tau + h*tau_dir, hd_qddot);
+	  q_dir = q_dirs.col(i);
+	  qdot_dir = qdot_dirs.col(i);
+	  tau_dir = tau_dirs.col(i);
+	  ForwardDynamics(model, q + h*q_dir, qdot + h*qdot_dir, tau + h*tau_dir, hd_qddot,f_ext);
 		
-		fd_qddot.block(0, i, hd_qddot.rows(), 1) = (hd_qddot - qddot) / h;
+	  fd_qddot.col(i) = (hd_qddot - qddot) / h;
 	}
 }
 
@@ -1727,6 +1729,12 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 	MatrixNd qdot_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
 	MatrixNd qddot_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
 
+	std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+	for (int i = 0; i < model.mBodies.size(); ++i) {
+	  f_ext[i]=SpatialVector::Random(model.q_size);
+	}
+
+	
 	double h = sqrt(1.0e-16);
 	VectorNd tau_ref (tau);
 
@@ -1743,7 +1751,7 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 			qddot_dirs,
 			tau,
 			ad_tau,
-			NULL);    
+			&f_ext);    
 
 
 	fd_InverseDynamics(model,
@@ -1755,12 +1763,12 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 			qddot_dirs,
 			tau,
 			fd_tau,
-			NULL);    
+			&f_ext);    
 
 	CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), 1e-7);
 }
 
-TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest){
+/*TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest){
   srand((unsigned int) time(0));
 
   for(unsigned int trial = 0; trial < 10; trial++) {
@@ -1774,19 +1782,24 @@ TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest){
     MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
     MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
 
+    std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+    for (int i = 0; i < model.mBodies.size(); ++i) {
+      f_ext[i]=SpatialVector::Random(model.q_size);
+    }
+    
     double h = sqrt(1.0e-16);
 
     MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
     MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, ndirs); 
 
 
-    fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot);    
+    fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot,&f_ext);    
 
-    ad_ForwardDynamics(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, NULL);
+    ad_ForwardDynamics(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, &f_ext);
 
     CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
   }
-}
+  }*/
 
 TEST_FIXTURE (CartPendulum, ForwardDynamicsCholesky) {
   // set nominal values
@@ -1823,6 +1836,7 @@ TEST_FIXTURE(CartPendulum, ForwardDynamicsCholeskyADTest){
   VectorNd qdot = VectorNd::Random(model.q_size);
   VectorNd tau = VectorNd::Random(model.q_size);
   VectorNd qddot = VectorNd::Zero(model.q_size);
+  VectorNd qddot_ref = VectorNd::Zero(model.q_size);
 
   unsigned int ndirs = 3 * model.q_size;
   MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
@@ -1830,15 +1844,40 @@ TEST_FIXTURE(CartPendulum, ForwardDynamicsCholeskyADTest){
   MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
   MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
 
-  double h = sqrt(1.0e-16);
 
-  MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
-  MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, ndirs); 
+  std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+  for (int i = 0; i < model.mBodies.size(); ++i) {
+    f_ext[i]=SpatialVector::Random(model.q_size);
+  }
 
-  fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot);    
+  MatrixNd ad_qddot  = MatrixNd::Zero(model.q_size, ndirs);
+  MatrixNd fd_qddot  = MatrixNd::Zero(model.q_size, ndirs); 
 
-  ad_ForwardDynamicsCholesky(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, NULL);
+  fd_ForwardDynamics(model,
+		     q,
+		     q_dirs,
+		     qdot,
+		     qdot_dirs,
+		     tau,
+		     tau_dirs,
+		     qddot_ref,
+		     fd_qddot,
+		     &f_ext);    
 
+  ad_ForwardDynamicsCholesky(model,
+			     ad_model,
+			     q,
+			     q_dirs,
+			     qdot,
+			     qdot_dirs,
+			     tau,
+			     tau_dirs,
+			     qddot,
+			     ad_qddot,
+			     &f_ext);
+
+  CHECK_ARRAY_CLOSE (qddot_ref.data(), qddot.data(), qddot.size(), 1e-7);
+  //cout << "nominal test done " << endl;
   CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
 }
 
