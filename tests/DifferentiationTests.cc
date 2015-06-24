@@ -1822,7 +1822,7 @@ TEST_FIXTURE (CartPendulum, ForwardDynamicsCholesky) {
   
   std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
   for (int i = 0; i < model.mBodies.size(); ++i) {
-    f_ext[i]=SpatialVector::Zero(model.q_size);
+    f_ext[i]=SpatialVector::Random(model.q_size);
   }
 
 
@@ -1891,3 +1891,140 @@ TEST_FIXTURE(CartPendulum, ForwardDynamicsCholeskyADTest){
   CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
 }
 
+
+
+
+TEST_FIXTURE(CartPendulum, InverseDynamicsADTest_with_external_forces){
+	for(unsigned int i = 0; i < model.qdot_size; i++){
+		q[i] = (i+1)*(0.897878435);
+		qdot[i] = (i+1)*(0.27563682);
+		qddot[i] = (i+1)*(0.06565644564455);
+	}
+
+	MatrixNd q_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
+	MatrixNd qdot_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
+	MatrixNd qddot_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
+
+	std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+	for (int i = 0; i < model.mBodies.size(); ++i) {
+	  f_ext[i]=SpatialVector::Random(model.q_size);
+	}
+
+	
+	double h = sqrt(1.0e-16);
+	VectorNd tau_ref (tau);
+
+	MatrixNd ad_tau  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
+	MatrixNd fd_tau  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
+
+	ad_InverseDynamics(model,
+			ad_model,
+			q,
+			q_dirs,
+			qdot,
+			qdot_dirs,
+			qddot,
+			qddot_dirs,
+			tau,
+			ad_tau,
+			&f_ext);    
+
+
+	fd_InverseDynamics(model,
+			q,
+			q_dirs,
+			qdot,
+			qdot_dirs,
+			qddot,
+			qddot_dirs,
+			tau,
+			fd_tau,
+			&f_ext);    
+
+	CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), 1e-7);
+}
+
+TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest_with_external_forces){
+  srand((unsigned int) time(0));
+
+  for(unsigned int trial = 0; trial < 10; trial++) {
+    VectorNd q = VectorNd::Random(model.q_size);
+    VectorNd qdot = VectorNd::Random(model.q_size);
+    VectorNd tau = VectorNd::Random(model.q_size);
+
+    unsigned int ndirs = 3 * model.q_size;
+    MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+    MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+    MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+    MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
+
+    std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+    for (int i = 0; i < model.mBodies.size(); ++i) {
+      f_ext[i]=SpatialVector::Random(model.q_size);
+    }
+    
+    double h = sqrt(1.0e-16);
+
+    MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
+    MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, ndirs); 
+
+
+    fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot,&f_ext);    
+
+    ad_ForwardDynamics(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, &f_ext);
+
+    CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
+  }
+  }
+
+
+
+TEST_FIXTURE(CartPendulum, ForwardDynamicsCholeskyADTest_with_external_forces){
+
+  VectorNd q = VectorNd::Random(model.q_size);
+  VectorNd qdot = VectorNd::Random(model.q_size);
+  VectorNd tau = VectorNd::Random(model.q_size);
+  VectorNd qddot = VectorNd::Zero(model.q_size);
+  VectorNd qddot_ref = VectorNd::Zero(model.q_size);
+
+  unsigned int ndirs = 3 * model.q_size;
+  MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+  MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+  MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+  MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
+
+
+  std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+  for (int i = 0; i < model.mBodies.size(); ++i) {
+    f_ext[i]=SpatialVector::Random(model.q_size);
+  }
+
+  MatrixNd ad_qddot  = MatrixNd::Zero(model.q_size, ndirs);
+  MatrixNd fd_qddot  = MatrixNd::Zero(model.q_size, ndirs); 
+
+  fd_ForwardDynamics(model,
+		     q,
+		     q_dirs,
+		     qdot,
+		     qdot_dirs,
+		     tau,
+		     tau_dirs,
+		     qddot_ref,
+		     fd_qddot,
+		     &f_ext);    
+
+  ad_ForwardDynamicsCholesky(model,
+			     ad_model,
+			     q,
+			     q_dirs,
+			     qdot,
+			     qdot_dirs,
+			     tau,
+			     tau_dirs,
+			     qddot,
+			     ad_qddot,
+			     &f_ext);
+
+  CHECK_ARRAY_CLOSE (qddot_ref.data(), qddot.data(), qddot.size(), 1e-7);
+  CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
+}
