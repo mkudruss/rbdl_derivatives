@@ -763,12 +763,12 @@ void ad_InverseDynamics(Model& model,
 		unsigned int q_index = model.mJoints[i].q_index;
 
 		ad_jcalc (model,
-				ad_model,
-				i,
-				q,
-				q_dirs,
-				qdot,
-				qdot_dirs);
+			  ad_model,
+			  i,
+			  q,
+			  q_dirs,
+			  qdot,
+			  qdot_dirs);
 
 // 		Done in ad_jcalc
 // 		for(unsigned int j = 0; j < ndirs; j++) {
@@ -1937,11 +1937,13 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest_with_external_forces){
 			qdot_dirs,
 			qddot,
 			qddot_dirs,
-			tau,
+			tau_ref,
 			fd_tau,
 			&f_ext);    
 
 	CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), 1e-7);
+	CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), 1e-7);
+
 }
 
 TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest_with_external_forces){
