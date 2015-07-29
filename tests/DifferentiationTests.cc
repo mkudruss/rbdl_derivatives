@@ -725,19 +725,25 @@ void fd_InverseDynamics(Model& model,
 	VectorNd qddot_dir(qddot);
 
 	for (int i = 0; i < ndirs; i++ ){
-			q_dir = q_dirs.block(0,i, model.q_size, 1);
-			qdot_dir = qdot_dirs.block(0,i, model.q_size, 1);
-			qddot_dir = qddot_dirs.block(0,i, model.q_size, 1);
-			InverseDynamics(model,         q + h*q_dir, 
-						                qdot + h*qdot_dir, 
-						               qddot + h*qddot_dir, 
-						                         hd_tau,  f_ext);
+	  q_dir = q_dirs.block(0,i, model.q_size, 1);
+	  qdot_dir = qdot_dirs.block(0,i, model.q_size, 1);
+	  qddot_dir = qddot_dirs.block(0,i, model.q_size, 1);
+	  
+	  InverseDynamics(model,
+			  q + h*q_dir, 
+			  qdot + h*qdot_dir, 
+			  qddot + h*qddot_dir, 
+			  hd_tau,
+			  f_ext);
 
-		fd_tau.block(0,i,hd_tau.rows(),1) = (hd_tau - tau) / h;
+	  fd_tau.block(0,i,hd_tau.rows(),1) = (hd_tau - tau) / h;
 	}
 }
 						
 //==============================================================================
+
+
+
 void ad_InverseDynamics(Model& model,
 			ADModel &ad_model,
 			const Math::VectorNd& q,
@@ -858,13 +864,13 @@ void ad_InverseDynamics(Model& model,
 		if (model.lambda[i] != 0) {
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.ad_f[model.lambda[i]][j] = ad_model.ad_f[model.lambda[i]][j]
-					+ ad_model.ad_X_lambda[i][j].transpose() * model.f[i] 
-					+ model.X_lambda[i].applyTranspose(ad_model.ad_f[i][j]);
+					+ ad_model.ad_X_lambda[i][j].transpose() * model.f[i] + model.X_lambda[i].applyTranspose(ad_model.ad_f[i][j]);
 			}
 			model.f[model.lambda[i]] = model.f[model.lambda[i]] 
 				+ model.X_lambda[i].applyTranspose(model.f[i]);
 		}
 	}
+	
 }
 
 void fd_CompositeRigidBodyAlgorithm (
@@ -1056,6 +1062,39 @@ void fd_UpdateKinematics (
 */
 
 
+// The following function is a replacement for the function SparseSolveLx in src/rbdl_mathutils.cc . It can take Vectors and ColXpr as inputs.
+// Following the website http://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html
+// this is realised with a little hack, passing a constant x and casting the constness away.
+// The function still has to be tested for performance. 
+template <typename Derived>
+void SparseSolveLxtemplated (Model &model, Math::MatrixNd &L, Eigen::MatrixBase<Derived> const &x) {
+	for (unsigned int i = 1; i <= model.qdot_size; i++) {
+		unsigned int j = model.lambda_q[i];
+		while (j != 0) {
+			const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] = const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] - L(i - 1,j - 1) * const_cast<Eigen::MatrixBase<Derived> & > (x)[j - 1];
+			j = model.lambda_q[j];
+		}
+		const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] = const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] / L(i - 1,i - 1);
+	}
+}
+
+// The following function is a replacement for the function SparseSolveLTx in src/rbdl_mathutils.cc . It can take Vectors and ColXpr as inputs for x.
+// Following the website http://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html
+// this is realised with a little hack, passing a constant x and casting the constness away.
+// The function still has to be tested for performance.
+template <typename Derived>
+void SparseSolveLTxtemplated (Model &model, Math::MatrixNd &L, Eigen::MatrixBase<Derived> const &x) {
+
+  for (int i = model.qdot_size; i > 0; i--) {
+		const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] = const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] / L(i - 1,i - 1);
+		unsigned int j = model.lambda_q[i];
+		while (j != 0) {
+			const_cast<Eigen::MatrixBase<Derived> & > (x)[j - 1] = const_cast<Eigen::MatrixBase<Derived> & > (x)[j - 1] - L(i - 1,j - 1) * const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1];
+			j = model.lambda_q[j];
+		}
+	}
+}
+
 
 
 
@@ -1084,10 +1123,12 @@ void ForwardDynamicsCholesky (
   SparseFactorizeLTL(model,M);
   
   qddot = tau - qddot;
-  SparseSolveLTx(model,M,qddot);
-  SparseSolveLx(model,M,qddot);
+  SparseSolveLTxtemplated(model,M,qddot);
+  SparseSolveLxtemplated(model,M,qddot);
 
 };
+
+
 
 void ad_ForwardDynamicsCholesky (
 				 Model& model,
@@ -1145,17 +1186,16 @@ void ad_ForwardDynamicsCholesky (
   SparseSolveLx(model,M,qddot);
 
 
-
-  // I would like to do that without the local copy, maybe Martin knows, how to do that and whether it's a good idea.
-  VectorNd local_column_copy;
+  // Now there is a templated version of SparseSolveLTx and SparseSolveLx and we don't need the local copy anymore. This still has to be tested for performance of the local copy against the templated version.
+  //VectorNd local_column_copy;
   
   for (unsigned int j = 0; j < ndirs; j++)
     {
       ad_qddot.col(j)=tau_dirs.col(j) - ad_qddot.col(j)-ad_M[j]*qddot;
-      local_column_copy=ad_qddot.col(j);
-      SparseSolveLTx(model,M,local_column_copy);
-      SparseSolveLx(model,M,local_column_copy);
-      ad_qddot.col(j)=local_column_copy;
+      //local_column_copy=ad_qddot.col(j);
+      SparseSolveLTxtemplated(model,M,ad_qddot.col(j));
+      SparseSolveLxtemplated(model,M,ad_qddot.col(j));
+      //ad_qddot.col(j)=local_column_copy;
     }
 	
 
@@ -1745,7 +1785,7 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 	}
 
 	
-	double h = sqrt(1.0e-16);
+
 	VectorNd tau_ref (tau);
 
 	MatrixNd ad_tau  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
@@ -1771,10 +1811,11 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 			qdot_dirs,
 			qddot,
 			qddot_dirs,
-			tau,
+			tau_ref,
 			fd_tau,
 			&f_ext);    
 
+	CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), 1e-7);
 	CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), 1e-7);
 }
 
@@ -1797,8 +1838,7 @@ TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest){
       f_ext[i]=SpatialVector::Zero(model.q_size);
     }
     
-    double h = sqrt(1.0e-16);
-
+    VectorNd qddot (VectorNd::Zero(model.q_size));
     MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
     MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, ndirs); 
 
@@ -1911,7 +1951,6 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest_with_external_forces){
 	}
 
 	
-	double h = sqrt(1.0e-16);
 	VectorNd tau_ref (tau);
 
 	MatrixNd ad_tau  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
@@ -1965,8 +2004,8 @@ TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest_with_external_forces){
       f_ext[i]=SpatialVector::Random(model.q_size);
     }
     
-    double h = sqrt(1.0e-16);
 
+    VectorNd qddot (VectorNd::Zero(model.q_size));
     MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
     MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, ndirs); 
 
