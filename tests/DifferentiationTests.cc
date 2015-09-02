@@ -1067,14 +1067,16 @@ void fd_UpdateKinematics (
 // this is realised with a little hack, passing a constant x and casting the constness away.
 // The function still has to be tested for performance. 
 template <typename Derived>
-void SparseSolveLxtemplated (Model &model, Math::MatrixNd &L, Eigen::MatrixBase<Derived> const &x) {
-	for (unsigned int i = 1; i <= model.qdot_size; i++) {
+void SparseSolveLxtemplated (Model &model, Math::MatrixNd &L, Eigen::MatrixBase<Derived> const &x_aux) {
+  Eigen::MatrixBase<Derived> &x = const_cast <Eigen::MatrixBase<Derived> & > (x_aux);
+
+  for (unsigned int i = 1; i <= model.qdot_size; i++) {
 		unsigned int j = model.lambda_q[i];
 		while (j != 0) {
-			const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] = const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] - L(i - 1,j - 1) * const_cast<Eigen::MatrixBase<Derived> & > (x)[j - 1];
+			x[i - 1] = x[i - 1] - L(i - 1,j - 1) * x[j - 1];
 			j = model.lambda_q[j];
 		}
-		const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] = const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] / L(i - 1,i - 1);
+		x[i - 1] = x[i - 1] / L(i - 1,i - 1);
 	}
 }
 
@@ -1083,13 +1085,14 @@ void SparseSolveLxtemplated (Model &model, Math::MatrixNd &L, Eigen::MatrixBase<
 // this is realised with a little hack, passing a constant x and casting the constness away.
 // The function still has to be tested for performance.
 template <typename Derived>
-void SparseSolveLTxtemplated (Model &model, Math::MatrixNd &L, Eigen::MatrixBase<Derived> const &x) {
-
+void SparseSolveLTxtemplated (Model &model, Math::MatrixNd &L, Eigen::MatrixBase<Derived> const &x_aux) {
+  Eigen::MatrixBase<Derived> &x = const_cast <Eigen::MatrixBase<Derived> & > (x_aux);
+  
   for (int i = model.qdot_size; i > 0; i--) {
-		const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] = const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1] / L(i - 1,i - 1);
+		x[i - 1] = x[i - 1] / L(i - 1,i - 1);
 		unsigned int j = model.lambda_q[i];
 		while (j != 0) {
-			const_cast<Eigen::MatrixBase<Derived> & > (x)[j - 1] = const_cast<Eigen::MatrixBase<Derived> & > (x)[j - 1] - L(i - 1,j - 1) * const_cast<Eigen::MatrixBase<Derived> & > (x)[i - 1];
+			x[j - 1] = x[j - 1] - L(i - 1,j - 1) * x[i - 1];
 			j = model.lambda_q[j];
 		}
 	}
