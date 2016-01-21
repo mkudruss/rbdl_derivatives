@@ -34,7 +34,7 @@ EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(RigidBodyDynamics::FixedBody);
  */
 namespace RigidBodyDynamics {
 
-/** \page modeling_page Model 
+/** \page modeling_page Model
  *
  * \section model_structure Model Structure
  *
@@ -44,7 +44,7 @@ namespace RigidBodyDynamics {
  * variables that describe the state of the rigid body system. Furthermore
  * it contains variables that are used as temporary variables in the
  * algorithms.
- * 
+ *
  * There are multiple ways of creating \link RigidBodyDynamics::Model Models\endlink for RBDL:
  *
  *   \li Loading models from Lua files using the \ref luamodel_introduction "LuaModel" addon
@@ -89,7 +89,7 @@ namespace RigidBodyDynamics {
  *
  * For this see the documentation of \ref luamodel_introduction and \link
  * RigidBodyDynamics::Addons::LuaModelReadFromFile \endlink.
- 
+
  * \section modeling_urdf Using URDF
  *
  * For this see the documentation see \link
@@ -103,7 +103,7 @@ namespace RigidBodyDynamics {
  * storage of temporary values. It is designed for use of the Articulated
  * Rigid Body Algorithm (which is implemented in ForwardDynamics()) and
  * follows the numbering as described in Featherstones book.
- * 
+ *
  * Please note that body 0 is the root body and the moving bodies start at
  * index 1. This numbering scheme is very beneficial in terms of
  * readability of the code as the resulting code is very similar to the
@@ -132,15 +132,15 @@ struct RBDL_DLLAPI Model {
 	 */
 	unsigned int dof_count;
 
-	/** \brief The size of the \f$\mathbf{q}\f$-vector. 
+	/** \brief The size of the \f$\mathbf{q}\f$-vector.
 	 * For models without spherical joints the value is the same as
 	 * Model::dof_count, otherwise additional values for the w-component of the
-	 * Quaternion is stored at the end of \f$\mathbf{q}\f$. 
+	 * Quaternion is stored at the end of \f$\mathbf{q}\f$.
 	 *
 	 * \sa \ref joint_description for more details.
 	 */
 	unsigned int q_size;
-	/** \brief The size of the \f$\mathbf{\dot{q}}, \mathbf{\ddot{q}}\f$, and \f$\mathbf{\tau}\f$-vector. 
+	/** \brief The size of the \f$\mathbf{\dot{q}}, \mathbf{\ddot{q}}\f$, and \f$\mathbf{\tau}\f$-vector.
 	 *
 	 * \sa \ref joint_description for more details.
 	 */
@@ -162,7 +162,7 @@ struct RBDL_DLLAPI Model {
 	// Joints
 
 	/// \brief All joints
-	
+
 	std::vector<Joint> mJoints;
 	/// \brief The joint axis for joint i
 	std::vector<Math::SpatialVector> S;
@@ -194,7 +194,7 @@ struct RBDL_DLLAPI Model {
 
 	/// \brief The velocity dependent spatial acceleration
 	std::vector<Math::SpatialVector> c;
-	/// \brief The spatial inertia of the bodies 
+	/// \brief The spatial inertia of the bodies
 	std::vector<Math::SpatialMatrix> IA;
 	/// \brief The spatial bias force
 	std::vector<Math::SpatialVector> pA;
@@ -233,7 +233,7 @@ struct RBDL_DLLAPI Model {
 	 * are fixed to a moving body. The value of max(unsigned int) is
 	 * determined via std::numeric_limits<unsigned int>::max() and the
 	 * default value of fixed_body_discriminator is max (unsigned int) / 2.
-	 * 
+	 *
 	 * On normal systems max (unsigned int) is 4294967294 which means there
 	 * could be a total of 2147483646 movable and / or fixed bodies.
 	 */
@@ -285,7 +285,7 @@ struct RBDL_DLLAPI Model {
 			const Math::SpatialTransform &joint_frame,
 			const Joint &joint,
 			const Body &body,
-			std::string body_name = "" 
+			std::string body_name = ""
 			);
 
 	unsigned int AddBodySphericalJoint (
@@ -293,7 +293,7 @@ struct RBDL_DLLAPI Model {
 			const Math::SpatialTransform &joint_frame,
 			const Joint &joint,
 			const Body &body,
-			std::string body_name = "" 
+			std::string body_name = ""
 			);
 
 	/** \brief Adds a Body to the model such that the previously added Body is the Parent.
@@ -305,7 +305,7 @@ struct RBDL_DLLAPI Model {
 			const Math::SpatialTransform &joint_frame,
 			const Joint &joint,
 			const Body &body,
-			std::string body_name = "" 
+			std::string body_name = ""
 			);
 
 	/** \brief Specifies the dynamical parameters of the first body and
@@ -316,7 +316,7 @@ struct RBDL_DLLAPI Model {
 	 * parameter of this function is then added by a 6th joint to the model.
 	 *
 	 * The floating base has the following order of degrees of freedom:
-	 * 
+	 *
 	 * \li translation X
 	 * \li translation Y
 	 * \li translation Z
@@ -371,8 +371,8 @@ struct RBDL_DLLAPI Model {
 	/** \brief Checks whether the body is rigidly attached to another body.
 	 */
 	bool IsFixedBodyId (unsigned int body_id) {
-		if (body_id >= fixed_body_discriminator 
-				&& body_id < std::numeric_limits<unsigned int>::max() 
+		if (body_id >= fixed_body_discriminator
+				&& body_id < std::numeric_limits<unsigned int>::max()
 				&& body_id - fixed_body_discriminator < mFixedBodies.size()) {
 			return true;
 		}
@@ -401,8 +401,8 @@ struct RBDL_DLLAPI Model {
 			return mFixedBodies[id - fixed_body_discriminator].mMovableParent;
 		}
 
-		unsigned int parent_id = lambda[id]; 
-	
+		unsigned int parent_id = lambda[id];
+
 		while (mBodies[parent_id].mIsVirtual) {
 			parent_id = lambda[parent_id];
 		}
@@ -426,7 +426,7 @@ struct RBDL_DLLAPI Model {
 			}
 			return X_T[child_id];
 		} else
-			return X_T[id];	
+			return X_T[id];
 	}
 
 	/** Sets the joint frame transformtion, i.e. the second argument to Model::AddBody().
@@ -459,7 +459,7 @@ struct RBDL_DLLAPI Model {
 	void SetQuaternion (unsigned int i, const Math::Quaternion &quat, Math::VectorNd &Q) const {
 		assert (mJoints[i].mJointType == JointTypeSpherical);
 		unsigned int q_index = mJoints[i].q_index;
-		
+
 		Q[q_index] = quat[0];
 		Q[q_index + 1] = quat[1];
 		Q[q_index + 2] = quat[2];
