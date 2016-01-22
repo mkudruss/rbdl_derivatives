@@ -56,6 +56,8 @@ OPTION (RBDL_STORE_VERSION "Enable storing of version information in the library
 OPTION (RBDL_BUILD_ADDON_URDFREADER "Build the (experimental) urdf reader" OFF)
 OPTION (RBDL_BUILD_ADDON_BENCHMARK "Build the benchmarking tool" OFF)
 OPTION (RBDL_BUILD_ADDON_LUAMODEL "Build the lua model reader" OFF)
+OPTION (RBDL_BUILD_ADDON_DIFFERENTIATION "Build the automatic
+differentiation addon" OFF)
 OPTION (RBDL_BUILD_PYTHON_WRAPPER "Build experimental python wrapper" OFF)
 
 # Addons
@@ -70,6 +72,10 @@ ENDIF (RBDL_BUILD_ADDON_BENCHMARK)
 IF (RBDL_BUILD_ADDON_LUAMODEL)
   ADD_SUBDIRECTORY ( addons/luamodel )
 ENDIF (RBDL_BUILD_ADDON_LUAMODEL)
+
+IF (RBDL_BUILD_ADDON_DIFFERENTIATION)
+  ADD_SUBDIRECTORY ( addons/differentiation )
+ENDIF (RBDL_BUILD_ADDON_DIFFERENTIATION)
 
 IF (RBDL_BUILD_TESTS)
  ADD_SUBDIRECTORY ( tests )
