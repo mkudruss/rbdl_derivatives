@@ -23,7 +23,7 @@ struct ADModel {
 	};
 
 	ADModel (Model& model) {
-		ndirs = 4*model.dof_count;
+		ndirs = 4 * model.dof_count;
 
 		// NOTE: old initialization values
 		std::vector<SpatialMatrix> ad_X(ndirs, SpatialMatrix::Zero());
@@ -861,7 +861,7 @@ void fd_InverseDynamics(Model& model,
 						std::vector<Math::SpatialVector> *f_ext){
 
 	assert(q_dirs.cols() == qdot_dirs.cols() &&
-		   q_dirs.cols() == qddot_dirs.cols() &&
+		q_dirs.cols() == qddot_dirs.cols() &&
 		   "q_dirs, qdot_dirs, qddot_dirs have different dimensions");
 
 	assert( fd_tau.cols() == q_dirs.cols() &&
@@ -1356,6 +1356,150 @@ void fd_UpdateKinematics (
 	}
 };
 
+// The following function is a replacement for the function SparseSolveLx in src/rbdl_mathutils.cc . It can take Vectors and ColXpr as inputs.
+// Following the website http://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html
+// this is realised with a little hack, passing a constant x and casting the constness away.
+// The function still has to be tested for performance. 
+template <typename Derived>
+void SparseSolveLxtemplated (Model &model, Math::MatrixNd &L, Eigen::MatrixBase<Derived> const &x_aux) {
+  Eigen::MatrixBase<Derived> &x = const_cast <Eigen::MatrixBase<Derived> & > (x_aux);
+
+  for (unsigned int i = 1; i <= model.qdot_size; i++) {
+		unsigned int j = model.lambda_q[i];
+		while (j != 0) {
+			x[i - 1] = x[i - 1] - L(i - 1,j - 1) * x[j - 1];
+			j = model.lambda_q[j];
+		}
+		x[i - 1] = x[i - 1] / L(i - 1,i - 1);
+	}
+}
+
+// The following function is a replacement for the function SparseSolveLTx in src/rbdl_mathutils.cc . It can take Vectors and ColXpr as inputs for x.
+// Following the website http://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html
+// this is realised with a little hack, passing a constant x and casting the constness away.
+// The function still has to be tested for performance.
+template <typename Derived>
+void SparseSolveLTxtemplated (Model &model, Math::MatrixNd &L, Eigen::MatrixBase<Derived> const &x_aux) {
+  Eigen::MatrixBase<Derived> &x = const_cast <Eigen::MatrixBase<Derived> & > (x_aux);
+  
+  for (int i = model.qdot_size; i > 0; i--) {
+		x[i - 1] = x[i - 1] / L(i - 1,i - 1);
+		unsigned int j = model.lambda_q[i];
+		while (j != 0) {
+			x[j - 1] = x[j - 1] - L(i - 1,j - 1) * x[i - 1];
+			j = model.lambda_q[j];
+		}
+	}
+}
+
+
+
+
+/*This functin shall compute the Forward Dynamics by solving M qddot = tau - N(q,qdot)*/
+void ForwardDynamicsCholesky (
+			      Model &model,
+			      const VectorNd &q,
+			      const VectorNd &qdot,
+			      const VectorNd &tau,
+			      VectorNd &qddot,
+			      std::vector<SpatialVector>* f_ext
+			      ){
+
+  VectorNd zero_vector (VectorNd::Zero (tau.size()));
+
+  //Here we geht the zero_vector by calling Inverse dynamics with qddot = 0
+  InverseDynamics(model,q,qdot,zero_vector,qddot,f_ext);
+  // cout << "qddot: " << qddot << endl;
+  // cout << "zero_vector: " << zero_vector << endl;
+  // cout << "tau: " << tau << endl;
+
+  MatrixNd M ( MatrixNd::Zero(qddot.size(),qddot.size()));
+  CompositeRigidBodyAlgorithm (model, q, M);  //bool update kinematics?? Works without it
+  //  cout << "Mass Matrix: " << M << endl;
+
+  SparseFactorizeLTL(model,M);
+  
+  qddot = tau - qddot;
+  SparseSolveLTxtemplated(model,M,qddot);
+  SparseSolveLxtemplated(model,M,qddot);
+
+};
+
+
+
+void ad_ForwardDynamicsCholesky (
+				 Model& model,
+				 ADModel& ad_model,
+				 const VectorNd& q,
+				 const MatrixNd& q_dirs,
+				 const VectorNd& qdot,
+				 const MatrixNd& qdot_dirs,
+				 const VectorNd& tau,
+				 const MatrixNd& tau_dirs,
+				 VectorNd& qddot,
+				 MatrixNd& ad_qddot,
+				 std::vector<SpatialVector>* f_ext) {
+
+  unsigned int ndirs = q_dirs.cols();
+  ad_model.resize_directions(ndirs);
+
+	
+  VectorNd zero_vector (VectorNd::Zero (q.size()));
+  MatrixNd zero_vector_dirs (MatrixNd::Zero(q.size(),ndirs));
+
+  /*Here we get the coriolis term by calling Inverse dynamics with accelerations = 0.
+    The result is stored in qddot. */
+
+  ad_InverseDynamics(model,
+		     ad_model,
+		     q,
+		     q_dirs,
+		     qdot,
+		     qdot_dirs,
+		     zero_vector,
+		     zero_vector_dirs,
+		     qddot,
+		     ad_qddot,
+		     f_ext);    
+
+  MatrixNd M (MatrixNd::Zero(qddot.size(),qddot.size()));
+  std::vector<MatrixNd> ad_M (q_dirs.cols(),MatrixNd::Zero(model.q_size,model.q_size));
+
+  ad_CompositeRigidBodyAlgorithm(model,
+				 ad_model,
+				 q,
+				 q_dirs,
+				 M,
+				 ad_M);
+	
+  //	CompositeRigidBodyAlgorithm (model, q, M);  //bool update kinematics?? Works without it
+
+  //  cout << "Mass Matrix: " << M << endl;
+
+  SparseFactorizeLTL(model,M);
+  
+  qddot = tau - qddot;
+  SparseSolveLTx(model,M,qddot);
+  SparseSolveLx(model,M,qddot);
+
+
+  // Now there is a templated version of SparseSolveLTx and SparseSolveLx and we don't need the local copy anymore. This still has to be tested for performance of the local copy against the templated version.
+  //VectorNd local_column_copy;
+  
+  for (unsigned int j = 0; j < ndirs; j++)
+    {
+      ad_qddot.col(j)=tau_dirs.col(j) - ad_qddot.col(j)-ad_M[j]*qddot;
+      //local_column_copy=ad_qddot.col(j);
+      SparseSolveLTxtemplated(model,M,ad_qddot.col(j));
+      SparseSolveLxtemplated(model,M,ad_qddot.col(j));
+      //ad_qddot.col(j)=local_column_copy;
+    }
+	
+
+};
+
+
+
 Math::Vector3d fd_CalcPointAcceleration (
 		Model &model,
 		const Math::VectorNd &q,
@@ -1404,16 +1548,17 @@ void fd_ForwardDynamics(
 	const VectorNd& tau,
 	const MatrixNd& tau_dirs,
 	VectorNd& qddot,
-	MatrixNd& fd_qddot) {
-	assert(q_dirs.cols() == qdot_dirs.cols()
-		&& q_dirs.cols() == fd_qddot.cols()
+	MatrixNd& fd_qddot,
+	std::vector<SpatialVector>* f_ext) {
+	assert(q_dirs.cols() == qdot_dirs.cols() 
+		&& q_dirs.cols() == fd_qddot.cols() 
 		&& tau_dirs.cols() == q_dirs.cols()
 		&& "q_dirs, qdot_dirs, tau_dirs, fd_qddot have different dimensions");
 
 	double h = sqrt(1e-16);
 	unsigned int ndirs = q_dirs.cols();
 
-	ForwardDynamics(model, q, qdot, tau, qddot);
+	ForwardDynamics(model, q, qdot, tau, qddot,f_ext);
 
 	VectorNd hd_qddot(qddot);
 	VectorNd q_dir(q);
@@ -1421,12 +1566,12 @@ void fd_ForwardDynamics(
 	VectorNd tau_dir(tau);
 
 	for(unsigned int i = 0; i < ndirs; ++i) {
-		q_dir = q_dirs.block(0,i, model.q_size, 1);
-		qdot_dir = qdot_dirs.block(0,i, model.q_size, 1);
-		tau_dir = tau_dirs.block(0,i, model.q_size, 1);
-		ForwardDynamics(model, q + h*q_dir, qdot + h*qdot_dir, tau + h*tau_dir, hd_qddot);
-
-		fd_qddot.block(0, i, hd_qddot.rows(), 1) = (hd_qddot - qddot) / h;
+		q_dir = q_dirs.col(i);
+		qdot_dir = qdot_dirs.col(i);
+		tau_dir = tau_dirs.col(i);
+		ForwardDynamics(model, q + h*q_dir, qdot + h*qdot_dir, tau + h*tau_dir, hd_qddot,f_ext);
+		
+		fd_qddot.col(i) = (hd_qddot - qddot) / h;
 	}
 }
 
@@ -1933,7 +2078,7 @@ TEST_FIXTURE (CartPendulum, CalcPointAccelerationNominalTest) {
 	CHECK_ARRAY_CLOSE (ref_acc.data(), ad_acc.data(), 3, TEST_PREC);
 }
 
-/*
+
 TEST_FIXTURE (CartPendulum, CalcPointAccelerationFDvsADTest) {
 	// set nominal values
 	q.setZero();
@@ -1948,18 +2093,21 @@ TEST_FIXTURE (CartPendulum, CalcPointAccelerationFDvsADTest) {
 	qddot[0] = 0.3;
 	qddot[1] = -0.2;
 
+	Vector3d point_body_coordinates (0.1, 3.2, 4.2);
+	
 	// set directions
-	unsigned int ndirs = model.q_size + model.qdot_size + model.qddot_size;
+	unsigned int ndirs = model.q_size + model.qdot_size + model.q_size;
 	MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
 	MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
 	MatrixNd qdot_dirs = x.block(model.q_size, 0, model.qdot_size, ndirs);
-	MatrixNd qddot_dirs = x.block(model.q_size + model.qdot_size, 0, model.qddot_size, ndirs);
-
+	MatrixNd qddot_dirs = x.block(model.q_size + model.qdot_size, 0, model.q_size, ndirs);
+	
+	
 	// set derivative output
 	MatrixNd fd_jacobian = MatrixNd::Zero(3, ndirs);
 	MatrixNd ad_jacobian = MatrixNd::Zero(3, ndirs);
 
-		// evaluate nominal solution
+	// evaluate nominal solution
 	Vector3d ref_acc = fd_CalcPointAcceleration (
 		model,
 		q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs,
@@ -1976,7 +2124,7 @@ TEST_FIXTURE (CartPendulum, CalcPointAccelerationFDvsADTest) {
 
 	CHECK_ARRAY_CLOSE (ref_acc.data(), ad_acc.data(), 3, TEST_PREC);
 }
-*/
+
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseSimple) {
 	q[0] = 0.3;
@@ -2045,7 +2193,13 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 	MatrixNd qdot_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
 	MatrixNd qddot_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
 
-	double h = sqrt(1.0e-16);
+	std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+	for (int i = 0; i < model.mBodies.size(); ++i) {
+	  f_ext[i]=SpatialVector::Zero(model.q_size);
+	}
+
+	
+
 	VectorNd tau_ref (tau);
 
 	MatrixNd ad_tau  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
@@ -2061,7 +2215,7 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 			qddot_dirs,
 			tau,
 			ad_tau,
-			NULL);
+			&f_ext);    
 
 
 	fd_InverseDynamics(model,
@@ -2071,35 +2225,261 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 			qdot_dirs,
 			qddot,
 			qddot_dirs,
-			tau,
+			tau_ref,
 			fd_tau,
-			NULL);
+			&f_ext);    
 
+	CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), 1e-7);
 	CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), 1e-7);
 }
 
 TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest){
-	srand((unsigned int) time(0));
+  srand((unsigned int) time(0));
 
-	for(unsigned int trial = 0; trial < 10; trial++) {
-		q = VectorNd::Random(model.q_size);
-		qdot = VectorNd::Random(model.q_size);
-		tau = VectorNd::Random(model.q_size);
+  for(unsigned int trial = 0; trial < 10; trial++) {
+    VectorNd q = VectorNd::Random(model.q_size);
+    VectorNd qdot = VectorNd::Random(model.q_size);
+    VectorNd tau = VectorNd::Random(model.q_size);
 
-		MatrixNd q_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
-		MatrixNd qdot_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
-		MatrixNd tau_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
+    unsigned int ndirs = 3 * model.q_size;
+    MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+    MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+    MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+    MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
 
-		double h = sqrt(1.0e-16);
+    std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+    for (int i = 0; i < model.mBodies.size(); ++i) {
+      f_ext[i]=SpatialVector::Zero(model.q_size);
+    }
+    
+    VectorNd qddot (VectorNd::Zero(model.q_size));
+    MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
+    MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, ndirs); 
 
-		MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
-		MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
 
-		fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot);
+    fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot,&f_ext);    
 
-		ad_ForwardDynamics(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, NULL);
+    ad_ForwardDynamics(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, &f_ext);
 
-		CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
-	}
+    CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
+  }
+  }
+
+TEST_FIXTURE (CartPendulum, ForwardDynamicsCholesky) {
+  // set nominal values
+
+  q = VectorNd::Random(model.q_size);
+  qdot = VectorNd::Random(model.q_size);
+  qddot = VectorNd::Random(model.q_size);
+  tau = VectorNd::Random(model.q_size);
+
+  
+  std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+  for (int i = 0; i < model.mBodies.size(); ++i) {
+    f_ext[i]=SpatialVector::Random(model.q_size);
+  }
+
+
+  VectorNd qddot_ref (VectorNd::Zero (model.q_size));
+	
+  ForwardDynamicsCholesky(model,q,qdot,tau,qddot,&f_ext);
+		
+  ForwardDynamics(model,q,qdot,tau,qddot_ref,&f_ext);
+	
+  CHECK_ARRAY_CLOSE (qddot, qddot_ref, model.q_size, TEST_PREC);
+  /*
+    cout << "qddot_ref: " << endl << qddot_ref << endl;
+    cout << "qddot_test: " << endl << qddot << endl;
+    cout << "error qddot: " << endl << qddot_ref - qddot << endl;
+  */
 }
 
+
+TEST_FIXTURE(CartPendulum, ForwardDynamicsCholeskyADTest){
+
+  VectorNd q = VectorNd::Random(model.q_size);
+  VectorNd qdot = VectorNd::Random(model.q_size);
+  VectorNd tau = VectorNd::Random(model.q_size);
+  VectorNd qddot = VectorNd::Zero(model.q_size);
+  VectorNd qddot_ref = VectorNd::Zero(model.q_size);
+
+  unsigned int ndirs = 3 * model.q_size;
+  MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+  MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+  MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+  MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
+
+
+  std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+  for (int i = 0; i < model.mBodies.size(); ++i) {
+    f_ext[i]=SpatialVector::Zero(model.q_size);
+  }
+
+  MatrixNd ad_qddot  = MatrixNd::Zero(model.q_size, ndirs);
+  MatrixNd fd_qddot  = MatrixNd::Zero(model.q_size, ndirs); 
+
+  fd_ForwardDynamics(model,
+		     q,
+		     q_dirs,
+		     qdot,
+		     qdot_dirs,
+		     tau,
+		     tau_dirs,
+		     qddot_ref,
+		     fd_qddot,
+		     &f_ext);    
+
+  ad_ForwardDynamicsCholesky(model,
+			     ad_model,
+			     q,
+			     q_dirs,
+			     qdot,
+			     qdot_dirs,
+			     tau,
+			     tau_dirs,
+			     qddot,
+			     ad_qddot,
+			     &f_ext);
+
+  CHECK_ARRAY_CLOSE (qddot_ref.data(), qddot.data(), qddot.size(), 1e-7);
+  CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
+}
+
+
+
+
+TEST_FIXTURE(CartPendulum, InverseDynamicsADTest_with_external_forces){
+	for(unsigned int i = 0; i < model.qdot_size; i++){
+		q[i] = (i+1)*(0.897878435);
+		qdot[i] = (i+1)*(0.27563682);
+		qddot[i] = (i+1)*(0.06565644564455);
+	}
+
+	MatrixNd q_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
+	MatrixNd qdot_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
+	MatrixNd qddot_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
+
+	std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+	for (int i = 0; i < model.mBodies.size(); ++i) {
+	  f_ext[i]=SpatialVector::Random(model.q_size);
+	}
+
+	
+	VectorNd tau_ref (tau);
+
+	MatrixNd ad_tau  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
+	MatrixNd fd_tau  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
+
+	ad_InverseDynamics(model,
+			ad_model,
+			q,
+			q_dirs,
+			qdot,
+			qdot_dirs,
+			qddot,
+			qddot_dirs,
+			tau,
+			ad_tau,
+			&f_ext);    
+
+
+	fd_InverseDynamics(model,
+			q,
+			q_dirs,
+			qdot,
+			qdot_dirs,
+			qddot,
+			qddot_dirs,
+			tau_ref,
+			fd_tau,
+			&f_ext);    
+
+	CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), 1e-7);
+	CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), 1e-7);
+
+}
+
+TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest_with_external_forces){
+  srand((unsigned int) time(0));
+
+  for(unsigned int trial = 0; trial < 10; trial++) {
+    VectorNd q = VectorNd::Random(model.q_size);
+    VectorNd qdot = VectorNd::Random(model.q_size);
+    VectorNd tau = VectorNd::Random(model.q_size);
+
+    unsigned int ndirs = 3 * model.q_size;
+    MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+    MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+    MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+    MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
+
+    std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+    for (int i = 0; i < model.mBodies.size(); ++i) {
+      f_ext[i]=SpatialVector::Random(model.q_size);
+    }
+    
+
+    VectorNd qddot (VectorNd::Zero(model.q_size));
+    MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
+    MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, ndirs); 
+
+
+    fd_ForwardDynamics(model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, fd_qddot,&f_ext);    
+
+    ad_ForwardDynamics(model, ad_model, q, q_dirs, qdot, qdot_dirs, tau, tau_dirs, qddot, ad_qddot, &f_ext);
+
+    CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
+  }
+  }
+
+
+
+TEST_FIXTURE(CartPendulum, ForwardDynamicsCholeskyADTest_with_external_forces){
+
+  VectorNd q = VectorNd::Random(model.q_size);
+  VectorNd qdot = VectorNd::Random(model.q_size);
+  VectorNd tau = VectorNd::Random(model.q_size);
+  VectorNd qddot = VectorNd::Zero(model.q_size);
+  VectorNd qddot_ref = VectorNd::Zero(model.q_size);
+
+  unsigned int ndirs = 3 * model.q_size;
+  MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+  MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+  MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+  MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
+
+
+  std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
+  for (int i = 0; i < model.mBodies.size(); ++i) {
+    f_ext[i]=SpatialVector::Random(model.q_size);
+  }
+
+  MatrixNd ad_qddot  = MatrixNd::Zero(model.q_size, ndirs);
+  MatrixNd fd_qddot  = MatrixNd::Zero(model.q_size, ndirs); 
+
+  fd_ForwardDynamics(model,
+		     q,
+		     q_dirs,
+		     qdot,
+		     qdot_dirs,
+		     tau,
+		     tau_dirs,
+		     qddot_ref,
+		     fd_qddot,
+		     &f_ext);    
+
+  ad_ForwardDynamicsCholesky(model,
+			     ad_model,
+			     q,
+			     q_dirs,
+			     qdot,
+			     qdot_dirs,
+			     tau,
+			     tau_dirs,
+			     qddot,
+			     ad_qddot,
+			     &f_ext);
+
+  CHECK_ARRAY_CLOSE (qddot_ref.data(), qddot.data(), qddot.size(), 1e-7);
+  CHECK_ARRAY_CLOSE (fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(), 1e-7);
+}
