@@ -301,10 +301,10 @@ inline SpatialMatrix ad_Xtrans (const Vector3d &ad_trans) {
 // NOTE: ad_crossm is equal to crossm applied to the directions
 inline SpatialMatrix ad_crossm (const SpatialVector &v) {
 	return SpatialMatrix (
-			    0, -v[2],  v[1],     0,     0,     0,
+				0, -v[2],  v[1],     0,     0,     0,
 			 v[2],     0, -v[0],     0,     0,     0,
 			-v[1],  v[0],     0,     0,     0,     0,
-			    0, -v[5],  v[4],     0, -v[2],  v[1],
+				0, -v[5],  v[4],     0, -v[2],  v[1],
 			 v[5],     0, -v[3],  v[2],     0, -v[0],
 			-v[4],  v[3],     0, -v[1],  v[0],     0
 			);
@@ -348,7 +348,8 @@ void ad_jcalc (
 
 	// check input dimensions
 	if (q_dirs.cols() != qdot_dirs.cols()) {
-		std::cerr << "directions have different dimensions: " << "#q_dirs = " << q_dirs.cols() << " != " << qdot_dirs.cols() << " = #qdot_dirs." << std::endl;
+		std::cerr << "directions have different dimensions: ";
+		std::cerr << "#q_dirs = " << q_dirs.cols() << " != " << qdot_dirs.cols() << " = #qdot_dirs." << std::endl;
 		std::cerr << "In: " << __func__ << endl;
 		abort();
 	}
@@ -409,13 +410,62 @@ void ad_jcalc (
 	// derivative code
 	for (int idir = 0; idir < ndirs; ++idir) {
 		ad_model.ad_X_lambda[joint_id][idir] = ad_model.ad_X_J[joint_id][idir] * model.X_T[joint_id].toMatrix();
-        //cout << "ad_jcalc:  ad_X_lambda[" << joint_id << "][" << idir << "] =" << endl << ad_X_lambda[joint_id][idir] << endl;
-        //cout << "ad_jcalc:  ad_X_Ji[" << joint_id << "][" << idir << "] =" << endl << ad_X_Ji[idir] << endl;
+		//cout << "ad_jcalc:  ad_X_lambda[" << joint_id << "][" << idir << "] =" << endl << ad_X_lambda[joint_id][idir] << endl;
+		//cout << "ad_jcalc:  ad_X_Ji[" << joint_id << "][" << idir << "] =" << endl << ad_X_Ji[idir] << endl;
 	}
 	// nominal code
 	model.X_lambda[joint_id] = model.X_J[joint_id] * model.X_T[joint_id];
 };
 
+RBDL_DLLAPI
+void ad_jcalc_X_lambda_S (
+	Model &model,
+	unsigned int joint_id,
+	const VectorNd &q,
+	const VectorNd &q_dirs
+	) {
+	// exception if we calculate it for the root body
+	assert (joint_id > 0);
+
+	if (model.mJoints[joint_id].mJointType == JointTypeRevoluteX) {
+		std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
+		abort();
+	} else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteY) {
+		// derivative evaluation
+		for (int idir = 0; idir < ndirs; ++idir) {
+			// NOTE: X_T is a constant model dependent transformation
+			ad_model.ad_X_lambda[joint_id] = ad_Xroty (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
+			ad_model.ad_S[joint_id] = SpatialVector::Zero();  // S = [0,. 1., 0., 0., 0., 0.]
+		}
+		// nominal evaluation
+		model.X_lambda[joint_id] = Xroty (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
+		model.S[joint_id] = model.mJoints[joint_id].mJointAxes[0];
+	} else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteZ) {
+		std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
+		abort();
+	} else if (model.mJoints[joint_id].mDoFCount == 1) {
+		std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
+		abort();
+	} else if (model.mJoints[joint_id].mJointType == JointTypeSpherical) {
+		std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
+		abort();
+	} else if (model.mJoints[joint_id].mJointType == JointTypeEulerZYX) {
+		std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
+		abort();
+	} else if (model.mJoints[joint_id].mJointType == JointTypeEulerXYZ) {
+		std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
+		abort();
+	} else if (model.mJoints[joint_id].mJointType == JointTypeEulerYXZ ) {
+		std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
+		abort();
+	} else if (model.mJoints[joint_id].mJointType == JointTypeTranslationXYZ ) {
+		std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
+		abort();
+	} else {
+		std::cerr << "Error: invalid joint type!" << std::endl;
+		abort();
+	}
+}
 
 RBDL_DLLAPI
 Vector3d CalcBodyToBaseCoordinatesSingleFunc (
@@ -677,8 +727,10 @@ Math::Vector3d ad_CalcPointAcceleration (
 	model.a[0].setZero();
 
 	if (update_kinematics) {
-		// NOTE: Kinematics are already updated in ad_UpdateKinematics
+		// derivative evaluation
 		ad_UpdateKinematics (model, ad_model, q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs);
+		// nominal evaluation
+		// NOTE: Kinematics are already updated in ad_UpdateKinematics
 		//UpdateKinematics (model, q, qdot, qddot);
 	}
 
@@ -795,7 +847,8 @@ Vector3d fd_CalcBodyToBaseCoordinatesSingleFunc (
 
 	return ref;
 }
-//==============================================================================
+
+
 void fd_InverseDynamics(Model& model,
 						const Math::VectorNd& q,
 						const Math::MatrixNd& q_dirs,
@@ -808,7 +861,7 @@ void fd_InverseDynamics(Model& model,
 						std::vector<Math::SpatialVector> *f_ext){
 
 	assert(q_dirs.cols() == qdot_dirs.cols() &&
-           q_dirs.cols() == qddot_dirs.cols() &&
+		   q_dirs.cols() == qddot_dirs.cols() &&
 		   "q_dirs, qdot_dirs, qddot_dirs have different dimensions");
 
 	assert( fd_tau.cols() == q_dirs.cols() &&
@@ -831,17 +884,17 @@ void fd_InverseDynamics(Model& model,
 			qdot_dir = qdot_dirs.block(0,i, model.q_size, 1);
 			qddot_dir = qddot_dirs.block(0,i, model.q_size, 1);
 			InverseDynamics(model,         q + h*q_dir,
-						                qdot + h*qdot_dir,
-						               qddot + h*qddot_dir,
-						                         hd_tau,  f_ext);
+										qdot + h*qdot_dir,
+									   qddot + h*qddot_dir,
+												 hd_tau,  f_ext);
 
 		fd_tau.block(0,i,hd_tau.rows(),1) = (hd_tau - tau) / h;
 	}
 }
 
-//==============================================================================
+
 void ad_InverseDynamics(Model& model,
-					  ADModel &ad_model,
+						ADModel &ad_model,
 						const Math::VectorNd& q,
 						const Math::MatrixNd& q_dirs,
 						const Math::VectorNd& qdot,
@@ -864,82 +917,98 @@ void ad_InverseDynamics(Model& model,
 		unsigned int lambda = model.lambda[i];
 		unsigned int q_index = model.mJoints[i].q_index;
 
-		ad_jcalc (model,
-				ad_model,
-				i,
-				q,
-				q_dirs,
-				qdot,
-				qdot_dirs);
+		// derivative evaluation
+		ad_jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
+		// nominal evaluation
+		// NOTE joints are already calculated in ad_jcalc
+		// jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
 
-// 		Done in ad_jcalc
-// 		for(unsigned int j = 0; j < ndirs; j++) {
-// 			ad_model.ad_X_lambda[i][j] = ad_model.ad_X_J[i][j] * model.X_T[i].toMatrix();
-// 		}
+		// Done in ad_jcalc
+		// FIXME this is right?
+		// for(unsigned int j = 0; j < ndirs; j++) {
+		// 	ad_model.ad_X_lambda[i][j] = ad_model.ad_X_J[i][j] * model.X_T[i].toMatrix();
+		// }
 
 		if (lambda != 0) {
+			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.ad_X_base[i][j] = ad_model.ad_X_lambda[i][j] * model.X_base[lambda].toMatrix()
 					+ model.X_lambda[i].toMatrix() * ad_model.ad_X_base[i][j];
 			}
+			// nominal evaluation
 			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 		} else {
+			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.ad_X_base[i][j] = ad_model.ad_X_lambda[i][j];
 			}
+			// nominal evaluation
 			model.X_base[i] = model.X_lambda[i];
 		}
 
+		// derivative evaluation
 		for(unsigned int j = 0; j < ndirs; j++) {
 			ad_model.ad_v[i][j] = ad_model.ad_X_lambda[i][j] * model.v[lambda]
 				+ model.X_lambda[i].apply (ad_model.ad_v[lambda][j])
 				+ ad_model.ad_v_J[i][j];
 		}
+		// nominal evaluation
 		model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
 
+		// derivative evaluation
 		for(unsigned int j = 0; j < ndirs; j++) {
 			ad_model.ad_c[i][j] = ad_model.ad_c_J[i][j]
 				+ crossm(ad_model.ad_v[i][j],model.v_J[i])
 				+ crossm(model.v[i],ad_model.ad_v_J[i][j]);
 		}
+		// nominal evaluation
 		model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
 
 		if (model.mJoints[i].mDoFCount == 3) {
 			cerr << "Multi-dof not supported." << endl;
 			abort();
+			// nominal evaluation
 			model.a[i] = model.X_lambda[i].apply(model.a[lambda])
 				+ model.c[i]
 				+ model.multdof3_S[i] * Vector3d (qddot[q_index], qddot[q_index + 1], qddot[q_index + 2]);
 		} else {
+			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.ad_a[i][j] = ad_model.ad_X_lambda[i][j] * model.a[lambda] + model.X_lambda[i].apply(ad_model.ad_a[lambda][j])
 					+ ad_model.ad_c[i][j]
 					+ ad_model.ad_S[i][j] * qddot[q_index] + model.S[i] * qddot_dirs(q_index,j);
 			}
+			// nominal evaluation
 			model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i] + model.S[i] * qddot[q_index];
 		}
 
 		if (!model.mBodies[i].mIsVirtual) {
+			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.ad_f[i][j] = model.I[i] * ad_model.ad_a[i][j]
 					+ crossf(ad_model.ad_v[i][j],model.I[i] * model.v[i])
 					+ crossf(model.v[i],model.I[i] * ad_model.ad_v[i][j]);
 			}
+			// nominal evaluation
 			model.f[i] = model.I[i] * model.a[i] + crossf(model.v[i],model.I[i] * model.v[i]);
 		} else {
+			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.ad_f[i][j].setZero();
 			}
+			// nominal evaluation
 			model.f[i].setZero();
 		}
 
 		if (f_ext != NULL && (*f_ext)[i] != SpatialVectorZero) {
+			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				SpatialMatrix ad_X_base_force(ad_model.ad_X_base[i][j]);
 				ad_X_base_force.block<3,3>(3,0) = Matrix3d::Zero();
 				ad_X_base_force.block<3,3>(0,3) = ad_model.ad_X_base[i][j].block<3,3>(3,0);
 				ad_model.ad_f[i][j] -= ad_X_base_force * (*f_ext)[i];
 			}
+			// nominal evaluation
 			model.f[i] -= model.X_base[i].toMatrixAdjoint() * (*f_ext)[i];
 		}
 	}
@@ -948,21 +1017,26 @@ void ad_InverseDynamics(Model& model,
 		if (model.mJoints[i].mDoFCount == 3) {
 			cerr << "Multi-dof not supported." << endl;
 			abort();
+			// nominal evaluation
 			tau.block<3,1>(model.mJoints[i].q_index, 0) = model.multdof3_S[i].transpose() * model.f[i];
 		} else {
+			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_tau(model.mJoints[i].q_index,j) = ad_model.ad_S[i][j].dot(model.f[i])
 					+ model.S[i].dot(ad_model.ad_f[i][j]);
 			}
+			// nominal evaluation
 			tau[model.mJoints[i].q_index] = model.S[i].dot(model.f[i]);
 		}
 
 		if (model.lambda[i] != 0) {
+			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.ad_f[model.lambda[i]][j] = ad_model.ad_f[model.lambda[i]][j]
 					+ ad_model.ad_X_lambda[i][j].transpose() * model.f[i]
 					+ model.X_lambda[i].applyTranspose(ad_model.ad_f[i][j]);
 			}
+			// nominal evaluation
 			model.f[model.lambda[i]] = model.f[model.lambda[i]]
 				+ model.X_lambda[i].applyTranspose(model.f[i]);
 		}
@@ -991,52 +1065,51 @@ void fd_CompositeRigidBodyAlgorithm (
 
 
 void ad_CompositeRigidBodyAlgorithm (
-						 Model &model,
-						 ADModel &ad_model,
-						 const VectorNd &q,
-						 const MatrixNd &q_dirs,
-						 MatrixNd &H,
-						 std::vector<MatrixNd> &out,
-						 bool update_kinematics = true
-						 ) {
+						Model &model,
+						ADModel &ad_model,
+						const VectorNd &q,
+						const MatrixNd &q_dirs,
+						MatrixNd &H,
+						std::vector<MatrixNd> &out,
+						bool update_kinematics = true
+						) {
 
-// 	double h = 1.0e-8;
 	size_t ndirs = q_dirs.cols();
-
 	ad_model.resize_directions(ndirs);
 
-	for(unsigned i = 1; i < model.mBodies.size(); i++)
-		ad_jcalc(model,ad_model,i,q,q_dirs,VectorNd::Zero(model.q_size),MatrixNd::Zero(model.q_size,ndirs));
-
-	// --- derivative quantities ----------------------------------------------------------------------
+	for(unsigned i = 1; i < model.mBodies.size(); i++){
+		ad_jcalc(model, ad_model, i, q, q_dirs, VectorNd::Zero(model.q_size), MatrixNd::Zero(model.q_size,ndirs));
+	}
 
 	assert (H.rows() == model.dof_count && H.cols() == model.dof_count);
 
 	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
 		if (update_kinematics) {
-			jcalc_X_lambda_S (model, i, q);
-			// this works for single dof joint
-			cerr << "No ad_jcalc_X_lambda_S implemented yet" << endl;
+			// derivative evaluation
+			ad_jcalc_X_lambda_S (model, ad_model, i, q, q_dirs);
+			// nominal evaluation
+			// NOTE nominal evaluation is part of ad_jcalc_X_lambda_S
+			// jcalc_X_lambda_S (model, i, q);
 		}
-		// ad code
+		// derivative evaluation
 		for (size_t j = 0; j < ndirs; j++) {
 			ad_model.ad_I_ci[i][j] = SpatialMatrix::Zero();
 //			 fd_I_ci[i][j] = SpatialMatrix::Zero();
 		}
-		// normal quantity code
+		// nominal evaluation
 		model.Ic[i] = model.I[i];
 	}
 
 	for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
 		//if (model.lambda[i] != 0) {
-			// ad code
+			// derivative evaluation
 			for(size_t j = 0; j < ndirs; j++) {
 				ad_model.ad_I_ci[model.lambda[i]][j] = ad_model.ad_I_ci[model.lambda[i]][j] + model.X_lambda[i].toMatrixTranspose()*ad_model.ad_I_ci[i][j]*model.X_lambda[i].toMatrix() + ad_model.ad_X_lambda[i][j].transpose()*model.Ic[i].toMatrix()*model.X_lambda[i].toMatrix() + model.X_lambda[i].toMatrixTranspose()*model.Ic[i].toMatrix()*ad_model.ad_X_lambda[i][j];
 // 	fd_I_ci[model.lambda[i]][j] = fd_I_ci[model.lambda[i]][j] + model.X_lambda[i].toMatrixTranspose()*fd_I_ci[i][j]*model.X_lambda[i].toMatrix() + (fd_per_X_lambda[i][j].transpose()*model.Ic[i].toMatrix()*fd_per_X_lambda[i][j] - model.X_lambda[i].toMatrixTranspose()*model.Ic[i].toMatrix()*model.X_lambda[i].toMatrix())/h;
 
 // 	cout << "fd - ad: " << endl << fd_I_ci[model.lambda[i]][j] - ad_I_ci[model.lambda[i]][j] << endl;
 			}
-			// normal quantity code
+			// nominal evaluation
 			model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + model.X_lambda[i].applyTranspose(model.Ic[i]);
 
 
@@ -1070,28 +1143,28 @@ void ad_CompositeRigidBodyAlgorithm (
 		// 	}
 		// } else {
 
-		// ad code
+		// derivative evaluation
 		for (size_t j = 0; j < ndirs; j++) {
 			ad_model.ad_F[i][j] = ad_model.ad_I_ci[i][j]*model.S[i]+model.Ic[i].toMatrix()*ad_model.ad_S[i][j];
 		}
-		// normal quantity code
+		// nominal evaluation
 		SpatialVector F = model.Ic[i] * model.S[i];
 
-		// ad code
+		// derivative evaluation
 		for (size_t j = 0; j < ndirs; j++) {
 			out[j](dof_index_i, dof_index_i) = ad_model.ad_S[i][j].dot(F)+model.S[i].dot(ad_model.ad_F[i][j]);
 		}
-		// normal quantity code
+		// nominal evaluation
 		H(dof_index_i, dof_index_i) = model.S[i].dot(F);
 		unsigned int j = i;
 		unsigned int dof_index_j = dof_index_i;
 
 		while (model.lambda[j] != 0) {
-			// ad code
+			// derivative evaluation
 			for (size_t ndir = 0; ndir < ndirs; ndir++) {
 				ad_model.ad_F[i][ndir] = ad_model.ad_X_lambda[j][ndir].transpose()*F+model.X_lambda[j].toMatrixTranspose()*ad_model.ad_F[i][ndir];
 			}
-			// normal quantity code
+			// nominal evaluation
 			F = model.X_lambda[j].applyTranspose(F);
 			j = model.lambda[j];
 			dof_index_j = model.mJoints[j].q_index;
@@ -1101,10 +1174,10 @@ void ad_CompositeRigidBodyAlgorithm (
 			//	 H.block<1,3>(dof_index_i,dof_index_j) = H_temp2.transpose();
 			//	 H.block<3,1>(dof_index_j,dof_index_i) = H_temp2;
 			// } else {
-			// normal quantity code
+			// nominal evaluation
 			H(dof_index_i,dof_index_j) = F.dot(model.S[j]);
 			H(dof_index_j,dof_index_i) = H(dof_index_i,dof_index_j);
-			// ad code
+			// derivative evaluation
 			for (size_t ndir = 0; ndir < ndirs; ndir++) {
 				out[ndir](dof_index_i,dof_index_j) = ad_model.ad_F[i][ndir].dot(model.S[j])+F.dot(ad_model.ad_S[j][ndir]);
 				out[ndir](dof_index_j,dof_index_i) = out[ndir](dof_index_i,dof_index_j);
