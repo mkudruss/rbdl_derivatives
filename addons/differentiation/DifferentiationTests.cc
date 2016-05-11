@@ -41,7 +41,7 @@ struct ADModel {
 		ad_a_J.resize(model.mBodies.size(), ad_vec);
 		ad_a.resize(model.mBodies.size(), ad_vec);
 
-		ad_I_ci.resize(model.mBodies.size(), ad_X);
+		ad_Ic.resize(model.mBodies.size(), ad_X);
 		ad_F.resize(model.mBodies.size(), ad_vec);
 		ad_c.resize(model.mBodies.size(), ad_vec);
 		ad_f.resize(model.mBodies.size(), ad_vec);
@@ -72,7 +72,7 @@ struct ADModel {
 	std::vector<std::vector<SpatialVector> > ad_c;
 	std::vector<std::vector<SpatialVector> > ad_f;
 
-	std::vector<std::vector<SpatialMatrix> > ad_I_ci;
+	std::vector<std::vector<SpatialMatrix> > ad_Ic;
 	std::vector<std::vector<SpatialVector> > ad_F;
 
 	std::vector<std::vector<SpatialVector> > ad_pA;
@@ -131,8 +131,8 @@ struct ADModel {
 				ad_f[i].resize(ndirs, SpatialVector::Zero());
 			}
 
-			for (int i = 0; i < ad_I_ci.size(); ++i) {
-				ad_I_ci[i].resize(ndirs, SpatialMatrix::Zero());
+			for (int i = 0; i < ad_Ic.size(); ++i) {
+				ad_Ic[i].resize(ndirs, SpatialMatrix::Zero());
 			}
 
 			for (int i = 0; i < ad_F.size(); ++i) {
@@ -1142,26 +1142,26 @@ void ad_CompositeRigidBodyAlgorithm (
 			// jcalc_X_lambda_S (model, i, q);
 		}
 		// derivative evaluation
-		for (size_t j = 0; j < ndirs; j++) {
-			ad_model.ad_I_ci[i][j] = SpatialMatrix::Zero();
-//			 fd_I_ci[i][j] = SpatialMatrix::Zero();
+		for (size_t idir = 0; idir < ndirs; idir++) {
+			// NOTE Ic is a constant transformation
+			ad_model.ad_Ic[i][idir] = SpatialMatrix::Zero();
 		}
 		// nominal evaluation
 		model.Ic[i] = model.I[i];
 	}
 
 	for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
-		//if (model.lambda[i] != 0) {
+		if (model.lambda[i] != 0) {
 			// derivative evaluation
-			for(size_t j = 0; j < ndirs; j++) {
-				ad_model.ad_I_ci[model.lambda[i]][j] = ad_model.ad_I_ci[model.lambda[i]][j] + model.X_lambda[i].toMatrixTranspose()*ad_model.ad_I_ci[i][j]*model.X_lambda[i].toMatrix() + ad_model.ad_X_lambda[i][j].transpose()*model.Ic[i].toMatrix()*model.X_lambda[i].toMatrix() + model.X_lambda[i].toMatrixTranspose()*model.Ic[i].toMatrix()*ad_model.ad_X_lambda[i][j];
-// 	fd_I_ci[model.lambda[i]][j] = fd_I_ci[model.lambda[i]][j] + model.X_lambda[i].toMatrixTranspose()*fd_I_ci[i][j]*model.X_lambda[i].toMatrix() + (fd_per_X_lambda[i][j].transpose()*model.Ic[i].toMatrix()*fd_per_X_lambda[i][j] - model.X_lambda[i].toMatrixTranspose()*model.Ic[i].toMatrix()*model.X_lambda[i].toMatrix())/h;
-
-// 	cout << "fd - ad: " << endl << fd_I_ci[model.lambda[i]][j] - ad_I_ci[model.lambda[i]][j] << endl;
+			for(size_t idir = 0; idir < ndirs; idir++) {
+				ad_model.ad_Ic[model.lambda[i]][idir] = ad_model.ad_Ic[model.lambda[i]][idir]
+					+ model.X_lambda[i].toMatrixTranspose()*ad_model.ad_Ic[i][idir]*model.X_lambda[i].toMatrix()
+					+ ad_model.ad_X_lambda[i][idir].transpose()*model.Ic[i].toMatrix()*model.X_lambda[i].toMatrix()
+					+ model.X_lambda[i].toMatrixTranspose()*model.Ic[i].toMatrix()*ad_model.ad_X_lambda[i][idir];
 			}
 			// nominal evaluation
 			model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + model.X_lambda[i].applyTranspose(model.Ic[i]);
-		//}
+		}
 
 		unsigned int dof_index_i = model.mJoints[i].q_index;
 		assert( model.mJoints[i].mDoFCount == 1);
@@ -1193,7 +1193,7 @@ void ad_CompositeRigidBodyAlgorithm (
 
 		// derivative evaluation
 		for (size_t j = 0; j < ndirs; j++) {
-			ad_model.ad_F[i][j] = ad_model.ad_I_ci[i][j]*model.S[i]+model.Ic[i].toMatrix()*ad_model.ad_S[i][j];
+			ad_model.ad_F[i][j] = ad_model.ad_Ic[i][j]*model.S[i]+model.Ic[i].toMatrix()*ad_model.ad_S[i][j];
 		}
 		// nominal evaluation
 		SpatialVector F = model.Ic[i] * model.S[i];

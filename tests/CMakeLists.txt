@@ -28,7 +28,6 @@ SET ( TESTS_SRCS
 	ContactsTests.cc
 	UtilsTests.cc
 	SparseFactorizationTests.cc
-	DifferentiationTests.cc
 	)
 
 INCLUDE_DIRECTORIES ( ../src/ )
@@ -53,7 +52,7 @@ TARGET_LINK_LIBRARIES ( rbdl_tests
 		${UNITTEST++_LIBRARY}
 		${RBDL_LIBRARY}
 	)
-	
+
 OPTION (RUN_AUTOMATIC_TESTS "Perform automatic tests after compilation?" OFF)
 
 IF (RUN_AUTOMATIC_TESTS)
