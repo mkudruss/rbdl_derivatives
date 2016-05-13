@@ -5,6 +5,9 @@
  * Licensed under the zlib license. See LICENSE for more details.
  */
 
+#ifndef RBDL_MATH_AD_H
+#define RBDL_MATH_AD_H
+
 #include <cmath>
 #include <limits>
 
@@ -28,14 +31,14 @@ namespace AD {
 // -----------------------------------------------------------------------------
 
 RBDL_DLLAPI
-Matrix3d E_from_Matrix(const SpatialMatrix X) {
+inline Matrix3d E_from_Matrix(const SpatialMatrix X) {
     Matrix3d E = Matrix3d::Zero();
     E = X.block<3, 3>(0,0);
     return E;
 }
 
 RBDL_DLLAPI
-Vector3d r_from_Matrix(const SpatialMatrix X) {
+inline Vector3d r_from_Matrix(const SpatialMatrix X) {
     Matrix3d E = E_from_Matrix(X);
     Matrix3d Erx = Matrix3d::Zero();
     Erx = X.block<3,3>(3,0);
@@ -48,7 +51,7 @@ Vector3d r_from_Matrix(const SpatialMatrix X) {
 }
 
 RBDL_DLLAPI
-Vector3d r_from_Matrix(const SpatialMatrix X, const SpatialMatrix X_dirs) {
+inline Vector3d r_from_Matrix(const SpatialMatrix X, const SpatialMatrix X_dirs) {
     Matrix3d E_dirs = E_from_Matrix(X_dirs);
     Matrix3d E = E_from_Matrix(X);
 
@@ -69,7 +72,7 @@ Vector3d r_from_Matrix(const SpatialMatrix X, const SpatialMatrix X_dirs) {
 }
 
 RBDL_DLLAPI
-SpatialMatrix Xroty (const double &yrot, const double &yrot_dirs) {
+inline SpatialMatrix Xroty (const double &yrot, const double &yrot_dirs) {
     SpatialMatrix result (SpatialMatrix::Zero(6,6));
 
     double s, c;
@@ -88,7 +91,7 @@ SpatialMatrix Xroty (const double &yrot, const double &yrot_dirs) {
 }
 
 RBDL_DLLAPI
-SpatialMatrix Xtrans (const Vector3d &trans, const Vector3d &trans_dirs) {
+inline SpatialMatrix Xtrans (const Vector3d &trans, const Vector3d &trans_dirs) {
     SpatialMatrix result (SpatialMatrix::Zero(6,6));
 
     result(3,1) =  trans_dirs[2];
@@ -105,7 +108,7 @@ SpatialMatrix Xtrans (const Vector3d &trans, const Vector3d &trans_dirs) {
 
 // NOTE: ad_crossm is equal to crossm applied to the directions
 RBDL_DLLAPI
-SpatialMatrix crossm (const SpatialVector &v) {
+inline SpatialMatrix crossm (const SpatialVector &v) {
     return SpatialMatrix (
                 0, -v[2],  v[1],     0,     0,     0,
              v[2],     0, -v[0],     0,     0,     0,
@@ -117,7 +120,7 @@ SpatialMatrix crossm (const SpatialVector &v) {
 }
 
 RBDL_DLLAPI
-SpatialVector crossm (
+inline SpatialVector crossm (
     const SpatialVector &v1, const SpatialVector &v1_dirs,
     const SpatialVector &v2, const SpatialVector &v2_dirs
 ) {
@@ -147,3 +150,6 @@ SpatialVector crossm (
 // -----------------------------------------------------------------------------
 } /* RigidBodyDynamics */
 // -----------------------------------------------------------------------------
+
+/* RBDL_MATH_AD_H */
+#endif

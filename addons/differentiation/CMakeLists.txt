@@ -23,9 +23,6 @@ SET ( DIFFERENTIATION_SOURCES
 	ModelAD.cc
 	# KinematicsAD.cc
 	# DynamicsAD.cc
-	# rbdl_mathutilsAD.h
-	# rbdl_mathutilsFD.h
-	main.cc
 )
 
 IF ( RBDL_BUILD_STATIC )

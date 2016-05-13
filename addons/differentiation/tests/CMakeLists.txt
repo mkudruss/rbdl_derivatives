@@ -12,7 +12,7 @@ INCLUDE_DIRECTORIES (${UNITTEST++_INCLUDE_DIR})
 SET ( TESTS_SRCS
     runtests.cc
     rbdl_mathutilsADvsFDTests.cc
-    # MinimalADvsFDTests.cc
+    MinimalADvsFDTests.cc
 )
 
 INCLUDE_DIRECTORIES ( ../src/ )
@@ -33,9 +33,15 @@ IF (RBDL_BUILD_STATIC)
     SET (RBDL_LIBRARY rbdl-static)
 ENDIF (RBDL_BUILD_STATIC)
 
+SET (RBDL_LIBRARY_AD rbdl_ad)
+IF (RBDL_BUILD_STATIC)
+    SET (RBDL_LIBRARY_AD rbdl_ad-static)
+ENDIF (RBDL_BUILD_STATIC)
+
 TARGET_LINK_LIBRARIES ( rbdl_ad_tests
         ${UNITTEST++_LIBRARY}
         ${RBDL_LIBRARY}
+        ${RBDL_LIBRARY_AD}
     )
 
 IF (RUN_AUTOMATIC_TESTS)
