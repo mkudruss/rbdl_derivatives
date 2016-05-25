@@ -119,6 +119,10 @@ void ADModel::resize_directions (unsigned requested_ndirs){
             IA[i].resize(ndirs, SpatialMatrix::Zero());
         }
 
+        for (int i = 0; i < hc.size(); ++i) {
+            hc[i].resize(ndirs, SpatialVector::Zero());
+        }
+
         // for(int i = 0; i < u.size(); ++i) {
         //  u[i].resize(ndirs, 0.0);
         // }
