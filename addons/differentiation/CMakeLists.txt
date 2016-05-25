@@ -21,8 +21,9 @@ SET (CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # define add-on sources
 SET ( DIFFERENTIATION_SOURCES
 	ModelAD.cc
-	# KinematicsAD.cc
-	# DynamicsAD.cc
+	KinematicsAD.cc
+	DynamicsAD.cc
+	JointAD.cc
 )
 
 IF ( RBDL_BUILD_STATIC )

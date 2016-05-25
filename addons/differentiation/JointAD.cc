@@ -14,6 +14,12 @@
 #include "rbdl/Model.h"
 #include "rbdl/Joint.h"
 
+#include "rbdl_mathutilsAD.h"
+
+#include "JointAD.h"
+#include "ModelAD.h"
+
+
 namespace RigidBodyDynamics {
 	RBDL_DLLAPI
 		void ad_jcalc (
@@ -45,10 +51,10 @@ namespace RigidBodyDynamics {
 			} else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteY) {
 				// derivative code
 				for (int idir = 0; idir < ndirs; ++idir) {
-					ad_model.ad_X_J[joint_id][idir] = ad_Xroty (q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir));
-					ad_model.ad_S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 1., 0., 0., 0., 0.]
-					ad_model.ad_v_J[joint_id][idir][1] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
-					ad_model.ad_c_J[joint_id][idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
+                    ad_model.X_J[joint_id][idir] = AD::Xroty(q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir));
+                    ad_model.S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 1., 0., 0., 0., 0.]
+                    ad_model.v_J[joint_id][idir][1] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
+                    ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
 				}
 				// nominal code
 				model.X_J[joint_id] = Xroty (q[model.mJoints[joint_id].q_index]);
@@ -59,10 +65,12 @@ namespace RigidBodyDynamics {
 			} else if (model.S[joint_id] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
 				// derivative code
 				for (int idir = 0; idir < ndirs; ++idir) {
-					ad_model.ad_X_J[joint_id][idir] = ad_Xtrans (Vector3d (q_dirs(model.mJoints[joint_id].q_index, idir), 0.0, 0.0));
-					ad_model.ad_S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 0., 0., 1., 0., 0.]
-					ad_model.ad_v_J[joint_id][idir][3] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
-					ad_model.ad_c_J[joint_id][idir] = SpatialVector::Zero(); // v_J = Sdot*qdot
+                    ad_model.X_J[joint_id][idir] = AD::Xtrans(
+                                Vector3d (q(model.mJoints[joint_id].q_index, idir), 0.0, 0.0),
+                                Vector3d (q_dirs(model.mJoints[joint_id].q_index, idir), 0.0, 0.0));
+                    ad_model.S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 0., 0., 1., 0., 0.]
+                    ad_model.v_J[joint_id][idir][3] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
+                    ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // v_J = Sdot*qdot
 				}
 				// nominal code
 				model.X_J[joint_id] = Xtrans (Vector3d (q[model.mJoints[joint_id].q_index], 0., 0.));
@@ -91,7 +99,7 @@ namespace RigidBodyDynamics {
 			}
 			// derivative code
 			for (int idir = 0; idir < ndirs; ++idir) {
-				ad_model.ad_X_lambda[joint_id][idir] = ad_model.ad_X_J[joint_id][idir] * model.X_T[joint_id].toMatrix();
+                ad_model.X_lambda[joint_id][idir] = ad_model.X_J[joint_id][idir] * model.X_T[joint_id].toMatrix();
 				//cout << "ad_jcalc:  ad_X_lambda[" << joint_id << "][" << idir << "] =" << endl << ad_X_lambda[joint_id][idir] << endl;
 				//cout << "ad_jcalc:  ad_X_Ji[" << joint_id << "][" << idir << "] =" << endl << ad_X_Ji[idir] << endl;
 			}
@@ -109,7 +117,6 @@ Math::SpatialMatrix ad_jcalc_XJ (
 	const Math::VectorNd &q,
 	const Math::MatrixNd &q_dirs
 ) {
-
 	// exception if we calculate it for the root body
 	assert (joint_id > 0);
 
@@ -124,12 +131,13 @@ Math::SpatialMatrix ad_jcalc_XJ (
 			// 	model.mJoints[joint_id].mJointAxes[0][2]
 			// 	));
 		} else if (model.mJoints[joint_id].mJointType == JointTypePrismatic) {
-			return ad_Xtrans ( Vector3d (
-				model.mJoints[joint_id].mJointAxes[0][3] * q_dirs(model.mJoints[joint_id].q_index, idir),
-				model.mJoints[joint_id].mJointAxes[0][4] * q_dirs(model.mJoints[joint_id].q_index, idir),
-				model.mJoints[joint_id].mJointAxes[0][5] * q_dirs(model.mJoints[joint_id].q_index, idir)
-				)
-			);
+            return AD::Xtrans ( Vector3d (
+                                    model.mJoints[joint_id].mJointAxes[0][3] * q(model.mJoints[joint_id].q_index, idir),
+                                    model.mJoints[joint_id].mJointAxes[0][4] * q(model.mJoints[joint_id].q_index, idir),
+                                    model.mJoints[joint_id].mJointAxes[0][5] * q(model.mJoints[joint_id].q_index, idir)),
+                    Vector3d ( model.mJoints[joint_id].mJointAxes[0][3] * q_dirs(model.mJoints[joint_id].q_index, idir),
+                               model.mJoints[joint_id].mJointAxes[0][4] * q_dirs(model.mJoints[joint_id].q_index, idir),
+                               model.mJoints[joint_id].mJointAxes[0][5] * q_dirs(model.mJoints[joint_id].q_index, idir)));
 		}
 	}
 	std::cerr << "Error: invalid joint type!" << std::endl;
@@ -159,9 +167,9 @@ Math::SpatialMatrix ad_jcalc_XJ (
 				// derivative evaluation
 				for (int idir = 0; idir < ndirs; ++idir) {
 					// NOTE: X_T is a constant model dependent transformation
-					ad_model.ad_X_lambda[joint_id][idir] =
-						ad_Xroty (q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir)) * model.X_T[joint_id].toMatrix();
-					ad_model.ad_S[joint_id][idir] = SpatialVector::Zero();  // S = [0,. 1., 0., 0., 0., 0.]
+                    ad_model.X_lambda[joint_id][idir] =
+                        AD::Xroty (q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir)) * model.X_T[joint_id].toMatrix();
+                    ad_model.S[joint_id][idir] = SpatialVector::Zero();  // S = [0,. 1., 0., 0., 0., 0.]
 				}
 				// nominal evaluation
 				model.X_lambda[joint_id] = Xroty (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
@@ -173,8 +181,8 @@ Math::SpatialMatrix ad_jcalc_XJ (
 				// derivative evaluation
 				for (int idir = 0; idir < ndirs; ++idir) {
 					// NOTE: X_T is a constant model dependent transformation
-					ad_model.ad_X_lambda[joint_id][idir] = ad_jcalc_XJ (model, ad_model, joint_id, idir, q, q_dirs) * model.X_T[joint_id].toMatrix();
-					ad_model.ad_S[joint_id][idir] = SpatialVector::Zero();  // S = [0,. 1., 0., 0., 0., 0.]
+                    ad_model.X_lambda[joint_id][idir] = ad_jcalc_XJ (model, ad_model, joint_id, idir, q, q_dirs) * model.X_T[joint_id].toMatrix();
+                    ad_model.S[joint_id][idir] = SpatialVector::Zero();  // S = [0,. 1., 0., 0., 0., 0.]
 				}
 				// nominal evaluation
 				model.X_lambda[joint_id] = jcalc_XJ (model, joint_id, q) * model.X_T[joint_id];

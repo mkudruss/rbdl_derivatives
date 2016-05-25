@@ -20,8 +20,6 @@
 
 #include "rbdl/Logging.h"
 
-using namespace RigidBodyDynamics::Math;
-
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------

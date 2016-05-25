@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "rbdl/Logging.h"
+#include "rbdl/rbdl_utils.h"
 #include "rbdl/rbdl_mathutils.h"
 
 #include "rbdl/Model.h"
@@ -16,6 +17,7 @@
 using namespace std;
 using namespace RigidBodyDynamics;
 using namespace RigidBodyDynamics::Math;
+using namespace RigidBodyDynamics::Utils;
 
 const double TEST_PREC = 1.0e-12;
 
@@ -175,6 +177,274 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseCoordinatesSingleFunc) {
 
 	CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, TEST_PREC);
 }
+
+RBDL_DLLAPI void fd_CalcCenterOfMass (
+        Model & model,
+        const VectorNd & q,
+        const MatrixNd & q_dirs,
+        const VectorNd & qdot,
+        const MatrixNd & qdot_dirs,
+        double & mass,
+        Vector3d & com,
+        MatrixNd & fd_com,
+        Vector3d * com_velocity,
+        MatrixNd * fd_com_velocity,
+        Vector3d * angular_momentum,
+        MatrixNd * fd_angular_momentum) {
+    assert(q_dirs.cols() == qdot_dirs.cols());
+    assert(q_dirs.cols() == fd_com.cols());
+    if (com_velocity) {
+        assert(q_dirs.cols() == fd_com_velocity->cols());
+    }
+    if (angular_momentum) {
+        assert(q_dirs.cols() == fd_angular_momentum->cols());
+    }
+
+    int ndirs = q_dirs.cols();
+
+    CalcCenterOfMass(model, q, qdot, mass, com, com_velocity, angular_momentum);
+
+    double h = sqrt(1e-16);
+
+    VectorNd q_dir(q);
+    VectorNd qdot_dir(qdot);
+
+    for (int i = 0; i < ndirs; i++ ) {
+        q_dir = q_dirs.block(0, i, model.q_size, 1);
+        qdot_dir = qdot_dirs.block(0, i, model.qdot_size, 1);
+
+        double hd_mass;
+        Vector3d hd_com;
+        Vector3d * hd_com_velocity = 0;
+        Vector3d * hd_angular_momentum = 0;
+
+        if (com_velocity) {
+            hd_com_velocity = new Vector3d;
+        }
+
+        if (angular_momentum) {
+            hd_angular_momentum = new Vector3d;
+        }
+
+        CalcCenterOfMass(model, q + h * q_dir, qdot + h * qdot_dir, hd_mass, hd_com, hd_com_velocity, hd_angular_momentum);
+
+        fd_com.block<3,1>(0, i) = (hd_com - com) / h;
+
+        if (com_velocity) {
+            fd_com_velocity->block<3,1>(0, i) = (*hd_com_velocity - *com_velocity) / h;
+            delete hd_com_velocity;
+        }
+
+        if (angular_momentum) {
+            fd_angular_momentum->block<3,1>(0, i) = (*hd_angular_momentum - *angular_momentum) / h;
+            delete hd_angular_momentum;
+        }
+    }
+}
+
+RBDL_DLLAPI void ad_UpdateKinematicsCustom (
+        Model &model,
+        ADModel & ad_model,
+        const VectorNd * Q,
+        const MatrixNd * q_dirs,
+        const VectorNd * QDot,
+        const MatrixNd * qdot_dirs,
+        const VectorNd * QDDot,
+        const MatrixNd * qddot_dirs) {
+    LOG << "-------- " << __func__ << " --------" << std::endl;
+    unsigned int i;
+    if (Q) {
+        for (i = 1; i < model.mBodies.size(); i++) {
+            unsigned int lambda = model.lambda[i];
+
+            VectorNd QDot_zero (VectorNd::Zero (model.q_size));
+
+            jcalc (model, i, (*Q), QDot_zero);
+
+            model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+
+            if (lambda != 0) {
+                model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+            }	else {
+                model.X_base[i] = model.X_lambda[i];
+            }
+        }
+    }
+
+        if (QDot) {
+            for (i = 1; i < model.mBodies.size(); i++) {
+                unsigned int lambda = model.lambda[i];
+
+                jcalc (model, i, *Q, *QDot);
+
+                if (lambda != 0) {
+                    model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
+                    model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
+                }	else {
+                    model.v[i] = model.v_J[i];
+                    model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
+                }
+                // LOG << "v[" << i << "] = " << model.v[i].transpose() << std::endl;
+            }
+        }
+
+        if (QDDot) {
+            for (i = 1; i < model.mBodies.size(); i++) {
+                unsigned int q_index = model.mJoints[i].q_index;
+
+                unsigned int lambda = model.lambda[i];
+
+                if (lambda != 0) {
+                    model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
+                }	else {
+                    model.a[i] = model.c[i];
+                }
+
+                if (model.mJoints[i].mDoFCount == 3) {
+                    Vector3d omegadot_temp ((*QDDot)[q_index], (*QDDot)[q_index + 1], (*QDDot)[q_index + 2]);
+                    model.a[i] = model.a[i] + model.multdof3_S[i] * omegadot_temp;
+                } else {
+                    model.a[i] = model.a[i] + model.S[i] * (*QDDot)[q_index];
+                }
+            }
+        }
+    }
+
+
+RBDL_DLLAPI void ad_CalcCenterOfMass (
+        Model & model,
+        ADModel & ad_model,
+        const VectorNd & q,
+        const MatrixNd & q_dirs,
+        const VectorNd & qdot,
+        const MatrixNd & qdot_dirs,
+        double & mass,
+        Vector3d & com,
+        MatrixNd & ad_com,
+        Vector3d * com_velocity,
+        MatrixNd * ad_com_velocity,
+        Vector3d * angular_momentum,
+        MatrixNd * ad_angular_momentum,
+        bool update_kinematics) {
+    assert(q_dirs.cols() == qdot_dirs.cols());
+    assert(q_dirs.cols() == ad_com.cols());
+    if (com_velocity) {
+        assert(q_dirs.cols() == ad_com_velocity->cols());
+    }
+    if (angular_momentum) {
+        assert(q_dirs.cols() == ad_angular_momentum->cols());
+    }
+
+    if (update_kinematics) {
+        ad_UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, &qdot, &qdot_dirs, NULL, NULL);
+    }
+
+    int ndirs = q_dirs.cols();
+
+    for (size_t i = 1; i < model.mBodies.size(); i++) {
+        // derivative evaluation
+        for(size_t idir = 0; idir < ndirs; idir++) {
+            ad_model.Ic[i][idir] = SpatialMatrix::Zero();
+        }
+        // nominal evaluation
+        model.Ic[i] = model.I[i];
+
+        // derivative evaluation (can be shortened, as 2nd summand is currently always zero.
+        for(size_t idir = 0; idir < ndirs; idir++) {
+            ad_model.hc[i][idir] = model.Ic[i].toMatrix() * ad_model.v[i][idir]
+                    + ad_model.Ic[i][idir] * model.v[i];
+        }
+        // nominal evaluation
+        model.hc[i] = model.Ic[i].toMatrix() * model.v[i];
+    }
+
+    SpatialRigidBodyInertia Itot (0., Vector3d (0., 0., 0.), Matrix3d::Zero(3,3));
+    vector<SpatialRigidBodyInertia> ad_Itot(ndirs, Itot);
+
+    SpatialVector htot (SpatialVector::Zero(6));
+    vector<SpatialVector> ad_htot(ndirs, htot);
+
+    for (size_t i = model.mBodies.size() - 1; i > 0; i--) {
+        unsigned int lambda = model.lambda[i];
+        if (lambda != 0) {
+            // derivative evaluation
+            for (size_t idir = 0; idir < ndirs; idir++) {
+                ad_model.Ic[lambda][idir] = ad_model.Ic[lambda][idir]
+                        + model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix()
+                        + model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix() * ad_model.X_lambda[i][idir]
+                        + ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix() * model.X_lambda[i].toMatrix();
+            }
+            // nominal evaluation
+            model.Ic[lambda] = model.Ic[lambda] + model.X_lambda[i].applyTranspose (model.Ic[i]);
+
+            // derivative evaluation
+            for (size_t idir = 0; idir < ndirs; idir++) {
+                ad_model.hc[lambda][idir] = ad_model.hc[lambda][idir]
+                        + model.X_lambda[i].toMatrixTranspose() * ad_model.hc[i][idir]
+                        + ad_model.X_lambda[i][idir].transpose() * model.hc[i];
+            }
+            // nominal evaluation
+            model.hc[lambda] = model.hc[lambda] + model.X_lambda[i].applyTranspose (model.hc[i]);
+        } else {
+            // derivative evaluation
+            for (size_t idir = 0; idir < ndirs; idir++) {
+                SpatialMatrix m =
+                        model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix()
+                        + model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix() * ad_model.X_lambda[i][idir]
+                        + ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix() * model.X_lambda[i].toMatrix();
+
+                SpatialRigidBodyInertia m2i;
+                m2i.createFromMatrix(model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix());
+                ad_Itot[idir] = ad_Itot[idir] + m2i;
+            }
+            // nominal evaluation
+            Itot = Itot + model.X_lambda[i].applyTranspose (model.Ic[i]);
+
+            // derivative evaluation
+            for (size_t idir = 0; idir < ndirs; idir++) {
+                ad_htot[idir] += model.X_lambda[i].toMatrixTranspose() * ad_model.hc[i][idir]
+                        + ad_model.X_lambda[i][idir].transpose() * model.hc[i];
+            }
+            // nominal evaluation
+            htot = htot + model.X_lambda[i].applyTranspose (model.hc[i]);
+        }
+    }
+
+    mass = Itot.m;
+    com = Itot.h / mass;
+    for (size_t idir = 0; idir < ndirs; idir++) {
+        ad_com.block<3,1>(0, idir) = ad_Itot[idir].h / mass;
+    }
+
+    LOG << "mass = " << mass << " com = " << com.transpose() << " htot = " << htot.transpose() << std::endl;
+
+    if (com_velocity) {
+        // derivative evaluation
+        for (size_t idir = 0; idir < ndirs; idir++) {
+            ad_com_velocity->block<3, 1>(0, idir) = Vector3d(ad_htot[idir][3] / mass, ad_htot[idir][4] / mass, ad_htot[idir][5] / mass);
+        }
+        // nominal evaluation
+        *com_velocity = Vector3d (htot[3] / mass, htot[4] / mass, htot[5] / mass);
+    }
+
+    if (angular_momentum) {
+        // derivative evaluation
+        for (size_t idir = 0; idir < ndirs; idir++) {
+            ad_htot[idir] = Xtrans(com).toMatrixAdjoint() * ad_htot[idir]
+                            + Xtrans(ad_com.block<3,1>(0, idir)).applyAdjoint(ad_htot[idir]);
+        }
+        // nominal evaluation
+        htot = Xtrans (com).applyAdjoint (htot);
+
+        // derivative evaluation
+        for (size_t idir = 0; idir < ndirs; idir++) {
+            ad_angular_momentum->block<3,1>(0, idir) = Vector3d(ad_htot[idir][0], ad_htot[idir][1], ad_htot[idir][2]);
+        }
+        // nominal evaluation
+        angular_momentum->set (htot[0], htot[1], htot[2]);
+    }
+}
+
 
 // TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 // 	MatrixNd jacobian_ad = MatrixNd::Zero(3, model.qdot_size);

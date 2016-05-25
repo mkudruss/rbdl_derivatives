@@ -51,11 +51,13 @@ struct ADModel {
     vector<vector<SpatialVector> > f;
 
     vector<vector<SpatialMatrix> > Ic;
+    vector<vector<SpatialVector> > hc;
     vector<vector<SpatialVector> > F;
 
     vector<vector<SpatialVector> > pA;
     vector<vector<SpatialVector> > U;
     vector<vector<SpatialMatrix> > IA;
+
     //vector<vector<double> > u;
     //vector<vector<double> > d;
     MatrixNd u;
