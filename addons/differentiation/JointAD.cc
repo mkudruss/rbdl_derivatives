@@ -66,7 +66,7 @@ namespace RigidBodyDynamics {
 				// derivative code
 				for (int idir = 0; idir < ndirs; ++idir) {
                     ad_model.X_J[joint_id][idir] = AD::Xtrans(
-                                Vector3d (q(model.mJoints[joint_id].q_index, idir), 0.0, 0.0),
+                                Vector3d (q(model.mJoints[joint_id].q_index), 0.0, 0.0),
                                 Vector3d (q_dirs(model.mJoints[joint_id].q_index, idir), 0.0, 0.0));
                     ad_model.S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 0., 0., 1., 0., 0.]
                     ad_model.v_J[joint_id][idir][3] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
@@ -132,9 +132,9 @@ Math::SpatialMatrix ad_jcalc_XJ (
 			// 	));
 		} else if (model.mJoints[joint_id].mJointType == JointTypePrismatic) {
             return AD::Xtrans ( Vector3d (
-                                    model.mJoints[joint_id].mJointAxes[0][3] * q(model.mJoints[joint_id].q_index, idir),
-                                    model.mJoints[joint_id].mJointAxes[0][4] * q(model.mJoints[joint_id].q_index, idir),
-                                    model.mJoints[joint_id].mJointAxes[0][5] * q(model.mJoints[joint_id].q_index, idir)),
+                                    model.mJoints[joint_id].mJointAxes[0][3] * q(model.mJoints[joint_id].q_index),
+                                    model.mJoints[joint_id].mJointAxes[0][4] * q(model.mJoints[joint_id].q_index),
+                                    model.mJoints[joint_id].mJointAxes[0][5] * q(model.mJoints[joint_id].q_index)),
                     Vector3d ( model.mJoints[joint_id].mJointAxes[0][3] * q_dirs(model.mJoints[joint_id].q_index, idir),
                                model.mJoints[joint_id].mJointAxes[0][4] * q_dirs(model.mJoints[joint_id].q_index, idir),
                                model.mJoints[joint_id].mJointAxes[0][5] * q_dirs(model.mJoints[joint_id].q_index, idir)));
