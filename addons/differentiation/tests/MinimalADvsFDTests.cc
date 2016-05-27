@@ -539,12 +539,12 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcCenterOfMass) {
     MatrixNd q_dirs = MatrixNd::Identity(model.dof_count, model.dof_count);
     MatrixNd qdot_dirs = MatrixNd::Identity(model.dof_count, model.dof_count);
 
-//    double   ad_mass;
-//    Vector3d ad_com;
-//    MatrixNd ad_d_com(3, q_dirs.cols());
-//    ad_CalcCenterOfMass(model, ad_model, q, q_dirs, qdot, qdot_dirs, ad_mass,
-//                        ad_com, ad_d_com,
-//                        0, 0, 0, 0, true);
+    double   ad_mass;
+    Vector3d ad_com;
+    MatrixNd ad_d_com(3, q_dirs.cols());
+    ad_CalcCenterOfMass(model, ad_model, q, q_dirs, qdot, qdot_dirs, ad_mass,
+                        ad_com, ad_d_com,
+                        0, 0, 0, 0, true);
 
 //    double   fd_mass;
 //    Vector3d fd_com;

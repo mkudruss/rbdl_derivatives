@@ -149,8 +149,8 @@ Math::SpatialMatrix ad_jcalc_XJ (
 			).toMatrix();
 		}
 	}
-	// std::cerr << "Error: invalid joint type!" << std::endl;
-	// abort();
+	std::cerr << "Error: invalid joint type!" << std::endl;
+	abort();
 	return SpatialMatrix();
 }
 
