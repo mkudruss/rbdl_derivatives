@@ -1,9 +1,9 @@
 #include <UnitTest++.h>
 
+#include <iomanip>
 #include <iostream>
 
 #include "rbdl/Logging.h"
-#include "rbdl/rbdl_utils.h"
 #include "rbdl/rbdl_mathutils.h"
 
 #include "rbdl/Model.h"
@@ -21,6 +21,7 @@
 using namespace std;
 using namespace RigidBodyDynamics;
 using namespace RigidBodyDynamics::Math;
+using namespace RigidBodyDynamics::Utils;
 
 const double TEST_PREC = 1.0e-12;
 
@@ -221,7 +222,7 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcCenterOfMass) {
     MatrixNd fd_d_comVelocity(3, ndirs);
     Vector3d fd_angMomentum(0., 0., 0.);
     MatrixNd fd_d_angMomentum(3, ndirs);
-    Utils::FD::CalcCenterOfMass(model, q, q_dirs, qdot, qdot_dirs, fd_mass, fd_com,
+    FD::CalcCenterOfMass(model, q, q_dirs, qdot, qdot_dirs, fd_mass, fd_com,
                          fd_d_com, &fd_comVelocity, &fd_d_comVelocity,
                          &fd_angMomentum, &fd_d_angMomentum);
 
@@ -256,7 +257,7 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcPotentialEnergy) {
             = MatrixNd::Identity(nrows, model.dof_count);
 
     MatrixNd fd_pote = MatrixNd::Zero(1, ndirs);
-    Utils::FD::CalcPotentialEnergy(model, q, q_dirs, fd_pote);
+    FD::CalcPotentialEnergy(model, q, q_dirs, fd_pote);
 
     MatrixNd ad_pote = MatrixNd::Zero(1, ndirs);
     Utils::AD::CalcPotentialEnergy(model, ad_model, q, q_dirs, ad_pote, true);
@@ -264,6 +265,47 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcPotentialEnergy) {
     CHECK_ARRAY_CLOSE(fd_pote.data(), ad_pote.data(), 1 * ndirs, 1e-8);
 }
 
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcKineticEnergy) {
+    q[0] = 0.3;
+    q[1] = -0.2;
+    qdot[0] = .1;
+    qdot[1] = -.15;
+
+    int nrows = model.dof_count;
+    int ndirs = 2 * model.dof_count;
+
+    MatrixNd q_dirs = MatrixNd::Zero(nrows, ndirs);
+    MatrixNd qdot_dirs = MatrixNd::Zero(nrows, ndirs);
+
+    q_dirs.block(0, 0, nrows, model.dof_count)
+            = MatrixNd::Identity(nrows, model.dof_count);
+    q_dirs.block(0, model.dof_count, nrows, model.dof_count)
+            = MatrixNd::Zero(nrows, model.dof_count);
+    qdot_dirs.block(0, 0, nrows, model.dof_count)
+            = MatrixNd::Zero(nrows, model.dof_count);
+    qdot_dirs.block(0, model.dof_count, nrows, model.dof_count)
+            = MatrixNd::Identity(nrows, model.dof_count);
+
+    MatrixNd fd_kine = MatrixNd::Zero(1, ndirs);
+    Utils::FD::CalcKineticEnergy(model, q, q_dirs, qdot, qdot_dirs, fd_kine);
+
+    MatrixNd ad_kine = MatrixNd::Zero(1, ndirs);
+    Utils::AD::CalcKineticEnergy(model, ad_model, q, q_dirs, qdot, qdot_dirs, ad_kine, true);
+
+    cout << "--" << endl;
+    cout << fd_kine << endl;
+    cout << "--" << endl;
+    cout << ad_kine << endl;
+    cout << "--" << endl;
+    cout << setw(10) << setfill(' ') << "e  = " <<(fd_kine - ad_kine) << endl;
+    cout << "--" << endl;
+    cout << setw(10) << setfill(' ') << "|e| = " << (fd_kine - ad_kine).norm() << endl;
+    cout << "--" << endl;
+    cout << setw(10) << setfill(' ') << "|e|/|x| = " << (fd_kine - ad_kine).norm() / fd_kine.norm() << endl;
+    cout << "--" << endl;
+
+    CHECK_ARRAY_CLOSE(fd_kine.data(), ad_kine.data(), 1 * ndirs, 1e-8);
+}
 
 // TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 // 	MatrixNd jacobian_ad = MatrixNd::Zero(3, model.qdot_size);

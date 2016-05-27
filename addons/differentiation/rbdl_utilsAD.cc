@@ -2,8 +2,6 @@
 #include "rbdl_mathutilsAD.h"
 #include "KinematicsAD.h"
 
-using namespace RigidBodyDynamics::Math;
-
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
@@ -12,34 +10,7 @@ namespace Utils {
 namespace AD {
 // -----------------------------------------------------------------------------
 
-RBDL_DLLAPI double CalcPotentialEnergy (
-        Model & model,
-        ADModel & ad_model,
-        VectorNd const & q,
-        MatrixNd const & q_dirs,
-        MatrixNd & ad_pote,
-        bool update_kinematics)
-{
-    int ndirs = q_dirs.cols();
-    assert(ad_pote.cols() == ndirs);
-    assert(ad_pote.rows() == 1);
-
-    double mass = 0;
-    Vector3d com = Vector3d::Zero(3);
-    MatrixNd ad_com = MatrixNd::Zero(3, ndirs); // 3-x-n matrix
-    CalcCenterOfMass (model, ad_model, q, q_dirs,
-            VectorNd::Zero (model.qdot_size),
-            MatrixNd::Zero (model.qdot_size, q_dirs.cols()),
-            mass, com, ad_com, NULL, NULL, NULL, NULL, update_kinematics);
-
-    Vector3d g = - Vector3d (model.gravity[0], model.gravity[1], model.gravity[2]);
-
-    LOG << "pot_energy: " << " mass = " << mass << " com = " << com.transpose() << std::endl;
-
-    ad_pote = mass * g.transpose() * ad_com;
-
-    return mass * com.dot(g);
-}
+using namespace Math;
 
 RBDL_DLLAPI void CalcCenterOfMass (
         Model & model,
@@ -176,6 +147,71 @@ RBDL_DLLAPI void CalcCenterOfMass (
         // nominal evaluation
         angular_momentum->set (htot[0], htot[1], htot[2]);
     }
+}
+
+RBDL_DLLAPI double CalcPotentialEnergy (
+        Model & model,
+        ADModel & ad_model,
+        VectorNd const & q,
+        MatrixNd const & q_dirs,
+        MatrixNd & ad_pote,
+        bool update_kinematics)
+{
+    int ndirs = q_dirs.cols();
+    assert(ad_pote.cols() == ndirs);
+    assert(ad_pote.rows() == 1);
+
+    double mass = 0;
+    Vector3d com = Vector3d::Zero(3);
+    MatrixNd ad_com = MatrixNd::Zero(3, ndirs); // 3-x-n matrix
+    CalcCenterOfMass (model, ad_model, q, q_dirs,
+            VectorNd::Zero (model.qdot_size),
+            MatrixNd::Zero (model.qdot_size, q_dirs.cols()),
+            mass, com, ad_com, NULL, NULL, NULL, NULL, update_kinematics);
+
+    Vector3d g = - Vector3d (model.gravity[0], model.gravity[1], model.gravity[2]);
+
+    LOG << "pot_energy: " << " mass = " << mass << " com = " << com.transpose() << std::endl;
+
+    // derivative value
+    ad_pote = mass * g.transpose() * ad_com;
+    // nominal value
+    return mass * com.dot(g);
+}
+
+RBDL_DLLAPI double CalcKineticEnergy (
+        Model & model,
+        ADModel & ad_model,
+        VectorNd const & q,
+        MatrixNd const & q_dirs,
+        VectorNd const & qdot,
+        MatrixNd const & qdot_dirs,
+        MatrixNd & ad_kine,
+        bool update_kinematics) {
+    unsigned int ndirs = q_dirs.cols();
+
+    assert(ndirs == qdot_dirs.cols());
+    assert(ndirs == ad_kine.cols());
+    assert(1 == ad_kine.rows());
+
+    if (update_kinematics) {
+        RigidBodyDynamics::AD::UpdateKinematicsCustom(model, ad_model,
+                &q, &q_dirs, &qdot, &qdot_dirs, 0, 0);
+    }
+
+    fill_n(ad_kine.data(), ad_kine.rows() * ad_kine.cols(), 0.);
+    double kine = 0.;
+    for (size_t i = 1; i < model.mBodies.size(); i++) {
+        // derivative value
+        for (unsigned int idir = 0; idir < ndirs; idir++) {
+            ad_kine.block<1,1>(0, idir) += .5 * (
+                    ad_model.v[i][idir].transpose() * (model.I[i] * model.v[i])
+                    + model.v[i].transpose() * (model.I[i] * ad_model.v[i][idir]));
+        }
+        // nominal value
+        kine += 0.5 * model.v[i].transpose() * (model.I[i] * model.v[i]);
+    }
+    return kine;
 }
 
 // -----------------------------------------------------------------------------

@@ -52,7 +52,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
     SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
 
     // derivative evaluation
-    for (unsigned idirs = 0; idirs < ndirs; ++idirs) {
+    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
         ad_model.a[0][idirs].setZero();
     }
     // nominal evaluation
