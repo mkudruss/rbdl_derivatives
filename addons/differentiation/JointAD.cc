@@ -55,7 +55,7 @@ void ad_jcalc (
 		abort();
 	} else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteY) {
 		// derivative code
-		for (int idir = 0; idir < ndirs; ++idir) {
+		for (unsigned int idir = 0; idir < ndirs; ++idir) {
 			ad_model.X_J[joint_id][idir] = AD::Xroty(q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir));
 			ad_model.S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 1., 0., 0., 0., 0.]
 			ad_model.v_J[joint_id][idir][1] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
@@ -69,7 +69,7 @@ void ad_jcalc (
 		abort();
 	} else if (model.S[joint_id] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
 		// derivative code
-		for (int idir = 0; idir < ndirs; ++idir) {
+		for (unsigned int idir = 0; idir < ndirs; ++idir) {
 			ad_model.X_J[joint_id][idir] = AD::Xtrans(
                 Vector3d (q(model.mJoints[joint_id].q_index), 0.0, 0.0),
 				Vector3d (q_dirs(model.mJoints[joint_id].q_index, idir), 0.0, 0.0)
@@ -104,7 +104,7 @@ void ad_jcalc (
 		abort();
 	}
 	// derivative code
-	for (int idir = 0; idir < ndirs; ++idir) {
+	for (unsigned int idir = 0; idir < ndirs; ++idir) {
 		ad_model.X_lambda[joint_id][idir] = ad_model.X_J[joint_id][idir] * model.X_T[joint_id].toMatrix();
 		//cout << "ad_jcalc:  ad_X_lambda[" << joint_id << "][" << idir << "] =" << endl << ad_X_lambda[joint_id][idir] << endl;
 		//cout << "ad_jcalc:  ad_X_Ji[" << joint_id << "][" << idir << "] =" << endl << ad_X_Ji[idir] << endl;
@@ -176,7 +176,7 @@ void ad_jcalc_X_lambda_S (
 		abort();
 	} else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteY) {
 		// derivative evaluation
-		for (int idir = 0; idir < ndirs; ++idir) {
+		for (unsigned int idir = 0; idir < ndirs; ++idir) {
 			// NOTE: X_T is a constant model dependent transformation
 			ad_model.X_lambda[joint_id][idir] =
 				AD::Xroty (q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir)) * model.X_T[joint_id].toMatrix();
@@ -190,7 +190,7 @@ void ad_jcalc_X_lambda_S (
 		abort();
 	} else if (model.mJoints[joint_id].mDoFCount == 1) {
 		// derivative evaluation
-		for (int idir = 0; idir < ndirs; ++idir) {
+		for (unsigned int idir = 0; idir < ndirs; ++idir) {
 			// NOTE: X_T is a constant model dependent transformation
 			ad_model.X_lambda[joint_id][idir] = ad_jcalc_XJ (model, ad_model, joint_id, idir, q, q_dirs) * model.X_T[joint_id].toMatrix();
 			ad_model.S[joint_id][idir] = SpatialVector::Zero();  // S = [0,. 1., 0., 0., 0., 0.]

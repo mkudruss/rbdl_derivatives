@@ -57,79 +57,79 @@ void ADModel::resize_directions (unsigned requested_ndirs){
     if (ndirs < requested_ndirs) {
         ndirs = requested_ndirs;
 
-        for (int i = 0; i < X_lambda.size(); ++i) {
+        for (unsigned int i = 0; i < X_lambda.size(); ++i) {
             X_lambda[i].resize(ndirs, SpatialMatrix::Zero());
         }
 
-        for (int i = 0; i < X_base.size(); ++i) {
+        for (unsigned int i = 0; i < X_base.size(); ++i) {
             X_base[i].resize(ndirs, SpatialMatrix::Zero());
         }
 
-        for (int i = 0; i < X_J.size(); ++i) {
+        for (unsigned int i = 0; i < X_J.size(); ++i) {
             X_J[i].resize(ndirs, SpatialMatrix::Zero());
         }
 
-        for (int i = 0; i < S.size(); ++i) {
+        for (unsigned int i = 0; i < S.size(); ++i) {
             S[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        for (int i = 0; i < v_J.size(); ++i) {
+        for (unsigned int i = 0; i < v_J.size(); ++i) {
             v_J[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        for (int i = 0; i < v_J.size(); ++i) {
+        for (unsigned int i = 0; i < v_J.size(); ++i) {
             v[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        for (int i = 0; i < c_J.size(); ++i) {
+        for (unsigned int i = 0; i < c_J.size(); ++i) {
             c_J[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        for (int i = 0; i < c_J.size(); ++i) {
+        for (unsigned int i = 0; i < c_J.size(); ++i) {
             a_J[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        for (int i = 0; i < c_J.size(); ++i) {
+        for (unsigned int i = 0; i < c_J.size(); ++i) {
             a[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        for (int i = 0; i < c_J.size(); ++i) {
+        for (unsigned int i = 0; i < c_J.size(); ++i) {
             c[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        for (int i = 0; i < c_J.size(); ++i) {
+        for (unsigned int i = 0; i < c_J.size(); ++i) {
             f[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        for (int i = 0; i < Ic.size(); ++i) {
+        for (unsigned int i = 0; i < Ic.size(); ++i) {
             Ic[i].resize(ndirs, SpatialMatrix::Zero());
         }
 
-        for (int i = 0; i < F.size(); ++i) {
+        for (unsigned int i = 0; i < F.size(); ++i) {
             F[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        for(int i = 0; i < pA.size(); ++i) {
+        for(unsigned int i = 0; i < pA.size(); ++i) {
             pA[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        for(int i = 0; i < U.size(); ++i) {
+        for(unsigned int i = 0; i < U.size(); ++i) {
             U[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        for (int i = 0; i < IA.size(); ++i) {
+        for (unsigned int i = 0; i < IA.size(); ++i) {
             IA[i].resize(ndirs, SpatialMatrix::Zero());
         }
 
-        for (int i = 0; i < hc.size(); ++i) {
+        for (unsigned int i = 0; i < hc.size(); ++i) {
             hc[i].resize(ndirs, SpatialVector::Zero());
         }
 
-        // for(int i = 0; i < u.size(); ++i) {
+        // for(unsigned int i = 0; i < u.size(); ++i) {
         //  u[i].resize(ndirs, 0.0);
         // }
 
-        // for (int i = 0; i < d.size(); ++i) {
+        // for (unsigned int i = 0; i < d.size(); ++i) {
         //  d[i].resize(ndirs, 0.0);
         // }
 

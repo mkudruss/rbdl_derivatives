@@ -48,9 +48,10 @@ void ad_ForwardDynamics (
 	MatrixNd& ad_qddot,
 	std::vector<SpatialVector>* f_ext
 );
+*/
 
 RBDL_DLLAPI
-void ad_InverseDynamics(
+void InverseDynamics(
 	Model& model,
 	ADModel &ad_model,
 	const Math::VectorNd& q,
@@ -63,7 +64,6 @@ void ad_InverseDynamics(
 	Math::MatrixNd& ad_tau,
 	std::vector<Math::SpatialVector> *f_ext
 );
-*/
 
 RBDL_DLLAPI
 void CompositeRigidBodyAlgorithm (

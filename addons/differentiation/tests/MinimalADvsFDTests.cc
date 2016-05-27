@@ -633,56 +633,8 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcPotentialEnergy) {
 
 
 
-// TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
-// 	for(unsigned int i = 0; i < model.qdot_size; i++){
-// 		q[i] = (i+1)*(0.897878435);
-// 		qdot[i] = (i+1)*(0.27563682);
-// 		qddot[i] = (i+1)*(0.06565644564455);
-// 	}
-
-// 	MatrixNd q_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
-// 	MatrixNd qdot_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
-// 	MatrixNd qddot_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
-
-// 	std::vector<SpatialVector> f_ext (model.mBodies.size(),SpatialVector::Zero(model.q_size));
-// 	for (int i = 0; i < model.mBodies.size(); ++i) {
-// 	  f_ext[i]=SpatialVector::Zero(model.q_size);
-// 	}
 
 
-
-// 	VectorNd tau_ref (tau);
-
-// 	MatrixNd ad_tau  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
-// 	MatrixNd fd_tau  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
-
-// 	ad_InverseDynamics(model,
-// 			ad_model,
-// 			q,
-// 			q_dirs,
-// 			qdot,
-// 			qdot_dirs,
-// 			qddot,
-// 			qddot_dirs,
-// 			tau,
-// 			ad_tau,
-// 			&f_ext);
-
-
-// 	fd_InverseDynamics(model,
-// 			q,
-// 			q_dirs,
-// 			qdot,
-// 			qdot_dirs,
-// 			qddot,
-// 			qddot_dirs,
-// 			tau_ref,
-// 			fd_tau,
-// 			&f_ext);
-
-// 	CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), 1e-7);
-// 	CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), 1e-7);
-// }
 
 // TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest){
 //   srand((unsigned int) time(0));

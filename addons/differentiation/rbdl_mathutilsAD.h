@@ -59,7 +59,8 @@ inline Vector3d r_from_Matrix(const SpatialMatrix X, const SpatialMatrix X_dirs)
     Erx = X.block<3,3>(3,0);
 
     Matrix3d rx_dirs = E_dirs.transpose() * Erx + E.transpose() * Erx_dirs;
-    Matrix3d rx = E.transpose() * Erx;
+    // NOTE: currently not used
+    // Matrix3d rx = E.transpose() * Erx;
 
     Vector3d r_dirs = Vector3d::Zero();
     r_dirs(0) = -rx_dirs(2,1);
