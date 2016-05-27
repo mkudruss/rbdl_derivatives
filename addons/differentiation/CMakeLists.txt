@@ -27,6 +27,8 @@ SET ( DIFFERENTIATION_SOURCES
 	DynamicsAD.cc
 	DynamicsFD.cc
 	JointAD.cc
+	rbdl_utilsAD.cc
+	rbdl_utilsFD.cc
 )
 
 IF ( RBDL_BUILD_STATIC )
