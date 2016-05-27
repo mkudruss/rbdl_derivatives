@@ -5,8 +5,10 @@
 
 #include "ModelAD.h"
 
-
+// -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
+// -----------------------------------------------------------------------------
+
 	RBDL_DLLAPI
 		void ad_jcalc (
 			Model &model,
@@ -24,7 +26,7 @@ namespace RigidBodyDynamics {
 		ADModel &ad_model,
 		unsigned int joint_id,
 		const VectorNd &q,
-		const VectorNd &q_dirs
+		const MatrixNd &q_dirs
 		);
 }
 
