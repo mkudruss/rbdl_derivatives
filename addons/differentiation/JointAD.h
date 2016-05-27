@@ -14,10 +14,10 @@ namespace RigidBodyDynamics {
 			Model &model,
 			ADModel &ad_model,
 			unsigned int joint_id,
-			const VectorNd &q,
-			const MatrixNd &q_dirs,
-			const VectorNd &qdot,
-			const MatrixNd &qdot_dirs
+            const Math::VectorNd &q,
+            const Math::MatrixNd &q_dirs,
+            const Math::VectorNd &qdot,
+            const Math::MatrixNd &qdot_dirs
 		);
 
 	RBDL_DLLAPI
@@ -25,8 +25,8 @@ namespace RigidBodyDynamics {
 		Model &model,
 		ADModel &ad_model,
 		unsigned int joint_id,
-		const VectorNd &q,
-		const MatrixNd &q_dirs
+        const Math::VectorNd & q,
+        const Math::MatrixNd & q_dirs
 		);
 }
 

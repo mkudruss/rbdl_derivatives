@@ -24,7 +24,7 @@
 
 using namespace std;
 using namespace RigidBodyDynamics;
-using namespace RigidBodyDynamics::Math;
+//using namespace RigidBodyDynamics::Math;
 
 // // -----------------------------------------------------------------------------
 // namespace RigidBodyDynamics {
@@ -37,31 +37,31 @@ struct ADModel {
     unsigned int ndirs;
 
     // derivative values
-    vector<vector<SpatialMatrix> > X_lambda;
-    vector<vector<SpatialMatrix> > X_base;
-    vector<vector<SpatialMatrix> > X_J;
+    vector<vector<Math::SpatialMatrix> > X_lambda;
+    vector<vector<Math::SpatialMatrix> > X_base;
+    vector<vector<Math::SpatialMatrix> > X_J;
 
-    vector<vector<SpatialVector> > S;
-    vector<vector<SpatialVector> > v_J;
-    vector<vector<SpatialVector> > v;
-    vector<vector<SpatialVector> > c_J;
-    vector<vector<SpatialVector> > a_J;
-    vector<vector<SpatialVector> > a;
-    vector<vector<SpatialVector> > c;
-    vector<vector<SpatialVector> > f;
+    vector<vector<Math::SpatialVector> > S;
+    vector<vector<Math::SpatialVector> > v_J;
+    vector<vector<Math::SpatialVector> > v;
+    vector<vector<Math::SpatialVector> > c_J;
+    vector<vector<Math::SpatialVector> > a_J;
+    vector<vector<Math::SpatialVector> > a;
+    vector<vector<Math::SpatialVector> > c;
+    vector<vector<Math::SpatialVector> > f;
 
-    vector<vector<SpatialMatrix> > Ic;
-    vector<vector<SpatialVector> > hc;
-    vector<vector<SpatialVector> > F;
+    vector<vector<Math::SpatialMatrix> > Ic;
+    vector<vector<Math::SpatialVector> > hc;
+    vector<vector<Math::SpatialVector> > F;
 
-    vector<vector<SpatialVector> > pA;
-    vector<vector<SpatialVector> > U;
-    vector<vector<SpatialMatrix> > IA;
+    vector<vector<Math::SpatialVector> > pA;
+    vector<vector<Math::SpatialVector> > U;
+    vector<vector<Math::SpatialMatrix> > IA;
 
     //vector<vector<double> > u;
     //vector<vector<double> > d;
-    MatrixNd u;
-    MatrixNd d;
+    Math::MatrixNd u;
+    Math::MatrixNd d;
 
     ADModel ();
     ADModel (RigidBodyDynamics::Model& model);

@@ -22,7 +22,6 @@
 #include "rbdl_mathutilsAD.h"
 #include "rbdl_mathutilsFD.h"
 
-
 using namespace RigidBodyDynamics::Math;
 
 // -----------------------------------------------------------------------------

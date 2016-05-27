@@ -24,6 +24,8 @@
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
 
+using namespace Math;
+
 RBDL_DLLAPI
 void ad_jcalc (
 	Model &model,

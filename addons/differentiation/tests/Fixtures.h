@@ -44,7 +44,7 @@ struct CartPendulum {
 
         ad_model = ADModel(model);
 
-        body_point = Vector3d (0., 0., pend_l);
+		body_point = RigidBodyDynamics::Math::Vector3d (0., 0., pend_l);
 
         ClearLogOutput();
     }
@@ -61,5 +61,5 @@ struct CartPendulum {
     RigidBodyDynamics::Math::VectorNd qddot;
     RigidBodyDynamics::Math::VectorNd tau;
 
-    Vector3d body_point;
+	RigidBodyDynamics::Math::Vector3d body_point;
 };

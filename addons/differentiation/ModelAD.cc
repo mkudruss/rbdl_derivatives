@@ -7,6 +7,8 @@
 
 #include "ModelAD.h"
 
+using namespace RigidBodyDynamics::Math;
+
 // std::vectors containing any objectst that have Eigen matrices or vectors
 // as members need to have a special allocater. This can be achieved with
 // the following macro.
