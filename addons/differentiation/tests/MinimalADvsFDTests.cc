@@ -1,5 +1,6 @@
 #include <UnitTest++.h>
 
+#include <iomanip>
 #include <iostream>
 
 #include "rbdl/Logging.h"
@@ -296,7 +297,11 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcKineticEnergy) {
     cout << "--" << endl;
     cout << ad_kine << endl;
     cout << "--" << endl;
-    cout << (fd_kine - ad_kine).norm() << endl;
+    cout << setw(10) << setfill(' ') << "e  = " <<(fd_kine - ad_kine) << endl;
+    cout << "--" << endl;
+    cout << setw(10) << setfill(' ') << "|e| = " << (fd_kine - ad_kine).norm() << endl;
+    cout << "--" << endl;
+    cout << setw(10) << setfill(' ') << "|e|/|x| = " << (fd_kine - ad_kine).norm() / fd_kine.norm() << endl;
     cout << "--" << endl;
 
     CHECK_ARRAY_CLOSE(fd_kine.data(), ad_kine.data(), 1 * ndirs, 1e-8);
