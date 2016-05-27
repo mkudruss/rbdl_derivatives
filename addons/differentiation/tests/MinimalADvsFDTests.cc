@@ -15,11 +15,10 @@
 #include "JointAD.h"
 #include "rbdl_mathutilsAD.h"
 #include "rbdl_utilsFD.h"
+#include "KinematicsAD.h"
 
 using namespace std;
 using namespace RigidBodyDynamics;
-using namespace RigidBodyDynamics::Math;
-using namespace RigidBodyDynamics::Utils;
 
 const double TEST_PREC = 1.0e-12;
 
@@ -54,8 +53,8 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
         model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
     }
 
-    Matrix3d body_rotation = AD::E_from_Matrix(model.X_base[body_id].toMatrix());
-    Vector3d body_position = AD::r_from_Matrix(model.X_base[body_id].toMatrix());
+    Matrix3d body_rotation = Math::AD::E_from_Matrix(model.X_base[body_id].toMatrix());
+    Vector3d body_position = Math::AD::r_from_Matrix(model.X_base[body_id].toMatrix());
 
     return body_position + body_rotation.transpose() * point_body_coordinates;
 }
@@ -101,12 +100,12 @@ Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
         // Calculate joint dependent variables
         if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
             for (unsigned int j = 0; j < ndirs; j++) {
-                ad_model.X_J[i][j] = AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+                ad_model.X_J[i][j] = Math::AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
             }
             model.X_J[i] = Xroty (q[model.mJoints[i].q_index]);
         } else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
             for (unsigned int j = 0; j < ndirs; j++) {
-                ad_model.X_J[i][j] = AD::Xtrans (
+                ad_model.X_J[i][j] = Math::AD::Xtrans (
                     Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index],
                     Vector3d (q_dirs(i-1, j), 0., 0.)
                 );
@@ -130,14 +129,14 @@ Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
 
     for (unsigned int j = 0; j < ndirs; j++) {
         SpatialMatrix X_base_ib = model.X_base[body_id].toMatrix();
-        Matrix3d ad_E = AD::E_from_Matrix(ad_model.X_base[body_id][j]);
-        Vector3d ad_r = AD::r_from_Matrix(X_base_ib, ad_model.X_base[body_id][j]);
+        Matrix3d ad_E = Math::AD::E_from_Matrix(ad_model.X_base[body_id][j]);
+        Vector3d ad_r = Math::AD::r_from_Matrix(X_base_ib, ad_model.X_base[body_id][j]);
 
         out.block<3,1>(0,j) = ad_r + ad_E.transpose() * point_body_coordinates;
     }
 
-    Matrix3d body_rotation = AD::E_from_Matrix(model.X_base[body_id].toMatrix());
-    Vector3d body_position = AD::r_from_Matrix(model.X_base[body_id].toMatrix());
+    Matrix3d body_rotation = Math::AD::E_from_Matrix(model.X_base[body_id].toMatrix());
+    Vector3d body_position = Math::AD::r_from_Matrix(model.X_base[body_id].toMatrix());
 
     return body_position + body_rotation.transpose() * point_body_coordinates;
 }
@@ -233,153 +232,6 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseCoordinatesSingleFunc) {
 //    }
 //}
 
-RBDL_DLLAPI void ad_UpdateKinematicsCustom (
-        Model &model,
-        ADModel & ad_model,
-        const VectorNd * q,
-        const MatrixNd * q_dirs,
-        const VectorNd * qdot,
-        const MatrixNd * qdot_dirs,
-        const VectorNd * qddot,
-        const MatrixNd * qddot_dirs) {
-    LOG << "-------- " << __func__ << " --------" << std::endl;
-    unsigned int i;
-    unsigned ndirs = 0;
-
-    if (q) {
-        ndirs = q_dirs->cols();
-    }
-
-    ad_model.resize_directions(ndirs);
-
-    SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
-
-    // derivative evaluation
-    for (int idirs = 0; idirs < ndirs; ++idirs) {
-        ad_model.a[0][idirs].setZero();
-    }
-    // nominal evaluation
-    model.a[0].setZero();
-
-    if (q) {
-        for (i = 1; i < model.mBodies.size(); i++) {
-            unsigned int lambda = model.lambda[i];
-
-            VectorNd QDot_zero (VectorNd::Zero (model.q_size));
-            MatrixNd QDot_zero_dirs (MatrixNd::Zero (model.q_size, ndirs));
-
-            // Derivative evaluation and nominal evaluation
-            ad_jcalc (model, ad_model, i, *q, *q_dirs, QDot_zero, QDot_zero_dirs);
-            // derivative evaluation
-            for (int idirs = 0; idirs < ndirs; ++idirs) {
-                // NOTE: X_T is a constant model dependent transformation
-                ad_model.X_lambda[i][idirs] = ad_model.X_J[i][idirs] * model.X_T[i].toMatrix();
-            }
-            // nominal evaluation
-            model.X_lambda[i] = model.X_J[i] * model.X_T[i];
-
-            if (lambda != 0) {
-                // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
-                    ad_model.X_base[i][idirs] =
-                        ad_model.X_lambda[i][idirs] * model.X_base[lambda].toMatrix()
-                        + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idirs];
-                }
-                // nominal evaluation
-                model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-            }	else {
-                // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
-                    ad_model.X_base[i][idirs] = ad_model.X_lambda[i][idirs];
-                }
-                // nominal evaluation
-                model.X_base[i] = model.X_lambda[i];
-            }
-        }
-    }
-
-    if (qdot) {
-        for (i = 1; i < model.mBodies.size(); i++) {
-            unsigned int lambda = model.lambda[i];
-
-            // Derivative evaluation and nominal evaluation
-            ad_jcalc (model, ad_model, i, *q, *q_dirs, *qdot, *qdot_dirs);
-
-            if (lambda != 0) {
-                // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
-                    ad_model.v[i][idirs] =
-                        ad_model.X_lambda[i][idirs] * model.v[lambda]
-                        + model.X_lambda[i].apply(ad_model.v[lambda][idirs])
-                        + ad_model.v_J[i][idirs];
-                }
-                // nominal evaluation
-                model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
-            } else {
-                // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
-                    ad_model.v[i][idirs] = ad_model.v_J[i][idirs];
-                }
-                // nominal evaluation
-                model.v[i] = model.v_J[i];
-            }
-            // derivative evaluation
-            for (int idirs = 0; idirs < ndirs; ++idirs) {
-                ad_model.c[i][idirs] = ad_model.c_J[i][idirs]
-                    + AD::crossm(
-                        model.v[i], ad_model.v[i][idirs],
-                        model.v_J[i], ad_model.v_J[i][idirs]);
-            }
-            // nominal evaluation
-            model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
-        }
-    }
-
-    if (qddot) {
-        for (i = 1; i < model.mBodies.size(); i++) {
-            unsigned int q_index = model.mJoints[i].q_index;
-            unsigned int lambda = model.lambda[i];
-
-            if (lambda != 0) {
-                // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
-                    ad_model.a[i][idirs] = ad_model.X_lambda[i][idirs] * model.a[lambda]
-                        + model.X_lambda[i].apply(ad_model.a[lambda][idirs]) + ad_model.c[i][idirs];
-                }
-                // nominal evaluation
-                model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
-            } else {
-                // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
-                    ad_model.a[i][idirs] = ad_model.c[i][idirs];
-                }
-                // nominal evaluation
-                model.a[i] = model.c[i];
-            }
-
-            if (model.mJoints[i].mDoFCount == 3) {
-                cerr << "Multi-DoF not supported." << endl;
-                abort();
-                /*
-                // nominal evaluation
-                Vector3d omegadot_temp ((*qddot)[q_index], (*qddot)[q_index + 1], (*qddot)[q_index + 2]);
-                model.a[i] = model.a[i] + model.multdof3_S[i] * omegadot_temp;
-                */
-            } else {
-                // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
-                    ad_model.a[i][idirs] = ad_model.a[i][idirs]
-                        + ad_model.S[i][idirs] * (*qddot)[q_index]
-                        + model.S[i] * (*qddot_dirs)(q_index, idirs);
-                }
-                // nominal evaluation
-                model.a[i] = model.a[i] + model.S[i] * (*qddot)[q_index];
-            }
-        }
-    }
-}
-
-
 RBDL_DLLAPI void ad_CalcCenterOfMass (
         Model & model,
         ADModel & ad_model,
@@ -406,7 +258,8 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
     }
 
     if (update_kinematics) {
-        ad_UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, &qdot, &qdot_dirs, NULL, NULL);
+        RigidBodyDynamics::AD::UpdateKinematicsCustom (model, ad_model, &q,
+                &q_dirs, &qdot, &qdot_dirs, NULL, NULL);
     }
 
     size_t ndirs = q_dirs.cols();
@@ -480,7 +333,6 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
         }
     }
 
-//    ::ad_htot1 = ad_htot;
     mass = Itot.m;
     com = Itot.h / mass;
 
@@ -502,12 +354,8 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
     if (angular_momentum) {
         // derivative evaluation
         for (size_t idir = 0; idir < ndirs; idir++) {
-//            ::ad_com[idir] = ad_com.block<3,1>(0, idir);
             ad_htot[idir] = Xtrans(com).toMatrixAdjoint() * ad_htot[idir]
-                            + AD::Xtrans(com, ad_com.block<3,1>(0, idir)).adjoint() * htot;
-
-//            ::ad_xtc[idir] = // Xtrans(ad_com.block<3,1>(0, idir)).toMatrixAdjoint();
-//                    ad_XtransToMatrixAdjoint(ad_com.block<3,1>(0, idir));
+                            + Math::AD::Xtrans(com, ad_com.block<3,1>(0, idir)).adjoint() * htot;
         }
         // nominal evaluation       
         htot = Xtrans (com).applyAdjoint (htot);
@@ -562,7 +410,7 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcCenterOfMass) {
     MatrixNd fd_d_comVelocity(3, ndirs);
     Vector3d fd_angMomentum(0., 0., 0.);
     MatrixNd fd_d_angMomentum(3, ndirs);
-    FD::CalcCenterOfMass(model, q, q_dirs, qdot, qdot_dirs, fd_mass, fd_com,
+    Utils::FD::CalcCenterOfMass(model, q, q_dirs, qdot, qdot_dirs, fd_mass, fd_com,
                          fd_d_com, &fd_comVelocity, &fd_d_comVelocity,
                          &fd_angMomentum, &fd_d_angMomentum);
 
@@ -599,29 +447,6 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcCenterOfMass) {
     CHECK_ARRAY_CLOSE(ad_d_comVelocity.data(), fd_d_comVelocity.data(), 3 * ndirs, 1e-8);
     CHECK_ARRAY_CLOSE(ad_angMomentum.data(), fd_angMomentum.data(), 3, 1e-8);
     CHECK_ARRAY_CLOSE(ad_d_angMomentum.data(), fd_d_angMomentum.data(), 3 * ndirs, 1e-8);
-}
-
-RBDL_DLLAPI double fd_CalcPotentialEnergy (
-        Model & model,
-        VectorNd const & q,
-        MatrixNd const & q_dirs,
-        MatrixNd & fd_pote) {
-    assert(fd_pote.cols() == q_dirs.cols());
-    assert(fd_pote.rows() == 1);
-
-    double h = sqrt(1e-16);
-    unsigned int ndirs = q_dirs.cols();
-
-    double pote = CalcPotentialEnergy (model, q);
-    VectorNd q_dir(q);
-
-    for (int i = 0; i < ndirs; i++ ) {
-        q_dir = q_dirs.block(0, i, model.q_size, 1);
-        double hd_pote = CalcPotentialEnergy(model, q + h * q_dir);
-        fd_pote(i) = (hd_pote - pote) / h;
-    }
-
-    return pote;
 }
 
 RBDL_DLLAPI double ad_CalcPotentialEnergy (
@@ -676,7 +501,7 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcPotentialEnergy) {
             = MatrixNd::Identity(nrows, model.dof_count);
 
     MatrixNd fd_pote = MatrixNd::Zero(1, ndirs);
-    fd_CalcPotentialEnergy(model, q, q_dirs, fd_pote);
+    Utils::FD::CalcPotentialEnergy(model, q, q_dirs, fd_pote);
 
     MatrixNd ad_pote = MatrixNd::Zero(1, ndirs);
     ad_CalcPotentialEnergy(model, ad_model, q, q_dirs, ad_pote, true);

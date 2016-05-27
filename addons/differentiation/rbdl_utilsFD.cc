@@ -35,17 +35,16 @@ RBDL_DLLAPI void CalcCenterOfMass (
         assert(q_dirs.cols() == fd_angular_momentum->cols());
     }
 
-    int ndirs = q_dirs.cols();
+    double h = sqrt(1e-16);
+    size_t ndirs = q_dirs.cols();
 
     RigidBodyDynamics::Utils::CalcCenterOfMass(model, q, qdot, mass, com,
             com_velocity, angular_momentum, true);
 
-    double h = sqrt(1e-16);
-
     VectorNd q_dir(q);
     VectorNd qdot_dir(qdot);
 
-    for (int i = 0; i < ndirs; i++ ) {
+    for (size_t i = 0; i < ndirs; i++ ) {
         q_dir = q_dirs.block(0, i, model.q_size, 1);
         qdot_dir = qdot_dirs.block(0, i, model.qdot_size, 1);
 
@@ -69,15 +68,41 @@ RBDL_DLLAPI void CalcCenterOfMass (
         fd_com.block<3,1>(0, i) = (hd_com - com) / h;
 
         if (com_velocity) {
-            fd_com_velocity->block<3,1>(0, i) = (*hd_com_velocity - *com_velocity) / h;
+            fd_com_velocity->block<3,1>(0, i) =
+                    (*hd_com_velocity - *com_velocity) / h;
             delete hd_com_velocity;
         }
 
         if (angular_momentum) {
-            fd_angular_momentum->block<3,1>(0, i) = (*hd_angular_momentum - *angular_momentum) / h;
+            fd_angular_momentum->block<3,1>(0, i) =
+                    (*hd_angular_momentum - *angular_momentum) / h;
             delete hd_angular_momentum;
         }
     }
+}
+
+RBDL_DLLAPI double CalcPotentialEnergy (
+        Model & model,
+        VectorNd const & q,
+        MatrixNd const & q_dirs,
+        MatrixNd & fd_pote) {
+    assert(fd_pote.cols() == q_dirs.cols());
+    assert(fd_pote.rows() == 1);
+
+    double h = sqrt(1e-16);
+    size_t ndirs = q_dirs.cols();
+
+    double pote = RigidBodyDynamics::Utils::CalcPotentialEnergy (model, q);
+    VectorNd q_dir(q);
+
+    for (size_t i = 0; i < ndirs; i++ ) {
+        q_dir = q_dirs.block(0, i, model.q_size, 1);
+        double hd_pote = RigidBodyDynamics::Utils::CalcPotentialEnergy(model,
+                q + h * q_dir);
+        fd_pote(i) = (hd_pote - pote) / h;
+    }
+
+    return pote;
 }
 
 // -----------------------------------------------------------------------------
