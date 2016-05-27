@@ -220,6 +220,21 @@ class RBDL_DLLAPI SpatialMatrix_t : public Eigen::Matrix<double, 6, 6>
 				, m50, m51, m52, m53, m54, m55
 				;
 		}
+
+		/**
+		 * @brief adjoint operation of spatial matrix encoding a spatial transform
+		 * @warning This is NO the adjoint in the (complex) linear algebra sense
+		 * @return [A C; B D] for matrix [A B; C D]
+		 *         [E -Erx; O E] for spatial matrix [E O; -Erx E]
+		 */
+		SpatialMatrix_t adjoint() const
+		{
+			Matrix3_t tr = this->block<3, 3>(0, 3);
+			SpatialMatrix_t result = *this;
+			result.block<3, 3>(0, 3) = this->block<3, 3>(3, 0);
+			result.block<3, 3>(3, 0) = tr;
+			return result;
+		}
 };
 
 /* _RBDL_EIGENMATH_H */

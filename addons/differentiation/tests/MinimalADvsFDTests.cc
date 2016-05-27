@@ -587,7 +587,9 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
 //            ::ad_com[idir] = ad_com.block<3,1>(0, idir);
             ad_htot[idir] = Xtrans(com).toMatrixAdjoint() * ad_htot[idir]
                             //+ Xtrans(ad_com.block<3,1>(0, idir)).applyAdjoint(htot);
-                            + ad_XtransToMatrixAdjoint(ad_com.block<3,1>(0, idir)) * htot;
+                            //+ ad_XtransToMatrixAdjoint(ad_com.block<3,1>(0, idir)) * htot;
+                            + AD::Xtrans(com, ad_com.block<3,1>(0, idir)).adjoint() *htot;
+
 //            ::ad_xtc[idir] = // Xtrans(ad_com.block<3,1>(0, idir)).toMatrixAdjoint();
 //                    ad_XtransToMatrixAdjoint(ad_com.block<3,1>(0, idir));
         }
