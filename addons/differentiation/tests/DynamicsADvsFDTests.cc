@@ -21,6 +21,59 @@ const double TEST_PREC = 1.0e-8;
 
 // -----------------------------------------------------------------------------
 
+TEST_FIXTURE(CartPendulum, ForwardDynamicsADTest){
+	srand((unsigned int) time(0));
+
+	for(unsigned int trial = 0; trial < 10; trial++) {
+		VectorNd q = VectorNd::Random(model.q_size);
+		VectorNd qdot = VectorNd::Random(model.q_size);
+		VectorNd tau = VectorNd::Random(model.q_size);
+
+		unsigned int ndirs = 3 * model.q_size;
+		MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
+		MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
+		MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
+		MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
+
+		std::vector<SpatialVector> f_ext (
+			model.mBodies.size(),
+			SpatialVector::Zero()
+		);
+		// for (unsigned int i = 0; i < model.mBodies.size(); ++i) {
+		// 	f_ext[i]=SpatialVector::Zero(model.q_size);
+		// }
+
+		VectorNd qddot (VectorNd::Zero(model.q_size));
+		MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
+		MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
+
+		RigidBodyDynamics::FD::ForwardDynamics(
+			model,
+			q, q_dirs,
+			qdot, qdot_dirs,
+			tau, tau_dirs,
+			qddot, fd_qddot,
+			&f_ext
+		);
+
+		RigidBodyDynamics::FD::ForwardDynamics(
+			model,
+			q, q_dirs,
+			qdot, qdot_dirs,
+			tau, tau_dirs,
+			qddot, ad_qddot,
+			&f_ext
+		);
+
+		CHECK_ARRAY_CLOSE (
+			fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(),
+			TEST_PREC
+		);
+	}
+}
+
+// -----------------------------------------------------------------------------
+
 TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 
 	for(unsigned int i = 0; i < model.qdot_size; i++){
@@ -69,6 +122,8 @@ TEST_FIXTURE(CartPendulum, InverseDynamicsADTest){
 	CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), 1e-07);
 	CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), 1e-07);
 }
+
+// -----------------------------------------------------------------------------
 
 TEST_FIXTURE( CartPendulum, CompositeRigidBodyAlgorithmADTest) {
 	MatrixNd q_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
