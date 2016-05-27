@@ -3,7 +3,6 @@
 #include <iostream>
 
 #include "rbdl/Logging.h"
-#include "rbdl/rbdl_utils.h"
 #include "rbdl/rbdl_mathutils.h"
 
 #include "rbdl/Model.h"
@@ -21,6 +20,7 @@
 using namespace std;
 using namespace RigidBodyDynamics;
 using namespace RigidBodyDynamics::Math;
+using namespace RigidBodyDynamics::Utils;
 
 const double TEST_PREC = 1.0e-12;
 
@@ -264,6 +264,35 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcPotentialEnergy) {
     CHECK_ARRAY_CLOSE(fd_pote.data(), ad_pote.data(), 1 * ndirs, 1e-8);
 }
 
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcKineticEnergy) {
+    q[0] = 0.3;
+    q[1] = -0.2;
+    qdot[0] = .1;
+    qdot[1] = -.15;
+
+    int nrows = model.dof_count;
+    int ndirs = 2 * model.dof_count;
+
+    MatrixNd q_dirs = MatrixNd::Zero(nrows, ndirs);
+    MatrixNd qdot_dirs = MatrixNd::Zero(nrows, ndirs);
+
+    q_dirs.block(0, 0, nrows, model.dof_count)
+            = MatrixNd::Identity(nrows, model.dof_count);
+    q_dirs.block(0, model.dof_count, nrows, model.dof_count)
+            = MatrixNd::Zero(nrows, model.dof_count);
+    qdot_dirs.block(0, 0, nrows, model.dof_count)
+            = MatrixNd::Zero(nrows, model.dof_count);
+    qdot_dirs.block(0, model.dof_count, nrows, model.dof_count)
+            = MatrixNd::Identity(nrows, model.dof_count);
+
+    MatrixNd fd_kine = MatrixNd::Zero(1, ndirs);
+    Utils::FD::CalcKineticEnergy(model, q, q_dirs, qdot, qdot_dirs, fd_kine);
+
+    MatrixNd ad_kine = MatrixNd::Zero(1, ndirs);
+//    Utils::AD::CalcKineticEnergy(model, ad_model, q, q_dirs, qdot, qdot_dirs, ad_kine, true);
+
+//    CHECK_ARRAY_CLOSE(fd_kine.data(), ad_kine.data(), 1 * ndirs, 1e-8);
+}
 
 // TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 // 	MatrixNd jacobian_ad = MatrixNd::Zero(3, model.qdot_size);

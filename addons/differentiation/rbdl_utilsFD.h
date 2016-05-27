@@ -31,6 +31,14 @@ RBDL_DLLAPI double CalcPotentialEnergy (
         Math::MatrixNd const & q_dirs,
         Math::MatrixNd & fd_pote);
 
+RBDL_DLLAPI double CalcKineticEnergy (
+        Model & model,
+        Math::VectorNd const & q,
+        Math::MatrixNd const & q_dirs,
+        Math::VectorNd const & qdot,
+        Math::MatrixNd const & qdot_dirs,
+        Math::MatrixNd & fd_kine);
+
 // -----------------------------------------------------------------------------
 } // namespace FD
 // -----------------------------------------------------------------------------
@@ -38,7 +46,5 @@ RBDL_DLLAPI double CalcPotentialEnergy (
 // -----------------------------------------------------------------------------
 } // namespace RigidBodyDynamics
 // -----------------------------------------------------------------------------
-
-
 
 #endif

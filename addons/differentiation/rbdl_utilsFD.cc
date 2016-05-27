@@ -3,8 +3,6 @@
 #include <rbdl/rbdl_utils.h>
 #include <rbdl/Model.h>
 
-using namespace RigidBodyDynamics::Math;
-
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
@@ -12,6 +10,8 @@ namespace Utils {
 // -----------------------------------------------------------------------------
 namespace FD {
 // -----------------------------------------------------------------------------
+
+using namespace Math;
 
 RBDL_DLLAPI void CalcCenterOfMass (
         Model & model,
@@ -85,17 +85,17 @@ RBDL_DLLAPI double CalcPotentialEnergy (
         Model & model,
         VectorNd const & q,
         MatrixNd const & q_dirs,
-        MatrixNd & fd_pote) {
-    assert(fd_pote.cols() == q_dirs.cols());
-    assert(fd_pote.rows() == 1);
-
+        MatrixNd & fd_pote) {   
+    unsigned int ndirs = q_dirs.cols();
     double h = sqrt(1e-16);
-    size_t ndirs = q_dirs.cols();
 
-    double pote = RigidBodyDynamics::Utils::CalcPotentialEnergy (model, q);
-    VectorNd q_dir(q);
+    assert(ndirs == fd_pote.cols());
+    assert(1 == fd_pote.rows());
 
-    for (size_t i = 0; i < ndirs; i++ ) {
+    double pote = RigidBodyDynamics::Utils::CalcPotentialEnergy(model, q);
+
+    VectorNd q_dir(VectorNd::Zero(ndirs));
+    for (unsigned int i = 0; i < ndirs; i++ ) {
         q_dir = q_dirs.block(0, i, model.q_size, 1);
         double hd_pote = RigidBodyDynamics::Utils::CalcPotentialEnergy(model,
                 q + h * q_dir);
@@ -103,6 +103,35 @@ RBDL_DLLAPI double CalcPotentialEnergy (
     }
 
     return pote;
+}
+
+RBDL_DLLAPI double CalcKineticEnergy (
+        Model & model,
+        VectorNd const & q,
+        MatrixNd const & q_dirs,
+        VectorNd const & qdot,
+        MatrixNd const & qdot_dirs,
+        MatrixNd & fd_kine) {
+    unsigned int ndirs = q_dirs.cols();
+    double h = sqrt(1e-16);
+
+    assert(ndirs == qdot_dirs.cols());
+    assert(ndirs == fd_kine.cols());
+    assert(1 == fd_kine.rows());
+
+    double kine = RigidBodyDynamics::Utils::CalcKineticEnergy(model, q, qdot);
+
+    VectorNd q_dir(VectorNd::Zero(ndirs));
+    VectorNd qdot_dir(VectorNd::Zero(ndirs));
+    for (unsigned int i = 0; i < ndirs; i++ ) {
+        q_dir = q_dirs.block(0, i, model.q_size, 1);
+        qdot_dir = qdot_dirs.block(0, i, model.qdot_size, 1);
+        double hd_kine = RigidBodyDynamics::Utils::CalcKineticEnergy(model,
+                q + h * q_dir, qdot + h * qdot_dir);
+        fd_kine(i) = (hd_kine - kine) / h;
+    }
+
+    return kine;
 }
 
 // -----------------------------------------------------------------------------
