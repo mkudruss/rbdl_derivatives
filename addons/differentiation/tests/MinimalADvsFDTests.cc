@@ -179,6 +179,51 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseCoordinatesSingleFunc) {
 	CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, TEST_PREC);
 }
 
+double                fd_h = sqrt(1e-16);
+int                   fd_i = 0;
+vector<SpatialVector> fd_htot(5, SpatialVector::Zero(6));
+vector<SpatialVector> ad_htot(5, SpatialVector::Zero(6));
+
+void CalcCenterOfMass2 (Model &model, const Math::VectorNd &q, const Math::VectorNd &qdot, double &mass, Math::Vector3d &com, Math::Vector3d *com_velocity, Vector3d *angular_momentum, bool update_kinematics) {
+    if (update_kinematics)
+        UpdateKinematicsCustom (model, &q, &qdot, NULL);
+
+    for (size_t i = 1; i < model.mBodies.size(); i++) {
+        model.Ic[i] = model.I[i];
+        model.hc[i] = model.Ic[i].toMatrix() * model.v[i];
+    }
+
+    SpatialRigidBodyInertia Itot (0., Vector3d (0., 0., 0.), Matrix3d::Zero(3,3));
+    SpatialVector htot (SpatialVector::Zero(6));
+
+    for (size_t i = model.mBodies.size() - 1; i > 0; i--) {
+        unsigned int lambda = model.lambda[i];
+
+        if (lambda != 0) {
+            model.Ic[lambda] = model.Ic[lambda] + model.X_lambda[i].applyTranspose (model.Ic[i]);
+            model.hc[lambda] = model.hc[lambda] + model.X_lambda[i].applyTranspose (model.hc[i]);
+        } else {
+            Itot = Itot + model.X_lambda[i].applyTranspose (model.Ic[i]);
+            htot = htot + model.X_lambda[i].applyTranspose (model.hc[i]);
+        }
+    }
+
+    fd_htot[fd_i] = htot;
+
+    mass = Itot.m;
+    com = Itot.h / mass;
+    LOG << "mass = " << mass << " com = " << com.transpose() << " htot = " << htot.transpose() << std::endl;
+
+    if (com_velocity)
+        *com_velocity = Vector3d (htot[3] / mass, htot[4] / mass, htot[5] / mass);
+
+    if (angular_momentum) {
+        htot = Xtrans (com).applyAdjoint (htot);
+        angular_momentum->set (htot[0], htot[1], htot[2]);
+    }
+}
+
+
 RBDL_DLLAPI void fd_CalcCenterOfMass (
         Model & model,
         const VectorNd & q,
@@ -203,7 +248,7 @@ RBDL_DLLAPI void fd_CalcCenterOfMass (
 
     int ndirs = q_dirs.cols();
 
-    CalcCenterOfMass(model, q, qdot, mass, com, com_velocity, angular_momentum);
+    CalcCenterOfMass2(model, q, qdot, mass, com, com_velocity, angular_momentum, true);
 
     double h = sqrt(1e-16);
 
@@ -211,6 +256,7 @@ RBDL_DLLAPI void fd_CalcCenterOfMass (
     VectorNd qdot_dir(qdot);
 
     for (int i = 0; i < ndirs; i++ ) {
+        fd_i++;
         q_dir = q_dirs.block(0, i, model.q_size, 1);
         qdot_dir = qdot_dirs.block(0, i, model.qdot_size, 1);
 
@@ -227,7 +273,7 @@ RBDL_DLLAPI void fd_CalcCenterOfMass (
             hd_angular_momentum = new Vector3d;
         }
 
-        CalcCenterOfMass(model, q + h * q_dir, qdot + h * qdot_dir, hd_mass, hd_com, hd_com_velocity, hd_angular_momentum);
+        CalcCenterOfMass2(model, q + h * q_dir, qdot + h * qdot_dir, hd_mass, hd_com, hd_com_velocity, hd_angular_momentum, true);
 
         fd_com.block<3,1>(0, i) = (hd_com - com) / h;
 
@@ -277,11 +323,9 @@ RBDL_DLLAPI void ad_UpdateKinematicsCustom (
 
             VectorNd QDot_zero (VectorNd::Zero (model.q_size));
             MatrixNd QDot_zero_dirs (MatrixNd::Zero (model.q_size, ndirs));
-            cout << 1131 << endl;
 
             // Derivative evaluation and nominal evaluation
             ad_jcalc (model, ad_model, i, *q, *q_dirs, QDot_zero, QDot_zero_dirs);
-            cout << 1132 << endl;
             // derivative evaluation
             for (int idirs = 0; idirs < ndirs; ++idirs) {
                 // NOTE: X_T is a constant model dependent transformation
@@ -289,7 +333,6 @@ RBDL_DLLAPI void ad_UpdateKinematicsCustom (
             }
             // nominal evaluation
             model.X_lambda[i] = model.X_J[i] * model.X_T[i];
-            cout << 1133 << endl;
 
             if (lambda != 0) {
                 // derivative evaluation
@@ -308,7 +351,6 @@ RBDL_DLLAPI void ad_UpdateKinematicsCustom (
                 // nominal evaluation
                 model.X_base[i] = model.X_lambda[i];
             }
-            cout << 1134 << endl;
         }
     }
 
@@ -392,6 +434,7 @@ RBDL_DLLAPI void ad_UpdateKinematicsCustom (
         }
     }
 }
+
 
 RBDL_DLLAPI void ad_CalcCenterOfMass (
         Model & model,
@@ -477,7 +520,7 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
                         + ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix() * model.X_lambda[i].toMatrix();
 
                 SpatialRigidBodyInertia m2i;
-                m2i.createFromMatrix(model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix());
+                m2i.createFromMatrix(m);
                 ad_Itot[idir] = ad_Itot[idir] + m2i;
             }
             // nominal evaluation
@@ -493,8 +536,10 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
         }
     }
 
+    ::ad_htot = ad_htot;
     mass = Itot.m;
     com = Itot.h / mass;
+
     for (size_t idir = 0; idir < ndirs; idir++) {
         ad_com.block<3,1>(0, idir) = ad_Itot[idir].h / mass;
     }
@@ -514,7 +559,7 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
         // derivative evaluation
         for (size_t idir = 0; idir < ndirs; idir++) {
             ad_htot[idir] = Xtrans(com).toMatrixAdjoint() * ad_htot[idir]
-                            + Xtrans(ad_com.block<3,1>(0, idir)).applyAdjoint(ad_htot[idir]);
+                            + Xtrans(ad_com.block<3,1>(0, idir)).applyAdjoint(htot);
         }
         // nominal evaluation
         htot = Xtrans (com).applyAdjoint (htot);
@@ -531,28 +576,74 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcCenterOfMass) {
     q[0] = 0.3;
     q[1] = -0.2;
-    Vector3d point_body_coordinates (0.1, 3.2, 4.2);
+    Vector3d pointBodyCoordinates (0.1, 3.2, 4.2);
     qdot[0] = .1;
     qdot[1] = -.15;
 
 
-    MatrixNd q_dirs = MatrixNd::Identity(model.dof_count, model.dof_count);
-    MatrixNd qdot_dirs = MatrixNd::Identity(model.dof_count, model.dof_count);
+    int nrows = model.dof_count;
+    int ndirs = 2 * model.dof_count;
+
+    MatrixNd q_dirs = MatrixNd::Zero(nrows, ndirs);
+    MatrixNd qdot_dirs = MatrixNd::Zero(nrows, ndirs);
+
+    q_dirs.block(0, 0, nrows, model.dof_count)
+            = MatrixNd::Identity(nrows, model.dof_count);
+    q_dirs.block(0, model.dof_count, nrows, model.dof_count)
+            = MatrixNd::Zero(nrows, model.dof_count);
+    qdot_dirs.block(0, 0, nrows, model.dof_count)
+            = MatrixNd::Zero(nrows, model.dof_count);
+    qdot_dirs.block(0, model.dof_count, nrows, model.dof_count)
+            = MatrixNd::Identity(nrows, model.dof_count);
 
     double   ad_mass;
     Vector3d ad_com;
     MatrixNd ad_d_com(3, q_dirs.cols());
+    Vector3d ad_comVelocity(0., 0., 0.);
+    MatrixNd ad_d_comVelocity(3, ndirs);
+    Vector3d ad_angMomentum(0., 0., 0.);
+    MatrixNd ad_d_angMomentum(3, ndirs);
     ad_CalcCenterOfMass(model, ad_model, q, q_dirs, qdot, qdot_dirs, ad_mass,
                         ad_com, ad_d_com,
-                        0, 0, 0, 0, true);
+                        &ad_comVelocity, &ad_d_comVelocity,
+                        &ad_angMomentum, &ad_d_angMomentum, true);
 
-//    double   fd_mass;
-//    Vector3d fd_com;
-//    MatrixNd fd_d_com(3, q_dirs.cols());
-//    fd_CalcCenterOfMass(model, q, q_dirs, qdot, qdot_dirs, fd_mass, fd_com,
-//                        fd_d_com, 0, 0, 0, 0);
+    double   fd_mass;
+    Vector3d fd_com;
+    MatrixNd fd_d_com(3, ndirs);
+    Vector3d fd_comVelocity(0., 0., 0.);
+    MatrixNd fd_d_comVelocity(3, ndirs);
+    Vector3d fd_angMomentum(0., 0., 0.);
+    MatrixNd fd_d_angMomentum(3, ndirs);
+    fd_CalcCenterOfMass(model, q, q_dirs, qdot, qdot_dirs, fd_mass, fd_com,
+                        fd_d_com, &fd_comVelocity, &fd_d_comVelocity,
+                        &fd_angMomentum, &fd_d_angMomentum);
 
-//    CHECK_EQUAL(ad_mass, fd_mass);
+    for (int i = 0; i < ndirs; i++)
+    {
+        fd_htot[i + 1] = (fd_htot[i + 1] - fd_htot[0]) / fd_h;
+    }
+
+    for (int i = 0; i  < ndirs; i++)
+    {
+        cout << "htot_norm  " << (fd_htot[i + 1] - ad_htot[i]).norm() << endl;
+    }
+
+
+    cout << "--" << endl;
+    cout << ad_d_angMomentum << endl;
+    cout << "--" << endl;
+    cout << fd_d_angMomentum << endl;
+    cout << "--" << endl;
+
+    CHECK_EQUAL(ad_mass, fd_mass);
+    CHECK_ARRAY_CLOSE(ad_com.data(), fd_com.data(), 3, TEST_PREC);
+    CHECK_ARRAY_CLOSE(ad_d_com.data(), fd_d_com.data(), 3 * ndirs, 1e-8);
+    CHECK_ARRAY_CLOSE(ad_comVelocity.data(), fd_comVelocity.data(), 3, 1e-8);
+    CHECK_ARRAY_CLOSE(ad_d_comVelocity.data(), fd_d_comVelocity.data(), 3 * ndirs, 1e-8);
+    CHECK_ARRAY_CLOSE(ad_angMomentum.data(), fd_angMomentum.data(), 3, 1e-8);
+    CHECK_ARRAY_CLOSE(ad_d_angMomentum.data(), fd_d_angMomentum.data(), 3 * ndirs, 1e-8);
+
 
 }
 
