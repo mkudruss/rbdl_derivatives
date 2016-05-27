@@ -179,59 +179,6 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseCoordinatesSingleFunc) {
 	CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, TEST_PREC);
 }
 
-//double                fd_h = sqrt(1e-16);
-//int                   fd_i = 0;
-//vector<SpatialVector> fd_htot1(5, SpatialVector::Zero(6));
-//vector<SpatialVector> fd_htot2(5, SpatialVector::Zero(6));
-//vector<SpatialMatrix> fd_xtc(5, SpatialMatrix::Zero(6, 6));
-//vector<Vector3d> fd_com(5, Vector3d::Zero(3));
-//vector<SpatialVector> ad_htot1(4, SpatialVector::Zero(6));
-//vector<SpatialVector> ad_htot2(4, SpatialVector::Zero(6));
-//vector<SpatialMatrix> ad_xtc(4, SpatialMatrix::Zero(6, 6));
-//vector<Vector3d> ad_com(5, Vector3d::Zero(3));
-
-//void CalcCenterOfMass2 (Model &model, const Math::VectorNd &q, const Math::VectorNd &qdot, double &mass, Math::Vector3d &com, Math::Vector3d *com_velocity, Vector3d *angular_momentum, bool update_kinematics) {
-//    if (update_kinematics)
-//        UpdateKinematicsCustom (model, &q, &qdot, NULL);
-
-//    for (size_t i = 1; i < model.mBodies.size(); i++) {
-//        model.Ic[i] = model.I[i];
-//        model.hc[i] = model.Ic[i].toMatrix() * model.v[i];
-//    }
-
-//    SpatialRigidBodyInertia Itot (0., Vector3d (0., 0., 0.), Matrix3d::Zero(3,3));
-//    SpatialVector htot (SpatialVector::Zero(6));
-
-//    for (size_t i = model.mBodies.size() - 1; i > 0; i--) {
-//        unsigned int lambda = model.lambda[i];
-
-//        if (lambda != 0) {
-//            model.Ic[lambda] = model.Ic[lambda] + model.X_lambda[i].applyTranspose (model.Ic[i]);
-//            model.hc[lambda] = model.hc[lambda] + model.X_lambda[i].applyTranspose (model.hc[i]);
-//        } else {
-//            Itot = Itot + model.X_lambda[i].applyTranspose (model.Ic[i]);
-//            htot = htot + model.X_lambda[i].applyTranspose (model.hc[i]);
-//        }
-//    }
-
-//    fd_htot1[fd_i] = htot;
-
-//    mass = Itot.m;
-//    com = Itot.h / mass;
-//    LOG << "mass = " << mass << " com = " << com.transpose() << " htot = " << htot.transpose() << std::endl;
-
-//    if (com_velocity)
-//        *com_velocity = Vector3d (htot[3] / mass, htot[4] / mass, htot[5] / mass);
-
-//    if (angular_momentum) {
-//        htot = Xtrans (com).applyAdjoint (htot);
-//        fd_com[fd_i] = com;
-//        fd_xtc[fd_i] = Xtrans(com).toMatrixAdjoint();
-//        fd_htot2[fd_i] = htot;
-//        angular_momentum->set (htot[0], htot[1], htot[2]);
-//    }
-//}
-
 RBDL_DLLAPI void ad_CalcCenterOfMass (
         Model & model,
         ADModel & ad_model,
@@ -359,7 +306,6 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
         }
         // nominal evaluation       
         htot = Xtrans (com).applyAdjoint (htot);
-//        ::ad_htot2 = ad_htot;
 
         // derivative evaluation
         for (size_t idir = 0; idir < ndirs; idir++) {
@@ -413,32 +359,6 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcCenterOfMass) {
     Utils::FD::CalcCenterOfMass(model, q, q_dirs, qdot, qdot_dirs, fd_mass, fd_com,
                          fd_d_com, &fd_comVelocity, &fd_d_comVelocity,
                          &fd_angMomentum, &fd_d_angMomentum);
-
-//    for (int i = 0; i < ndirs; i++)
-//    {
-//        fd_htot1[i + 1] = (fd_htot1[i + 1] - fd_htot1[0]) / fd_h;
-//        fd_htot2[i + 1] = (fd_htot2[i + 1] - fd_htot2[0]) / fd_h;
-//        fd_xtc[i + 1] = (fd_xtc[i + 1] - fd_xtc[0]) / fd_h;
-//        ::fd_com[i + 1] = (::fd_com[i + 1] - ::fd_com[0]) / fd_h;
-//    }
-
-//    for (int i = 0; i  < ndirs; i++)
-//    {
-//        cout << "htot1_norm  " << (fd_htot1[i + 1] - ad_htot1[i]).norm() << endl;
-//    }
-
-//    for (int i = 0; i  < ndirs; i++)
-//    {
-//        cout << "htot2_norm  " << (fd_htot2[i + 1] - ad_htot2[i]).norm() << endl;
-//    }
-//    for (int i = 0; i  < ndirs; i++)
-//    {
-//        cout << "xtc_norm    " << (fd_xtc[i + 1] - ad_xtc[i]).norm() << endl;
-//    }
-//    for (int i = 0; i  < ndirs; i++)
-//    {
-//        cout << "com_norm    " << (::fd_com[i + 1] - ::ad_com[i]).norm() << endl;
-//    }
 
     CHECK_EQUAL(ad_mass, fd_mass);
     CHECK_ARRAY_CLOSE(ad_com.data(), fd_com.data(), 3, TEST_PREC);

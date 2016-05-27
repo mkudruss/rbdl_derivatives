@@ -42,7 +42,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
         const MatrixNd * qddot_dirs) {
     LOG << "-------- " << __func__ << " --------" << std::endl;
     unsigned int i;
-    unsigned ndirs = 0;
+    unsigned int ndirs = 0;
 
     if (q) {
         ndirs = q_dirs->cols();
@@ -69,7 +69,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
             // Derivative evaluation and nominal evaluation
             ad_jcalc (model, ad_model, i, *q, *q_dirs, QDot_zero, QDot_zero_dirs);
             // derivative evaluation
-            for (int idirs = 0; idirs < ndirs; ++idirs) {
+            for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                 // NOTE: X_T is a constant model dependent transformation
                 ad_model.X_lambda[i][idirs] = ad_model.X_J[i][idirs] * model.X_T[i].toMatrix();
             }
@@ -78,16 +78,16 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 
             if (lambda != 0) {
                 // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
+                for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                     ad_model.X_base[i][idirs] =
                         ad_model.X_lambda[i][idirs] * model.X_base[lambda].toMatrix()
                         + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idirs];
                 }
                 // nominal evaluation
                 model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-            }	else {
+            } else {
                 // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
+                for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                     ad_model.X_base[i][idirs] = ad_model.X_lambda[i][idirs];
                 }
                 // nominal evaluation
@@ -105,7 +105,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 
             if (lambda != 0) {
                 // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
+                for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                     ad_model.v[i][idirs] =
                         ad_model.X_lambda[i][idirs] * model.v[lambda]
                         + model.X_lambda[i].apply(ad_model.v[lambda][idirs])
@@ -115,14 +115,14 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
                 model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
             } else {
                 // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
+                for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                     ad_model.v[i][idirs] = ad_model.v_J[i][idirs];
                 }
                 // nominal evaluation
                 model.v[i] = model.v_J[i];
             }
             // derivative evaluation
-            for (int idirs = 0; idirs < ndirs; ++idirs) {
+            for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                 ad_model.c[i][idirs] = ad_model.c_J[i][idirs]
                     + Math::AD::crossm(
                         model.v[i], ad_model.v[i][idirs],
@@ -140,7 +140,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 
             if (lambda != 0) {
                 // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
+                for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                     ad_model.a[i][idirs] = ad_model.X_lambda[i][idirs] * model.a[lambda]
                         + model.X_lambda[i].apply(ad_model.a[lambda][idirs]) + ad_model.c[i][idirs];
                 }
@@ -148,7 +148,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
                 model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
             } else {
                 // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
+                for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                     ad_model.a[i][idirs] = ad_model.c[i][idirs];
                 }
                 // nominal evaluation
@@ -165,7 +165,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
                 */
             } else {
                 // derivative evaluation
-                for (int idirs = 0; idirs < ndirs; ++idirs) {
+                for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                     ad_model.a[i][idirs] = ad_model.a[i][idirs]
                         + ad_model.S[i][idirs] * (*qddot)[q_index]
                         + model.S[i] * (*qddot_dirs)(q_index, idirs);
@@ -177,12 +177,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
     }
 }
 
-// -----------------------------------------------------------------------------
-}
-// -----------------------------------------------------------------------------
-
-RBDL_DLLAPI
-void ad_UpdateKinematics (
+RBDL_DLLAPI void UpdateKinematics (
     Model &model,
     ADModel &ad_model,
     const VectorNd &q,
@@ -190,8 +185,7 @@ void ad_UpdateKinematics (
     const VectorNd &qdot,
     const MatrixNd &qdot_dirs,
     const VectorNd &qddot,
-    const MatrixNd &qddot_dirs
-) {
+    const MatrixNd &qddot_dirs) {
     LOG << "-------- " << __func__ << " --------" << std::endl;
 
     unsigned int i;
@@ -202,7 +196,7 @@ void ad_UpdateKinematics (
     SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
 
     // derivative evaluation
-    for (int idirs = 0; idirs < ndirs; ++idirs) {
+    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
         ad_model.a[0][idirs].setZero();
     }
     // nominal evaluation
@@ -222,7 +216,7 @@ void ad_UpdateKinematics (
         //jcalc (model, i, q, qdot);
 
         // derivative evaluation
-        for (int idirs = 0; idirs < ndirs; ++idirs) {
+        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
             // NOTE: X_T is a constant model dependent transformation
             ad_model.X_lambda[i][idirs] = ad_model.X_J[i][idirs] * model.X_T[i].toMatrix();
         }
@@ -231,7 +225,7 @@ void ad_UpdateKinematics (
 
         if (lambda != 0) {
             // derivative evaluation
-            for (int idirs = 0; idirs < ndirs; ++idirs) {
+            for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                 ad_model.X_base[i][idirs] =
                     ad_model.X_lambda[i][idirs] * model.X_base[lambda].toMatrix()
                     + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idirs];
@@ -243,9 +237,9 @@ void ad_UpdateKinematics (
             // nominal evaluation
             model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
             model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
-        }   else {
+        } else {
             // derivative evaluation
-            for (int idirs = 0; idirs < ndirs; ++idirs) {
+            for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                 ad_model.X_base[i][idirs] = ad_model.X_lambda[i][idirs];
                 ad_model.v[i][idirs] = ad_model.v_J[i][idirs];
             }
@@ -255,7 +249,7 @@ void ad_UpdateKinematics (
         }
 
         // derivative evaluation
-        for (int idirs = 0; idirs < ndirs; ++idirs) {
+        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
             ad_model.c[i][idirs] = ad_model.c_J[i][idirs]
                 + Math::AD::crossm(
                     model.v[i], ad_model.v[i][idirs],
@@ -281,7 +275,7 @@ void ad_UpdateKinematics (
             */
         } else {
             // derivative evaluation
-            for (int idirs = 0; idirs < ndirs; ++idirs) {
+            for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                 ad_model.a[i][idirs] = ad_model.a[i][idirs]
                     + ad_model.S[i][idirs] * qddot[q_index]
                     + model.S[i] * qddot_dirs(q_index, idirs);
@@ -293,7 +287,7 @@ void ad_UpdateKinematics (
 
     for (i = 1; i < model.mBodies.size(); i++) {
         // derivative evaluation
-        for (int idirs = 0; idirs < ndirs; ++idirs) {
+        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
             LOG << "ad_a[" << i << "][" << idirs << "] = " << ad_model.a[i][idirs].transpose() << std::endl;
         }
         // nominal evaluation
@@ -301,8 +295,7 @@ void ad_UpdateKinematics (
     }
 }
 
-RBDL_DLLAPI
-Vector3d ad_CalcPointAcceleration (
+RBDL_DLLAPI Vector3d CalcPointAcceleration (
         Model &model,
         ADModel &ad_model,
         const Math::VectorNd &q,
@@ -314,8 +307,7 @@ Vector3d ad_CalcPointAcceleration (
         unsigned int body_id,
         const Math::Vector3d &point_position,
         const Math::MatrixNd &fd_derivative,
-        bool update_kinematics = true
-) {
+        bool update_kinematics = true) {
     LOG << "-------- " << __func__ << " --------" << std::endl;
 
     unsigned int ndirs = q_dirs.cols();
@@ -327,7 +319,7 @@ Vector3d ad_CalcPointAcceleration (
 
     if (update_kinematics) {
         // derivative evaluation
-        ad_UpdateKinematics (model, ad_model, q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs);
+        UpdateKinematics (model, ad_model, q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs);
         // nominal evaluation
         // NOTE: Kinematics are already updated in ad_UpdateKinematics
         //UpdateKinematics (model, q, qdot, qddot);
@@ -359,5 +351,7 @@ Vector3d ad_CalcPointAcceleration (
 }
 
 // -----------------------------------------------------------------------------
-} /* RigidBodyDynamics */
+} // namespace AD
+// -----------------------------------------------------------------------------
+} // namespace RigidBodyDynamics
 // -----------------------------------------------------------------------------
