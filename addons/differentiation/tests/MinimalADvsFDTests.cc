@@ -297,24 +297,6 @@ RBDL_DLLAPI void fd_CalcCenterOfMass (
     }
 }
 
-SpatialMatrix ad_XtransToMatrixAdjoint (Vector3d r) {
-    Matrix3d E = Matrix3d::Identity(3,3);
-    Matrix3d O = Matrix3d::Zero(3,3);
-    Matrix3d _Erx =
-        E * Matrix3d (
-                0., -r[2], r[1],
-                r[2], 0., -r[0],
-                -r[1], r[0], 0.
-                );
-    SpatialMatrix result;
-    result.block<3,3>(0,0) = O;
-    result.block<3,3>(0,3) = -_Erx;
-    result.block<3,3>(3,0) = Matrix3d::Zero(3,3);
-    result.block<3,3>(3,3) = O;
-
-    return result;
-}
-
 RBDL_DLLAPI void ad_UpdateKinematicsCustom (
         Model &model,
         ADModel & ad_model,
@@ -491,7 +473,7 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
         ad_UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, &qdot, &qdot_dirs, NULL, NULL);
     }
 
-    int ndirs = q_dirs.cols();
+    size_t ndirs = q_dirs.cols();
 
     for (size_t i = 1; i < model.mBodies.size(); i++) {
         // derivative evaluation
@@ -586,9 +568,7 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
         for (size_t idir = 0; idir < ndirs; idir++) {
 //            ::ad_com[idir] = ad_com.block<3,1>(0, idir);
             ad_htot[idir] = Xtrans(com).toMatrixAdjoint() * ad_htot[idir]
-                            //+ Xtrans(ad_com.block<3,1>(0, idir)).applyAdjoint(htot);
-                            //+ ad_XtransToMatrixAdjoint(ad_com.block<3,1>(0, idir)) * htot;
-                            + AD::Xtrans(com, ad_com.block<3,1>(0, idir)).adjoint() *htot;
+                            + AD::Xtrans(com, ad_com.block<3,1>(0, idir)).adjoint() * htot;
 
 //            ::ad_xtc[idir] = // Xtrans(ad_com.block<3,1>(0, idir)).toMatrixAdjoint();
 //                    ad_XtransToMatrixAdjoint(ad_com.block<3,1>(0, idir));
@@ -609,10 +589,8 @@ RBDL_DLLAPI void ad_CalcCenterOfMass (
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcCenterOfMass) {
     q[0] = 0.3;
     q[1] = -0.2;
-    Vector3d pointBodyCoordinates (0.1, 3.2, 4.2);
     qdot[0] = .1;
     qdot[1] = -.15;
-
 
     int nrows = model.dof_count;
     int ndirs = 2 * model.dof_count;
@@ -678,12 +656,6 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcCenterOfMass) {
 //        cout << "com_norm    " << (::fd_com[i + 1] - ::ad_com[i]).norm() << endl;
 //    }
 
-//    cout << "--" << endl;
-//    cout << ad_d_angMomentum << endl;
-//    cout << "--" << endl;
-//    cout << fd_d_angMomentum << endl;
-//    cout << "--" << endl;
-
     CHECK_EQUAL(ad_mass, fd_mass);
     CHECK_ARRAY_CLOSE(ad_com.data(), fd_com.data(), 3, TEST_PREC);
     CHECK_ARRAY_CLOSE(ad_d_com.data(), fd_d_com.data(), 3 * ndirs, 1e-8);
@@ -691,8 +663,89 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcCenterOfMass) {
     CHECK_ARRAY_CLOSE(ad_d_comVelocity.data(), fd_d_comVelocity.data(), 3 * ndirs, 1e-8);
     CHECK_ARRAY_CLOSE(ad_angMomentum.data(), fd_angMomentum.data(), 3, 1e-8);
     CHECK_ARRAY_CLOSE(ad_d_angMomentum.data(), fd_d_angMomentum.data(), 3 * ndirs, 1e-8);
+}
 
+RBDL_DLLAPI double fd_CalcPotentialEnergy (
+        Model & model,
+        VectorNd const & q,
+        MatrixNd const & q_dirs,
+        MatrixNd & fd_pote) {
+    assert(fd_pote.cols() == q_dirs.cols());
+    assert(fd_pote.rows() == 1);
 
+    double h = sqrt(1e-16);
+    unsigned int ndirs = q_dirs.cols();
+
+    double pote = CalcPotentialEnergy (model, q);
+    VectorNd q_dir(q);
+
+    for (int i = 0; i < ndirs; i++ ) {
+        q_dir = q_dirs.block(0, i, model.q_size, 1);
+        double hd_pote = CalcPotentialEnergy(model, q + h * q_dir);
+        fd_pote(i) = (hd_pote - pote) / h;
+    }
+
+    return pote;
+}
+
+RBDL_DLLAPI double ad_CalcPotentialEnergy (
+        Model &model,
+        ADModel &ad_model,
+        const Math::VectorNd & q,
+        const Math::MatrixNd & q_dirs,
+        MatrixNd & ad_pote,
+        bool update_kinematics)
+{
+    int ndirs = q_dirs.cols();
+    assert(ad_pote.cols() == ndirs);
+    assert(ad_pote.rows() == 1);
+
+    double mass = 0;
+    Vector3d com = Vector3d::Zero(3);
+    MatrixNd ad_com = MatrixNd::Zero(3, ndirs); // 3-x-n matrix
+    ad_CalcCenterOfMass (model, ad_model, q, q_dirs,
+                         VectorNd::Zero (model.qdot_size),
+                         MatrixNd::Zero (model.qdot_size, q_dirs.cols()),
+                         mass, com, ad_com,
+                         NULL, NULL, NULL, NULL, update_kinematics);
+
+    Vector3d g = - Vector3d (model.gravity[0], model.gravity[1], model.gravity[2]);
+
+    LOG << "pot_energy: " << " mass = " << mass << " com = " << com.transpose() << std::endl;
+
+    ad_pote = mass * g.transpose() * ad_com;
+
+    return mass * com.dot(g);
+}
+
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcPotentialEnergy) {
+    q[0] = 0.3;
+    q[1] = -0.2;
+    qdot[0] = .1;
+    qdot[1] = -.15;
+
+    int nrows = model.dof_count;
+    int ndirs = 2 * model.dof_count;
+
+    MatrixNd q_dirs = MatrixNd::Zero(nrows, ndirs);
+    MatrixNd qdot_dirs = MatrixNd::Zero(nrows, ndirs);
+
+    q_dirs.block(0, 0, nrows, model.dof_count)
+            = MatrixNd::Identity(nrows, model.dof_count);
+    q_dirs.block(0, model.dof_count, nrows, model.dof_count)
+            = MatrixNd::Zero(nrows, model.dof_count);
+    qdot_dirs.block(0, 0, nrows, model.dof_count)
+            = MatrixNd::Zero(nrows, model.dof_count);
+    qdot_dirs.block(0, model.dof_count, nrows, model.dof_count)
+            = MatrixNd::Identity(nrows, model.dof_count);
+
+    MatrixNd fd_pote = MatrixNd::Zero(1, ndirs);
+    fd_CalcPotentialEnergy(model, q, q_dirs, fd_pote);
+
+    MatrixNd ad_pote = MatrixNd::Zero(1, ndirs);
+    ad_CalcPotentialEnergy(model, ad_model, q, q_dirs, ad_pote, true);
+
+    CHECK_ARRAY_CLOSE(fd_pote.data(), ad_pote.data(), 1 * ndirs, 1e-8);
 }
 
 
