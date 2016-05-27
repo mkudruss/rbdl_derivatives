@@ -23,6 +23,7 @@ SET ( DIFFERENTIATION_SOURCES
 	ModelAD.cc
 	KinematicsAD.cc
 	DynamicsAD.cc
+	DynamicsFD.cc
 	JointAD.cc
 )
 
