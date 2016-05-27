@@ -69,7 +69,7 @@ void ad_jcalc (
 		// derivative code
 		for (int idir = 0; idir < ndirs; ++idir) {
 			ad_model.X_J[joint_id][idir] = AD::Xtrans(
-				Vector3d (q(model.mJoints[joint_id].q_index, idir), 0.0, 0.0),
+                Vector3d (q(model.mJoints[joint_id].q_index), 0.0, 0.0),
 				Vector3d (q_dirs(model.mJoints[joint_id].q_index, idir), 0.0, 0.0)
 			);
 			ad_model.S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 0., 0., 1., 0., 0.]
