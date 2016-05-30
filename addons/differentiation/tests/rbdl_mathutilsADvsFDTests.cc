@@ -28,7 +28,7 @@ TEST (crossm_v1v2_ADvsAnalyticTest) {
     std::vector<SpatialVector> ad_res (ndirs, SpatialVector::Zero());
     std::vector<SpatialVector> an_res (ndirs, SpatialVector::Zero());
 
-    for (int idirs = 0; idirs < ndirs; ++idirs) {
+    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
         SpatialVector v1_dir = v1_dirs.block(0, idirs, 6, 1);
         SpatialVector v2_dir = v2_dirs.block(0, idirs, 6, 1);
 
@@ -52,7 +52,7 @@ TEST (crossm_v1v2_ADvsFDTest) {
     std::vector<SpatialVector> ad_res (ndirs, SpatialVector::Zero());
     std::vector<SpatialVector> fd_res (ndirs, SpatialVector::Zero());
 
-    for (int idirs = 0; idirs < ndirs; ++idirs) {
+    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
         SpatialVector v1_dir = v1_dirs.block(0, idirs, 6, 1);
         SpatialVector v2_dir = v2_dirs.block(0, idirs, 6, 1);
 
@@ -74,7 +74,7 @@ TEST (crossm_v_ADvsAnalyticTest) {
     std::vector<SpatialMatrix> ad_res (ndirs, SpatialMatrix::Zero());
     std::vector<SpatialMatrix> an_res (ndirs, SpatialMatrix::Zero());
 
-    for (int idirs = 0; idirs < ndirs; ++idirs) {
+    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
         SpatialVector v_dir = v_dirs.block(0, idirs, 6, 1);
 
         ad_res[idirs] = AD::crossm (v_dir);
@@ -94,7 +94,7 @@ TEST (crossm_v_ADvsFDTest) {
     std::vector<SpatialMatrix> ad_res (ndirs, SpatialMatrix::Zero());
     std::vector<SpatialMatrix> fd_res (ndirs, SpatialMatrix::Zero());
 
-    for (int idirs = 0; idirs < ndirs; ++idirs) {
+    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
         SpatialVector v_dir = v_dirs.block(0, idirs, 6, 1);
 
         ad_res[idirs] = AD::crossm (v_dir);
