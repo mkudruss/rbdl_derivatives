@@ -66,7 +66,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
             MatrixNd QDot_zero_dirs (MatrixNd::Zero (model.q_size, ndirs));
 
             // Derivative evaluation and nominal evaluation
-            ad_jcalc (model, ad_model, i, *q, *q_dirs, QDot_zero, QDot_zero_dirs);
+            jcalc (model, ad_model, i, *q, *q_dirs, QDot_zero, QDot_zero_dirs);
             // derivative evaluation
             for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
                 // NOTE: X_T is a constant model dependent transformation
@@ -100,7 +100,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
             unsigned int lambda = model.lambda[i];
 
             // Derivative evaluation and nominal evaluation
-            ad_jcalc (model, ad_model, i, *q, *q_dirs, *qdot, *qdot_dirs);
+            jcalc (model, ad_model, i, *q, *q_dirs, *qdot, *qdot_dirs);
 
             if (lambda != 0) {
                 // derivative evaluation
@@ -209,7 +209,7 @@ RBDL_DLLAPI void UpdateKinematics (
         unsigned int lambda = model.lambda[i];
 
         // derivative evaluation
-        ad_jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
+        jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
         // nominal evaluation
         // NOTE: nominal evaluation is not needed, because already done in ad_jcalc
         //jcalc (model, i, q, qdot);

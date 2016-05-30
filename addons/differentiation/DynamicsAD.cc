@@ -43,7 +43,7 @@ void ForwardDynamics (
 	for (i = 1; i < model.mBodies.size(); i++) {
 		unsigned int lambda = model.lambda[i];
 
-		ad_jcalc(model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
+        jcalc(model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
 
 		if (lambda != 0) {
 			for(unsigned int j = 0; j < ndirs; j++) {
@@ -256,7 +256,7 @@ void InverseDynamics(
 		unsigned int q_index = model.mJoints[i].q_index;
 
 		// derivative evaluation
-		ad_jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
+        jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
 		// nominal evaluation
 		// NOTE joints are already calculated in ad_jcalc
 		// jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
@@ -403,7 +403,7 @@ void CompositeRigidBodyAlgorithm (
 	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
 		if (update_kinematics) {
 			// derivative evaluation
-			ad_jcalc_X_lambda_S (model, ad_model, i, q, q_dirs);
+            jcalc_X_lambda_S (model, ad_model, i, q, q_dirs);
 			// nominal evaluation
 			// NOTE nominal evaluation is part of ad_jcalc_X_lambda_S
 			// jcalc_X_lambda_S (model, i, q);

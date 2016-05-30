@@ -16,12 +16,6 @@
 #include "rbdl/rbdl.h"
 #include "rbdl/rbdl_math.h"
 
-// #include "rbdl/Logging.h"
-// #include "rbdl/Joint.h"
-// #include "rbdl/Body.h"
-
-// #include "rbdl/Model.h"
-
 using namespace std;
 using namespace RigidBodyDynamics;
 //using namespace RigidBodyDynamics::Math;
