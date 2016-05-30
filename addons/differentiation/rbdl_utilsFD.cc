@@ -105,6 +105,10 @@ RBDL_DLLAPI double CalcPotentialEnergy (
     return pote;
 }
 
+//int fd_counter = 0;
+//std::vector<std::vector<Math::SpatialVector> > fd_v(2);
+//std::vector<std::vector<Math::SpatialMatrix> > fd_I(2);
+
 RBDL_DLLAPI double CalcKineticEnergy (
         Model & model,
         VectorNd const & q,
@@ -120,14 +124,22 @@ RBDL_DLLAPI double CalcKineticEnergy (
     assert(1 == fd_kine.rows());
 
     double kine = RigidBodyDynamics::Utils::CalcKineticEnergy(model, q, qdot);
+//    fd_v[fd_counter] = model.v;
+//    transform(model.I.begin(), model.I.end(), back_inserter(fd_I[fd_counter]),
+//              [](SpatialRigidBodyInertia const & Ii) { return Ii.toMatrix(); });
+
 
     VectorNd q_dir(VectorNd::Zero(ndirs));
     VectorNd qdot_dir(VectorNd::Zero(ndirs));
     for (unsigned int i = 0; i < ndirs; i++ ) {
+//        fd_counter++;
         q_dir = q_dirs.block(0, i, model.q_size, 1);
         qdot_dir = qdot_dirs.block(0, i, model.qdot_size, 1);
         double hd_kine = RigidBodyDynamics::Utils::CalcKineticEnergy(model,
                 q + h * q_dir, qdot + h * qdot_dir);
+//        fd_v[fd_counter] = model.v;
+//        transform(model.I.begin(), model.I.end(), back_inserter(fd_I[fd_counter]),
+//                  [](SpatialRigidBodyInertia const & Ii) { return Ii.toMatrix(); });
         fd_kine(i) = (hd_kine - kine) / h;
     }
 

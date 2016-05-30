@@ -297,26 +297,53 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcKineticEnergy) {
         qdot_dirs.block(0, model.dof_count, nrows, model.dof_count)
                 = MatrixNd::Identity(nrows, model.dof_count);
 
+//        q_dirs = q_dirs.block(0, 2, model.dof_count, 1);
+//        qdot_dirs = qdot_dirs.block(0, 2, model.dof_count, 1);
+//        ndirs = 1;
+
         MatrixNd fd_kine = MatrixNd::Zero(1, ndirs);
         Utils::FD::CalcKineticEnergy(model, q, q_dirs, qdot, qdot_dirs, fd_kine);
 
         MatrixNd ad_kine = MatrixNd::Zero(1, ndirs);
         Utils::AD::CalcKineticEnergy(model, ad_model, q, q_dirs, qdot, qdot_dirs, ad_kine, true);
 
-        cout << "--" << endl;
-        cout << fd_kine << endl;
-        cout << "--" << endl;
-        cout << ad_kine << endl;
-        cout << "--" << endl;
-        cout << setw(10) << setfill(' ') << "e  = " <<(fd_kine - ad_kine) << endl;
-        cout << "--" << endl;
-        cout << setw(10) << setfill(' ') << "|e| = " << (fd_kine - ad_kine).norm() << endl;
-        cout << "--" << endl;
-        cout << setw(10) << setfill(' ') << "|e|/|x| = " << (fd_kine - ad_kine).norm() / fd_kine.norm() << endl;
-        cout << "--" << endl;
+//        double h = sqrt(1e-16);
+//        SpatialRigidBodyInertia ini;
+//        for (size_t i = 1; i < model.mBodies.size(); i++) {
+//            Utils::FD::fd_v[1][i] = (Utils::FD::fd_v[1][i] - Utils::FD::fd_v[0][i]) / h;
+//            Utils::FD::fd_I[1][i] = (Utils::FD::fd_I[1][i] - Utils::FD::fd_I[0][i]) / h;
+//        }
+//        cout << "--" << endl;
+//        cout << setprecision(10) << fd_kine << endl;
+//        cout << "--" << endl;
+//        cout << setprecision(10) << ad_kine << endl;
+//        cout << "--" << endl;
+//        cout << setw(10) << setfill(' ') << "e  = " <<(fd_kine - ad_kine) << endl;
+//        cout << setw(10) << setfill(' ') << "|e| = " << (fd_kine - ad_kine).norm() << endl;
+//        cout << setw(10) << setfill(' ') << "|e|/|x| = " << (fd_kine - ad_kine).norm() / fd_kine.norm() << endl;
+//        cout << "--" << endl;
+//        for (size_t i = 1; i < model.mBodies.size(); i++) {
+//            cout << setw(10) << setfill(' ') << "ad v " << i << " = " << ad_model.v[i][0].transpose() << endl;
+//            cout << setw(10) << setfill(' ') << "fd v " << i << " = " << Utils::FD::fd_v[1][i].transpose() << endl;
+//            cout << setw(10) << setfill(' ') << "|e v| = " << (ad_model.v[i][0] - Utils::FD::fd_v[1][i]).norm() << endl;
+//        }
+//        cout << "--" << endl;
+//        for (size_t i = 1; i < model.mBodies.size(); i++) {
+//            SpatialVector ad_Iv = model.I[i] * ad_model.v[i][0];
+//            SpatialVector fd_Iv = model.I[i] * Utils::FD::fd_v[1][i];
+//            cout << setw(10) << setfill(' ') << "ad Iv " << i << " = " << ad_Iv.transpose() << endl;
+//            cout << setw(10) << setfill(' ') << "fd Iv " << i << " = " << fd_Iv.transpose() << endl;
+//            cout << setw(10) << setfill(' ') << "|e Iv| " << i << " = " << (ad_Iv - fd_Iv).norm() << endl;
+//        }
+//        cout << "--" << endl;
+//        Utils::FD::fd_v.clear();
+//        Utils::FD::fd_v.resize(2);
+//        Utils::FD::fd_I.clear();
+//        Utils::FD::fd_I.resize(2);
+//        Utils::FD::fd_counter = 0;
 
 //    }
-//    CHECK_ARRAY_CLOSE(fd_kine.data(), ad_kine.data(), 1 * ndirs, 1e-8);
+    CHECK_ARRAY_CLOSE(fd_kine.data(), ad_kine.data(), 1 * ndirs, 1e-6);
 }
 
 // TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
