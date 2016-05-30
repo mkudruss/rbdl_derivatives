@@ -28,6 +28,9 @@ namespace RigidBodyDynamics {
         const Math::VectorNd & q,
         const Math::MatrixNd & q_dirs
 		);
-}
+
+// -----------------------------------------------------------------------------
+} // namespace RigidBodyDynamics
+// -----------------------------------------------------------------------------
 
 #endif
