@@ -27,9 +27,10 @@ RBDL_DLLAPI void CalcCenterOfMass (
         Vector3d * angular_momentum,
         MatrixNd * ad_angular_momentum,
         bool update_kinematics) {
+    int ndirs = q_dirs.cols();
+    assert(ndirs == qdot_dirs.cols());
+    assert(ndirs == ad_com.cols());
 
-    assert(q_dirs.cols() == qdot_dirs.cols());
-    assert(q_dirs.cols() == ad_com.cols());
     if (com_velocity) {
         assert(q_dirs.cols() == ad_com_velocity->cols());
     }
@@ -42,18 +43,17 @@ RBDL_DLLAPI void CalcCenterOfMass (
                 &q_dirs, &qdot, &qdot_dirs, NULL, NULL);
     }
 
-    size_t ndirs = q_dirs.cols();
-
     for (size_t i = 1; i < model.mBodies.size(); i++) {
         // derivative evaluation
-        for(size_t idir = 0; idir < ndirs; idir++) {
+        for(int idir = 0; idir < ndirs; idir++) {
             ad_model.Ic[i][idir] = SpatialMatrix::Zero();
         }
         // nominal evaluation
         model.Ic[i] = model.I[i];
 
-        // derivative evaluation (can be shortened, as 2nd summand is currently always zero.
-        for(size_t idir = 0; idir < ndirs; idir++) {
+        // derivative evaluation
+        /// TODO: Can be shortened, as 2nd summand is currently always zero.
+        for(int idir = 0; idir < ndirs; idir++) {
             ad_model.hc[i][idir] = model.Ic[i].toMatrix() * ad_model.v[i][idir]
                     + ad_model.Ic[i][idir] * model.v[i];
         }
@@ -62,6 +62,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
     }
 
     SpatialRigidBodyInertia Itot (0., Vector3d (0., 0., 0.), Matrix3d::Zero(3,3));
+    /// TODO: Consider replacing ad_Itot by vector<SpatialMatrix>
     vector<SpatialRigidBodyInertia> ad_Itot(ndirs, Itot);
 
     SpatialVector htot (SpatialVector::Zero(6));
@@ -71,7 +72,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
         unsigned int lambda = model.lambda[i];
         if (lambda != 0) {
             // derivative evaluation
-            for (size_t idir = 0; idir < ndirs; idir++) {
+            for (int idir = 0; idir < ndirs; idir++) {
                 ad_model.Ic[lambda][idir] = ad_model.Ic[lambda][idir]
                         + model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix()
                         + model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix() * ad_model.X_lambda[i][idir]
@@ -81,7 +82,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
             model.Ic[lambda] = model.Ic[lambda] + model.X_lambda[i].applyTranspose (model.Ic[i]);
 
             // derivative evaluation
-            for (size_t idir = 0; idir < ndirs; idir++) {
+            for (int idir = 0; idir < ndirs; idir++) {
                 ad_model.hc[lambda][idir] = ad_model.hc[lambda][idir]
                         + model.X_lambda[i].toMatrixTranspose() * ad_model.hc[i][idir]
                         + ad_model.X_lambda[i][idir].transpose() * model.hc[i];
@@ -90,7 +91,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
             model.hc[lambda] = model.hc[lambda] + model.X_lambda[i].applyTranspose (model.hc[i]);
         } else {
             // derivative evaluation
-            for (size_t idir = 0; idir < ndirs; idir++) {
+            for (int idir = 0; idir < ndirs; idir++) {
                 SpatialMatrix m =
                         model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix()
                         + model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix() * ad_model.X_lambda[i][idir]
@@ -104,7 +105,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
             Itot = Itot + model.X_lambda[i].applyTranspose (model.Ic[i]);
 
             // derivative evaluation
-            for (size_t idir = 0; idir < ndirs; idir++) {
+            for (int idir = 0; idir < ndirs; idir++) {
                 ad_htot[idir] += model.X_lambda[i].toMatrixTranspose() * ad_model.hc[i][idir]
                         + ad_model.X_lambda[i][idir].transpose() * model.hc[i];
             }
@@ -116,7 +117,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
     mass = Itot.m;
     com = Itot.h / mass;
 
-    for (size_t idir = 0; idir < ndirs; idir++) {
+    for (int idir = 0; idir < ndirs; idir++) {
         ad_com.block<3,1>(0, idir) = ad_Itot[idir].h / mass;
     }
 
@@ -124,7 +125,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
 
     if (com_velocity) {
         // derivative evaluation
-        for (size_t idir = 0; idir < ndirs; idir++) {
+        for (int idir = 0; idir < ndirs; idir++) {
             ad_com_velocity->block<3, 1>(0, idir) = Vector3d(ad_htot[idir][3] / mass, ad_htot[idir][4] / mass, ad_htot[idir][5] / mass);
         }
         // nominal evaluation
@@ -133,7 +134,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
 
     if (angular_momentum) {
         // derivative evaluation
-        for (size_t idir = 0; idir < ndirs; idir++) {
+        for (int idir = 0; idir < ndirs; idir++) {
             ad_htot[idir] = Xtrans(com).toMatrixAdjoint() * ad_htot[idir]
                             + Math::AD::Xtrans(com, ad_com.block<3,1>(0, idir)).adjoint() * htot;
         }
@@ -141,8 +142,10 @@ RBDL_DLLAPI void CalcCenterOfMass (
         htot = Xtrans (com).applyAdjoint (htot);
 
         // derivative evaluation
-        for (size_t idir = 0; idir < ndirs; idir++) {
-            ad_angular_momentum->block<3,1>(0, idir) = Vector3d(ad_htot[idir][0], ad_htot[idir][1], ad_htot[idir][2]);
+        for (int idir = 0; idir < ndirs; idir++) {
+            ad_angular_momentum->block<3,1>(0, idir) = ad_htot[idir].block<3, 1>(0, 0);
+
+                    // Vector3d(ad_htot[idir][0], ad_htot[idir][1], ad_htot[idir][2]);
         }
         // nominal evaluation
         angular_momentum->set (htot[0], htot[1], htot[2]);
@@ -169,7 +172,7 @@ RBDL_DLLAPI double CalcPotentialEnergy (
             MatrixNd::Zero (model.qdot_size, q_dirs.cols()),
             mass, com, ad_com, NULL, NULL, NULL, NULL, update_kinematics);
 
-    Vector3d g = - Vector3d (model.gravity[0], model.gravity[1], model.gravity[2]);
+    Vector3d g = -Vector3d(model.gravity[0], model.gravity[1], model.gravity[2]);
 
     LOG << "pot_energy: " << " mass = " << mass << " com = " << com.transpose() << std::endl;
 
@@ -188,8 +191,7 @@ RBDL_DLLAPI double CalcKineticEnergy (
         MatrixNd const & qdot_dirs,
         MatrixNd & ad_kine,
         bool update_kinematics) {
-    unsigned int ndirs = q_dirs.cols();
-
+    int ndirs = q_dirs.cols();
     assert(ndirs == qdot_dirs.cols());
     assert(ndirs == ad_kine.cols());
     assert(1 == ad_kine.rows());
@@ -203,7 +205,7 @@ RBDL_DLLAPI double CalcKineticEnergy (
     double kine = 0.;
     for (size_t i = 1; i < model.mBodies.size(); i++) {
         // derivative value
-        for (unsigned int idir = 0; idir < ndirs; idir++) {
+        for (int idir = 0; idir < ndirs; idir++) {
             ad_kine.block<1,1>(0, idir) += .5 * (
                     ad_model.v[i][idir].transpose() * (model.I[i] * model.v[i])
                     + model.v[i].transpose() * (model.I[i] * ad_model.v[i][idir]));

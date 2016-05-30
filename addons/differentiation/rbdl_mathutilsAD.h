@@ -71,6 +71,25 @@ inline Vector3d r_from_Matrix(const SpatialMatrix X, const SpatialMatrix X_dirs)
 }
 
 RBDL_DLLAPI
+inline SpatialMatrix Xrotx (double const & xrot, double const & xrot_dirs) {
+	SpatialMatrix result (SpatialMatrix::Zero(6,6));
+
+	double s, c;
+
+	s = sin (xrot) * xrot_dirs;
+	c = cos (xrot) * xrot_dirs;
+
+	Matrix3d E(0., 0., 0.,
+			   0., -s, c,
+			   0., -c, -s);
+
+	result.block<3,3>(0,0) = E;
+	result.block<3,3>(3,3) = E;
+
+	return result;
+}
+
+RBDL_DLLAPI
 inline SpatialMatrix Xroty (const double &yrot, const double &yrot_dirs) {
     SpatialMatrix result (SpatialMatrix::Zero(6,6));
 

@@ -11,10 +11,6 @@ namespace Utils {
 namespace FD {
 // -----------------------------------------------------------------------------
 
-//extern int fd_counter;
-//extern std::vector<std::vector<Math::SpatialVector> > fd_v;
-//extern std::vector<std::vector<Math::SpatialMatrix> > fd_I;
-
 RBDL_DLLAPI void CalcCenterOfMass (
         Model & model,
         Math::VectorNd const & q,
