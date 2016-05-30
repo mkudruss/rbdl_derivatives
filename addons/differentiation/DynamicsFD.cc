@@ -86,7 +86,7 @@ void InverseDynamics(
 	VectorNd qdot_dir(qdot);
 	VectorNd qddot_dir(qddot);
 
-	for (int i = 0; i < ndirs; i++ ){
+	for (unsigned int i = 0; i < ndirs; i++ ){
 			q_dir = q_dirs.block(0,i, model.q_size, 1);
 			qdot_dir = qdot_dirs.block(0,i, model.q_size, 1);
 			qddot_dir = qddot_dirs.block(0,i, model.q_size, 1);
