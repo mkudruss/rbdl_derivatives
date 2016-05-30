@@ -44,12 +44,14 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
         unsigned int lambda = model.lambda[i];
 
         // Calculate joint dependent variables
-        if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
+        if (model.mJoints[i].mJointType == JointTypeRevoluteX) {
+            model.X_J[i] = Xrotx (Q[model.mJoints[i].q_index]);
+        } else if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
             model.X_J[i] = Xroty (Q[model.mJoints[i].q_index]);
         } else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
             model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * Q[model.mJoints[i].q_index]);
         } else {
-            std::cerr << "Unsupported joint! Only RotY and TransX supported!" << std::endl;
+            std::cerr << "Unsupported joint! Only RotX, RotY and TransX supported!" << std::endl;
             abort();
         }
 
@@ -102,7 +104,13 @@ Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
     for (unsigned int i = 1; i < model.mBodies.size(); i++) {
         unsigned int lambda = model.lambda[i];
         // Calculate joint dependent variables
-        if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
+
+        if (model.mJoints[i].mJointType == JointTypeRevoluteX) {
+            for (unsigned int j = 0; j < ndirs; j++) {
+                ad_model.X_J[i][j] = Math::AD::Xrotx (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+            }
+            model.X_J[i] = Xrotx (q[model.mJoints[i].q_index]);
+        } else if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
             for (unsigned int j = 0; j < ndirs; j++) {
                 ad_model.X_J[i][j] = Math::AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
             }
@@ -116,7 +124,7 @@ Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
             }
             model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index]);
         } else {
-            std::cerr << "Unsupported joint! Only RotY and TransX supported!" << std::endl;
+            std::cerr << "Unsupported joint! Only RotX, RotY and TransX supported!" << std::endl;
             abort();
         }
 
@@ -145,7 +153,6 @@ Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
     return body_position + body_rotation.transpose() * point_body_coordinates;
 }
 
-
 RBDL_DLLAPI
 Vector3d fd_CalcBodyToBaseCoordinatesSingleFunc (
 		Model &model,
@@ -163,7 +170,6 @@ Vector3d fd_CalcBodyToBaseCoordinatesSingleFunc (
 		VectorNd q_dir = q_dirs.block(0,j, model.qdot_size, 1);
 		Vector3d res_hd = CalcBodyToBaseCoordinatesSingleFunc (model, q + h * q_dir, body_id, point_body_coordinates);
 		Vector3d res_hd_rbdl = CalcBodyToBaseCoordinates (model, q + h * q_dir, body_id, point_body_coordinates);
-
 		//cout << "calc_body err = " << (res_hd - res_hd_rbdl).transpose() << endl;
 
 		out.block<3,1>(0,j) = (res_hd - ref) / h;
@@ -172,16 +178,33 @@ Vector3d fd_CalcBodyToBaseCoordinatesSingleFunc (
 	return ref;
 }
 
-TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseCoordinatesSingleFunc) {
-	q[0] = 0.3;
-	q[1] = -0.2;
-	Vector3d point_body_coordinates (0.1, 3.2, 4.2);
+// -----------------------------------------------------------------------------
 
-	Vector3d point_single_func = CalcBodyToBaseCoordinatesSingleFunc (model, q, id_pendulum, point_body_coordinates);
-	Vector3d point_default = CalcBodyToBaseCoordinates (model, q, id_pendulum, point_body_coordinates);
+template <typename T>
+void CalcBodyToBaseCoordinatesSingleFuncTemplate(T & obj, unsigned int id_ee) {
+    Model model = obj.model;
+    VectorNd q = obj.q;
 
-	CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, TEST_PREC);
+    q[0] = 0.3;
+    q[1] = -0.2;
+    Vector3d point_body_coordinates (0.1, 3.2, 4.2);
+
+    Vector3d point_single_func = CalcBodyToBaseCoordinatesSingleFunc (model, q, id_ee, point_body_coordinates);
+    Vector3d point_default = CalcBodyToBaseCoordinates (model, q, id_ee, point_body_coordinates);
+
+    CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, TEST_PREC);
 }
+
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseCoordinatesSingleFunc) {
+    CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_pendulum);
+}
+
+TEST_FIXTURE ( Arm2Dof, Arm2DofCalcBodyToBaseCoordinatesSingleFunc) {
+    CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_proximal);
+}
+
+// -----------------------------------------------------------------------------
+
 
 // TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
 // 	MatrixNd jacobian_ad = MatrixNd::Zero(3, model.qdot_size);

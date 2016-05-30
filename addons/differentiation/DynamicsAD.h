@@ -33,23 +33,6 @@ namespace RigidBodyDynamics {
 namespace AD {
 // -----------------------------------------------------------------------------
 
-/*
-RBDL_DLLAPI
-void ad_ForwardDynamics (
-	Model& model,
-	ADModel& ad_model,
-	const VectorNd& q,
-	const MatrixNd& q_dirs,
-	const VectorNd& qdot,
-	const MatrixNd& qdot_dirs,
-	const VectorNd& tau,
-	const MatrixNd& tau_dirs,
-	VectorNd& qddot,
-	MatrixNd& ad_qddot,
-	std::vector<SpatialVector>* f_ext
-);
-*/
-
 RBDL_DLLAPI
 void InverseDynamics(
 	Model& model,
