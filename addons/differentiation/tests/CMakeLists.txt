@@ -23,7 +23,7 @@ SET_TARGET_PROPERTIES ( ${PROJECT_EXECUTABLES} PROPERTIES
 )
 
 ADD_EXECUTABLE ( rbdl_ad_tests ${TESTS_SRCS} )
-
+target_compile_features(rbdl_ad_tests PRIVATE cxx_range_for)
 SET_TARGET_PROPERTIES ( rbdl_ad_tests PROPERTIES
     LINKER_LANGUAGE CXX
     OUTPUT_NAME runtests
