@@ -75,12 +75,11 @@ inline SpatialMatrix Xrotx (double const & xrot, double const & xrot_dirs) {
 	SpatialMatrix result (SpatialMatrix::Zero(6,6));
 
 	double s, c;
-
 	s = sin (xrot) * xrot_dirs;
 	c = cos (xrot) * xrot_dirs;
 
-	Matrix3d E(0., 0., 0.,
-			   0., -s, c,
+	Matrix3d E(0., 0.,  0.,
+			   0., -s,  c,
 			   0., -c, -s);
 
 	result.block<3,3>(0,0) = E;
@@ -91,21 +90,40 @@ inline SpatialMatrix Xrotx (double const & xrot, double const & xrot_dirs) {
 
 RBDL_DLLAPI
 inline SpatialMatrix Xroty (const double &yrot, const double &yrot_dirs) {
-    SpatialMatrix result (SpatialMatrix::Zero(6,6));
+	SpatialMatrix result (SpatialMatrix::Zero(6,6));
 
-    double s, c;
-    s = sin (yrot) * yrot_dirs;
-    c = cos (yrot) * yrot_dirs;
-    Matrix3d E(
-                -s, 0., -c,
-                0., 0., 0.,
-                c, 0., -s
-                );
+	double s, c;
+	s = sin (yrot) * yrot_dirs;
+	c = cos (yrot) * yrot_dirs;
 
-    result.block<3,3>(0,0) = E;
-    result.block<3,3>(3,3) = E;
+	Matrix3d E(
+				-s, 0., -c,
+				0., 0., 0.,
+				c, 0., -s
+				);
 
-    return result;
+	result.block<3,3>(0,0) = E;
+	result.block<3,3>(3,3) = E;
+
+	return result;
+}
+
+RBDL_DLLAPI
+inline SpatialMatrix Xrotz (const double &zrot, const double &zrot_dirs) {
+	SpatialMatrix result (SpatialMatrix::Zero(6,6));
+
+	double s, c;
+
+	s = sin (zrot) * zrot_dirs;
+	c = cos (zrot) * zrot_dirs;
+	Matrix3d E(-s,  c, 0.,
+			   -c, -s, 0.,
+			   0., 0., 0.);
+
+	result.block<3,3>(0,0) = E;
+	result.block<3,3>(3,3) = E;
+
+	return result;
 }
 
 RBDL_DLLAPI

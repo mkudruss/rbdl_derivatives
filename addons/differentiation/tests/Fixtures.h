@@ -64,8 +64,8 @@ struct CartPendulum {
 	RigidBodyDynamics::Math::Vector3d body_point;
 };
 
-struct Arm2Dof {
-	Arm2Dof() {
+struct Arm2DofX {
+	Arm2DofX() {
 		using namespace RigidBodyDynamics;
 		using namespace RigidBodyDynamics::Math;
 
@@ -85,6 +85,62 @@ struct Arm2Dof {
 
 		joint_distal   = Joint(SpatialVector(1., 0., 0., 0., 0., 0.));
 		joint_proximal = Joint(SpatialVector(1., 0., 0., 0., 0., 0.));
+
+		id_distal      = model.AddBody(0, Xtrans(Vector3d(0., 0., 0.)),
+									   joint_distal, body_distal, "distal");
+
+		id_proximal    = model.AddBody(id_distal, Xtrans(Vector3d(0., 0., 0.)),
+									   joint_proximal, body_proximal,
+									   "proximal");
+
+		q     = VectorNd::Constant((size_t) model.dof_count, 0.);
+		qdot  = VectorNd::Constant((size_t) model.dof_count, 0.);
+		qddot = VectorNd::Constant((size_t) model.dof_count, 0.);
+		tau   = VectorNd::Constant((size_t) model.dof_count, 0.);
+
+		ad_model = ADModel(model);
+
+		body_point = RigidBodyDynamics::Math::Vector3d (0., arm_l, 0.);
+
+		ClearLogOutput();
+	}
+
+	RigidBodyDynamics::Model model;
+	ADModel ad_model;
+
+	unsigned int id_distal, id_proximal;
+	RigidBodyDynamics::Body  body_distal, body_proximal;
+	RigidBodyDynamics::Joint joint_distal, joint_proximal;
+
+	RigidBodyDynamics::Math::VectorNd q;
+	RigidBodyDynamics::Math::VectorNd qdot;
+	RigidBodyDynamics::Math::VectorNd qddot;
+	RigidBodyDynamics::Math::VectorNd tau;
+
+	RigidBodyDynamics::Math::Vector3d body_point;
+};
+
+struct Arm2DofZ {
+	Arm2DofZ() {
+		using namespace RigidBodyDynamics;
+		using namespace RigidBodyDynamics::Math;
+
+		ClearLogOutput();
+
+		double arm_l = 0.5;
+		double arm_r = 0.1;
+		double arm_m = 3.5;
+		Matrix3d arm_I = .5 * arm_m * Matrix3d(
+					.5 * (arm_r * arm_r + arm_l * arm_l / 3.), 0., 0.,
+					arm_r * arm_r, 0., 0.,
+					.5 * (arm_r * arm_r + arm_l * arm_l / 3.), 0., 0.);
+		Vector3d arm_com (0., .5 * arm_l, 0.);
+
+		body_distal    = Body(arm_m, arm_com, arm_I);
+		body_proximal  = Body(arm_m, arm_com, arm_I);
+
+		joint_distal   = Joint(SpatialVector(0., 0., 1., 0., 0., 0.));
+		joint_proximal = Joint(SpatialVector(0., 0., 1., 0., 0., 0.));
 
 		id_distal      = model.AddBody(0, Xtrans(Vector3d(0., 0., 0.)),
 									   joint_distal, body_distal, "distal");

@@ -55,7 +55,11 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcPotentialEnergyADTest) {
     CalcPotentialEnergyADTestTemplate(*this);
 }
 
-TEST_FIXTURE ( Arm2Dof, Arm2DofCalcPotentialEnergyADTest) {
+TEST_FIXTURE ( Arm2DofX, Arm2DofCalcPotentialEnergyADTest) {
+    CalcPotentialEnergyADTestTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm2DofZ, Arm2DofCalcPotentialEnergyADTest) {
     CalcPotentialEnergyADTestTemplate(*this);
 }
 
@@ -101,7 +105,11 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcKineticEnergyADTest) {
     CalcKineticEnergyADTestTemplate(*this);
 }
 
-TEST_FIXTURE ( Arm2Dof, Arm2DofCalcKineticEnergyADTest) {
+TEST_FIXTURE ( Arm2DofX, Arm2DofCalcKineticEnergyADTest) {
+    CalcKineticEnergyADTestTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm2DofZ, Arm2DofCalcKineticEnergyADTest) {
     CalcKineticEnergyADTestTemplate(*this);
 }
 
@@ -170,7 +178,11 @@ TEST_FIXTURE( CartPendulum, CartPendulumCalcCenterOfMass) {
     CalcCenterOfMassADTestTemplate(*this);
 }
 
-TEST_FIXTURE( Arm2Dof, Arm2DofCalcCenterOfMass) {
+TEST_FIXTURE( Arm2DofX, Arm2DofCalcCenterOfMass) {
+    CalcCenterOfMassADTestTemplate(*this);
+}
+
+TEST_FIXTURE( Arm2DofZ, Arm2DofCalcCenterOfMass) {
     CalcCenterOfMassADTestTemplate(*this);
 }
 

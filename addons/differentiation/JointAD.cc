@@ -75,8 +75,17 @@ RBDL_DLLAPI void jcalc (
         model.X_J[joint_id] = Xroty (q[model.mJoints[joint_id].q_index]);
         model.v_J[joint_id][1] = qdot[model.mJoints[joint_id].q_index];
     } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteZ) {
-        std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
-        abort();
+        // derivative code
+        for (unsigned int idir = 0; idir < ndirs; ++idir) {
+            ad_model.X_J[joint_id][idir] = Math::AD::Xrotz(
+                q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir));
+            ad_model.S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 0., 1., 0., 0., 0.]
+            ad_model.v_J[joint_id][idir][2] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
+            ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
+        }
+        // nominal code
+        model.X_J[joint_id] = Xrotz (q[model.mJoints[joint_id].q_index]);
+        model.v_J[joint_id][2] = qdot[model.mJoints[joint_id].q_index];
     } else if (model.S[joint_id] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
         // derivative code
         for (unsigned int idir = 0; idir < ndirs; ++idir) {
@@ -116,8 +125,6 @@ RBDL_DLLAPI void jcalc (
     // derivative code
     for (unsigned int idir = 0; idir < ndirs; ++idir) {
         ad_model.X_lambda[joint_id][idir] = ad_model.X_J[joint_id][idir] * model.X_T[joint_id].toMatrix();
-        //cout << "ad_jcalc:  ad_X_lambda[" << joint_id << "][" << idir << "] =" << endl << ad_X_lambda[joint_id][idir] << endl;
-        //cout << "ad_jcalc:  ad_X_Ji[" << joint_id << "][" << idir << "] =" << endl << ad_X_Ji[idir] << endl;
     }
     // nominal code
     model.X_lambda[joint_id] = model.X_J[joint_id] * model.X_T[joint_id];
@@ -200,8 +207,16 @@ RBDL_DLLAPI void jcalc_X_lambda_S (
         model.X_lambda[joint_id] = Xroty (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
         model.S[joint_id] = model.mJoints[joint_id].mJointAxes[0];
     } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteZ) {
-        std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
-        abort();
+        // derivative evaluation
+        for (unsigned int idir = 0; idir < ndirs; ++idir) {
+            // NOTE: X_T is a constant model dependent transformation
+            ad_model.X_lambda[joint_id][idir] =
+                    Math::AD::Xrotz (q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir)) * model.X_T[joint_id].toMatrix();
+            ad_model.S[joint_id][idir] = SpatialVector::Zero();  // S = [0., 0., 1., 0., 0., 0.]
+        }
+        // nominal evaluation
+        model.X_lambda[joint_id] = Xrotz (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
+        model.S[joint_id] = model.mJoints[joint_id].mJointAxes[0];
     } else if (model.mJoints[joint_id].mDoFCount == 1) {
         // derivative evaluation
         for (unsigned int idir = 0; idir < ndirs; ++idir) {
