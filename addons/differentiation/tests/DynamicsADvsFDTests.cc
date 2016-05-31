@@ -141,11 +141,11 @@ TEST_FIXTURE(CartPendulum, CartPendulumInverseDynamicsADTest){
     InverseDynamicsADTestTemplate<CartPendulum>(*this);
 }
 
-TEST_FIXTURE(Arm2DofX, Arm2DofInverseDynamicsADTest) {
+TEST_FIXTURE(Arm2DofX, Arm2DofXInverseDynamicsADTest) {
     InverseDynamicsADTestTemplate(*this, 1e-6);
 }
 
-TEST_FIXTURE(Arm2DofZ, Arm2DofInverseDynamicsADTest) {
+TEST_FIXTURE(Arm2DofZ, Arm2DofZInverseDynamicsADTest) {
     InverseDynamicsADTestTemplate(*this, 1e-6);
 }
 
@@ -182,11 +182,12 @@ TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmADTest) {
     CompositeRigidBodyAlgorithmADTestTemplate(*this);
 }
 
-TEST_FIXTURE( Arm2DofX, Arm2DofCompositeRigidBodyAlgorithmADTest) {
+TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmADTest) {
     CompositeRigidBodyAlgorithmADTestTemplate(*this);
 }
 
-TEST_FIXTURE( Arm2DofZ, Arm2DofCompositeRigidBodyAlgorithmADTest) {
+TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmADTest) {
     CompositeRigidBodyAlgorithmADTestTemplate(*this);
 }
+
 // -----------------------------------------------------------------------------

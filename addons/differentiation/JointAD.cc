@@ -101,8 +101,24 @@ RBDL_DLLAPI void jcalc (
         model.X_J[joint_id] = Xtrans (Vector3d (q[model.mJoints[joint_id].q_index], 0., 0.));
         model.v_J[joint_id][3] = qdot[model.mJoints[joint_id].q_index];
     } else if (model.mJoints[joint_id].mDoFCount == 1) {
-        std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
-        abort();
+        // S = [0,. 0., 0., a, b, c] a,b,c in {0,1}, a + b + c = 1
+        int vidx = -1;
+        for (int i = 0; i < 6; i++) {
+            if (model.S[joint_id][i] == 1.) {
+                vidx = i;
+            }
+        }
+
+        for (unsigned int idir = 0; idir < ndirs; ++idir) {
+            // NOTE: X_T is a constant model dependent transformation
+            ad_model.X_J[joint_id][idir] = jcalc_XJ (model, ad_model, joint_id, idir, q, q_dirs);
+            ad_model.S[joint_id][idir] = SpatialVector::Zero();
+            ad_model.v_J[joint_id][idir][vidx] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
+            ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // v_J = Sdot*qdot
+        }
+        // nominal code
+        model.X_J[joint_id] = jcalc_XJ (model, joint_id, q);
+        model.v_J[joint_id] = model.S[joint_id] * qdot[model.mJoints[joint_id].q_index];
     } else if (model.mJoints[joint_id].mJointType == JointTypeSpherical) {
         std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
         abort();
@@ -131,13 +147,13 @@ RBDL_DLLAPI void jcalc (
 }
 
 
-RBDL_DLLAPI Math::SpatialMatrix ad_jcalc_XJ (
-        Model &model,
-        ADModel &ad_model,
+RBDL_DLLAPI Math::SpatialMatrix jcalc_XJ (
+        Model & model,
+        ADModel & ad_model,
         unsigned int joint_id,
         unsigned int idir,
-        const Math::VectorNd &q,
-        const Math::MatrixNd &q_dirs) {
+        const Math::VectorNd & q,
+        const Math::MatrixNd & q_dirs) {
     // exception if we calculate it for the root body
     assert (joint_id > 0);
 
@@ -152,18 +168,15 @@ RBDL_DLLAPI Math::SpatialMatrix ad_jcalc_XJ (
             // 	model.mJoints[joint_id].mJointAxes[0][2]
             // 	));
         } else if (model.mJoints[joint_id].mJointType == JointTypePrismatic) {
-            return Xtrans (
-                        // 	Vector3d (
-                        // 		model.mJoints[joint_id].mJointAxes[0][3] * q(model.mJoints[joint_id].q_index, idir),
-                        // 		model.mJoints[joint_id].mJointAxes[0][4] * q(model.mJoints[joint_id].q_index, idir),
-                        // 		model.mJoints[joint_id].mJointAxes[0][5] * q(model.mJoints[joint_id].q_index, idir)
-                        // 	),
+            return Math::AD::Xtrans(
+                        Vector3d (
+                            model.mJoints[joint_id].mJointAxes[0][3] * q(model.mJoints[joint_id].q_index),
+                            model.mJoints[joint_id].mJointAxes[0][4] * q(model.mJoints[joint_id].q_index),
+                            model.mJoints[joint_id].mJointAxes[0][5] * q(model.mJoints[joint_id].q_index)),
                         Vector3d (
                             model.mJoints[joint_id].mJointAxes[0][3] * q_dirs(model.mJoints[joint_id].q_index, idir),
-                    model.mJoints[joint_id].mJointAxes[0][4] * q_dirs(model.mJoints[joint_id].q_index, idir),
-                    model.mJoints[joint_id].mJointAxes[0][5] * q_dirs(model.mJoints[joint_id].q_index, idir)
-                    )
-                    ).toMatrix();
+                            model.mJoints[joint_id].mJointAxes[0][4] * q_dirs(model.mJoints[joint_id].q_index, idir),
+                            model.mJoints[joint_id].mJointAxes[0][5] * q_dirs(model.mJoints[joint_id].q_index, idir)));
         }
     }
     std::cerr << "Error: invalid joint type!" << std::endl;
@@ -221,7 +234,7 @@ RBDL_DLLAPI void jcalc_X_lambda_S (
         // derivative evaluation
         for (unsigned int idir = 0; idir < ndirs; ++idir) {
             // NOTE: X_T is a constant model dependent transformation
-            ad_model.X_lambda[joint_id][idir] = ad_jcalc_XJ (model, ad_model, joint_id, idir, q, q_dirs) * model.X_T[joint_id].toMatrix();
+            ad_model.X_lambda[joint_id][idir] = jcalc_XJ (model, ad_model, joint_id, idir, q, q_dirs) * model.X_T[joint_id].toMatrix();
             ad_model.S[joint_id][idir] = SpatialVector::Zero();  // S = [0,. 1., 0., 0., 0., 0.]
         }
         // nominal evaluation

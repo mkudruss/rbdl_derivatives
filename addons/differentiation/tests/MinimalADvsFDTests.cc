@@ -201,11 +201,11 @@ TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseCoordinatesSingleFunc) {
     CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_pendulum);
 }
 
-TEST_FIXTURE ( Arm2DofX, Arm2DofCalcBodyToBaseCoordinatesSingleFunc) {
+TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcBodyToBaseCoordinatesSingleFunc) {
     CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_proximal);
 }
 
-TEST_FIXTURE ( Arm2DofZ, Arm2DofCalcBodyToBaseCoordinatesSingleFunc) {
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcBodyToBaseCoordinatesSingleFunc) {
     CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_proximal);
 }
 
