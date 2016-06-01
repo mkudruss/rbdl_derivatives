@@ -63,6 +63,15 @@ TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPotentialEnergyADTest) {
     CalcPotentialEnergyADTestTemplate(*this);
 }
 
+TEST_FIXTURE ( Arm3DofXZYp, Arm2DofXCalcPotentialEnergyADTest) {
+    CalcPotentialEnergyADTestTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm2DofZCalcPotentialEnergyADTest) {
+    CalcPotentialEnergyADTestTemplate(*this);
+}
+
+
 // -----------------------------------------------------------------------------
 
 template <typename T>
@@ -110,6 +119,14 @@ TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcKineticEnergyADTest) {
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcKineticEnergyADTest) {
+    CalcKineticEnergyADTestTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm3DofXZYp, Arm2DofXCalcKineticEnergyADTest) {
+    CalcKineticEnergyADTestTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm2DofZCalcKineticEnergyADTest) {
     CalcKineticEnergyADTestTemplate(*this);
 }
 
@@ -187,6 +204,10 @@ TEST_FIXTURE( Arm2DofZ, Arm2DofZCalcCenterOfMass) {
 }
 
 TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCalcCenterOfMass) {
+    CalcCenterOfMassADTestTemplate(*this);
+}
+
+TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZYpCalcCenterOfMass) {
     CalcCenterOfMassADTestTemplate(*this);
 }
 
