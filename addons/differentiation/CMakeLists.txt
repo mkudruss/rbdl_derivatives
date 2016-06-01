@@ -63,6 +63,15 @@ INCLUDE_DIRECTORIES (
 	./../../include/
 )
 
+FILE ( GLOB headers
+	"${CMAKE_CURRENT_SOURCE_DIR}/*.h"
+	)
+
+INSTALL ( FILES ${headers}
+	DESTINATION
+	${CMAKE_INSTALL_INCLUDEDIR}/rbdl/addons/differentiation
+	)
+
 IF (RBDL_BUILD_TESTS)
  ADD_SUBDIRECTORY ( tests )
 ENDIF (RBDL_BUILD_TESTS)

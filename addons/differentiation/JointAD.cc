@@ -20,6 +20,9 @@
 #include "ModelAD.h"
 
 
+using std::cerr;
+using std::endl;
+
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
@@ -41,9 +44,9 @@ RBDL_DLLAPI void jcalc (
 
     // check input dimensions
     if (q_dirs.cols() != qdot_dirs.cols()) {
-        std::cerr << "directions have different dimensions: ";
-        std::cerr << "#q_dirs = " << q_dirs.cols() << " != " << qdot_dirs.cols() << " = #qdot_dirs." << std::endl;
-        std::cerr << "In: " << __func__ << endl;
+        cerr << "directions have different dimensions: ";
+        cerr << "#q_dirs = " << q_dirs.cols() << " != " << qdot_dirs.cols() << " = #qdot_dirs." << std::endl;
+        cerr << "In: " << __func__ << endl;
         abort();
     }
 

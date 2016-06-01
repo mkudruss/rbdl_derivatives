@@ -5,8 +5,13 @@
  * Licensed under the zlib license. See LICENSE for more details.
  */
 
-
 #include "DynamicsAD.h"
+
+#include <iostream>
+
+using std::cerr;
+using std::endl;
+using std::vector;
 
 using namespace RigidBodyDynamics::Math;
 

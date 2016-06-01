@@ -16,8 +16,8 @@
 #include "rbdl/rbdl.h"
 #include "rbdl/rbdl_math.h"
 
-using namespace std;
-using namespace RigidBodyDynamics;
+//using namespace std;
+//using namespace RigidBodyDynamics;
 //using namespace RigidBodyDynamics::Math;
 
 // // -----------------------------------------------------------------------------
@@ -31,31 +31,31 @@ struct ADModel {
     unsigned int ndirs;
 
     // derivative values
-    vector<vector<Math::SpatialMatrix> > X_lambda;
-    vector<vector<Math::SpatialMatrix> > X_base;
-    vector<vector<Math::SpatialMatrix> > X_J;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > X_lambda;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > X_base;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > X_J;
 
-    vector<vector<Math::SpatialVector> > S;
-    vector<vector<Math::SpatialVector> > v_J;
-    vector<vector<Math::SpatialVector> > v;
-    vector<vector<Math::SpatialVector> > c_J;
-    vector<vector<Math::SpatialVector> > a_J;
-    vector<vector<Math::SpatialVector> > a;
-    vector<vector<Math::SpatialVector> > c;
-    vector<vector<Math::SpatialVector> > f;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > S;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v_J;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > c_J;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > a_J;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > a;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > c;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > f;
 
-    vector<vector<Math::SpatialMatrix> > Ic;
-    vector<vector<Math::SpatialVector> > hc;
-    vector<vector<Math::SpatialVector> > F;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > Ic;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > hc;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > F;
 
-    vector<vector<Math::SpatialVector> > pA;
-    vector<vector<Math::SpatialVector> > U;
-    vector<vector<Math::SpatialMatrix> > IA;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > pA;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > U;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > IA;
 
-    //vector<vector<double> > u;
-    //vector<vector<double> > d;
-    Math::MatrixNd u;
-    Math::MatrixNd d;
+    //std::vector<std::vector<double> > u;
+    //std::vector<std::vector<double> > d;
+    RigidBodyDynamics::Math::MatrixNd u;
+    RigidBodyDynamics::Math::MatrixNd d;
 
     ADModel ();
     ADModel (RigidBodyDynamics::Model& model);

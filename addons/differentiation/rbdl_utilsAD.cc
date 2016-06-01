@@ -2,6 +2,9 @@
 #include "rbdl_mathutilsAD.h"
 #include "KinematicsAD.h"
 
+using std::fill_n;
+using std::vector;
+
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------

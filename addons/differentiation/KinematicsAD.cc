@@ -22,6 +22,10 @@
 #include "rbdl_mathutilsAD.h"
 #include "rbdl_mathutilsFD.h"
 
+using std::cerr;
+using std::endl;
+using std::vector;
+
 using namespace RigidBodyDynamics::Math;
 
 // -----------------------------------------------------------------------------
