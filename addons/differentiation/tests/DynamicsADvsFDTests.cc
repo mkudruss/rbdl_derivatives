@@ -75,11 +75,19 @@ TEST_FIXTURE(CartPendulum, CartPendulumForwardDynamicsADTest){
     ForwardDynamicsADTestTemplate(*this, 10);
 }
 
-TEST_FIXTURE(Arm2DofX, Arm2DofForwardDynamicsADTest){
+TEST_FIXTURE(Arm2DofX, Arm2DofXForwardDynamicsADTest){
     ForwardDynamicsADTestTemplate(*this, 10);
 }
 
-TEST_FIXTURE(Arm2DofZ, Arm2DofForwardDynamicsADTest){
+TEST_FIXTURE(Arm2DofZ, Arm2DofZForwardDynamicsADTest){
+    ForwardDynamicsADTestTemplate(*this, 10);
+}
+
+TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpForwardDynamicsADTest){
+    ForwardDynamicsADTestTemplate(*this, 10);
+}
+
+TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpForwardDynamicsADTest){
     ForwardDynamicsADTestTemplate(*this, 10);
 }
 
@@ -149,6 +157,14 @@ TEST_FIXTURE(Arm2DofZ, Arm2DofZInverseDynamicsADTest) {
     InverseDynamicsADTestTemplate(*this, 1e-6);
 }
 
+TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpInverseDynamicsADTest) {
+    InverseDynamicsADTestTemplate(*this, 1e-5);
+}
+
+TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZYpInverseDynamicsADTest) {
+    InverseDynamicsADTestTemplate(*this, 1e-6);
+}
+
 // -----------------------------------------------------------------------------
 
 template<typename T>
@@ -174,7 +190,7 @@ void CompositeRigidBodyAlgorithmADTestTemplate(T & obj) {
         // cout << "ad_CRBA: " << endl << ad_out[nIdx] << std::endl << std::endl;
         // cout << "ad_CRBA error (fd,ad)" << endl << (fd_out[nIdx] - ad_out[nIdx]) << std::endl;
         CHECK_ARRAY_CLOSE (inertia_test.data(), H.data(), model.q_size*model.q_size, TEST_PREC);
-        CHECK_ARRAY_CLOSE (fd_out[nIdx].data(), ad_out[nIdx].data(), model.q_size*model.q_size, TEST_PREC);
+        CHECK_ARRAY_CLOSE (fd_out[nIdx].data(), ad_out[nIdx].data(), model.q_size*model.q_size, 1e-7);
     }
 }
 
@@ -187,6 +203,14 @@ TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmADTest) {
 }
 
 TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmADTest) {
+    CompositeRigidBodyAlgorithmADTestTemplate(*this);
+}
+
+TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmADTest) {
+    CompositeRigidBodyAlgorithmADTestTemplate(*this);
+}
+
+TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmADTest) {
     CompositeRigidBodyAlgorithmADTestTemplate(*this);
 }
 

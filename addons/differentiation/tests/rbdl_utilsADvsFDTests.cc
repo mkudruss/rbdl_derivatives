@@ -63,14 +63,13 @@ TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPotentialEnergyADTest) {
     CalcPotentialEnergyADTestTemplate(*this);
 }
 
-TEST_FIXTURE ( Arm3DofXZYp, Arm2DofXCalcPotentialEnergyADTest) {
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPotentialEnergyADTest) {
     CalcPotentialEnergyADTestTemplate(*this);
 }
 
-TEST_FIXTURE ( Arm3DofXZZp, Arm2DofZCalcPotentialEnergyADTest) {
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPotentialEnergyADTest) {
     CalcPotentialEnergyADTestTemplate(*this);
 }
-
 
 // -----------------------------------------------------------------------------
 
@@ -122,11 +121,11 @@ TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcKineticEnergyADTest) {
     CalcKineticEnergyADTestTemplate(*this);
 }
 
-TEST_FIXTURE ( Arm3DofXZYp, Arm2DofXCalcKineticEnergyADTest) {
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcKineticEnergyADTest) {
     CalcKineticEnergyADTestTemplate(*this);
 }
 
-TEST_FIXTURE ( Arm3DofXZZp, Arm2DofZCalcKineticEnergyADTest) {
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcKineticEnergyADTest) {
     CalcKineticEnergyADTestTemplate(*this);
 }
 
@@ -207,7 +206,7 @@ TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCalcCenterOfMass) {
     CalcCenterOfMassADTestTemplate(*this);
 }
 
-TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZYpCalcCenterOfMass) {
+TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCalcCenterOfMass) {
     CalcCenterOfMassADTestTemplate(*this);
 }
 

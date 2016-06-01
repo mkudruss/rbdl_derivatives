@@ -50,10 +50,12 @@ Vector3d CalcBodyToBaseCoordinatesSingleFunc (
             model.X_J[i] = Xroty (Q[model.mJoints[i].q_index]);
         } else if (model.mJoints[i].mJointType == JointTypeRevoluteZ) {
             model.X_J[i] = Xrotz (Q[model.mJoints[i].q_index]);
-        } else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
-            model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * Q[model.mJoints[i].q_index]);
+        } else if (model.mJoints[i].mDoFCount == 1) {
+            model.X_J[i] = Xtrans (model.S[i].block<3,1>(3,0) * Q[model.mJoints[i].q_index]);
+           //} else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
+           // model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * Q[model.mJoints[i].q_index]);
         } else {
-            std::cerr << "Unsupported joint! Only RotX, RotY, RotZ and TransX supported!" << std::endl;
+            std::cerr << "Unsupported joint! Only RotX, RotY, RotZ and TransX, TransY, TransZ supported!" << std::endl;
             abort();
         }
 
@@ -209,6 +211,13 @@ TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcBodyToBaseCoordinatesSingleFunc) {
     CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_proximal);
 }
 
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBodyToBaseCoordinatesSingleFunc) {
+    CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_proximal);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyToBaseCoordinatesSingleFunc) {
+    CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_proximal);
+}
 // -----------------------------------------------------------------------------
 
 
