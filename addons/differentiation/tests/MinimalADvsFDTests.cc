@@ -4,20 +4,10 @@
 #include <iostream>
 #include <random>
 
-#include "rbdl/Logging.h"
-#include "rbdl/rbdl_mathutils.h"
-
-#include "rbdl/Model.h"
-#include "rbdl/Kinematics.h"
-#include "rbdl/Dynamics.h"
-
 #include "Fixtures.h"
 #include "ModelAD.h"
-#include "JointAD.h"
-#include "rbdl_mathutilsAD.h"
-#include "rbdl_utilsFD.h"
-#include "rbdl_utilsAD.h"
 #include "KinematicsAD.h"
+#include "KinematicsFD.h"
 
 using namespace std;
 using namespace RigidBodyDynamics;
@@ -25,162 +15,6 @@ using namespace RigidBodyDynamics::Math;
 using namespace RigidBodyDynamics::Utils;
 
 const double TEST_PREC = 1.0e-12;
-
-RBDL_DLLAPI
-Vector3d CalcBodyToBaseCoordinatesSingleFunc (
-        Model &model,
-        const VectorNd &Q,
-        unsigned int body_id,
-        const Vector3d &point_body_coordinates) {
-    if (body_id >= model.fixed_body_discriminator) {
-        std::cerr << "Fixed bodies not yet supported!" << std::endl;
-        abort();
-    }
-
-    // Update the kinematics
-    VectorNd QDot_zero (VectorNd::Zero (model.q_size));
-
-    for (unsigned int i = 1; i < model.mBodies.size(); i++) {
-        unsigned int lambda = model.lambda[i];
-
-        // Calculate joint dependent variables
-        if (model.mJoints[i].mJointType == JointTypeRevoluteX) {
-            model.X_J[i] = Xrotx (Q[model.mJoints[i].q_index]);
-        } else if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
-            model.X_J[i] = Xroty (Q[model.mJoints[i].q_index]);
-        } else if (model.mJoints[i].mJointType == JointTypeRevoluteZ) {
-            model.X_J[i] = Xrotz (Q[model.mJoints[i].q_index]);
-        } else if (model.mJoints[i].mDoFCount == 1) {
-            model.X_J[i] = Xtrans (model.S[i].block<3,1>(3,0) * Q[model.mJoints[i].q_index]);
-           //} else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
-           // model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * Q[model.mJoints[i].q_index]);
-        } else {
-            std::cerr << "Unsupported joint! Only RotX, RotY, RotZ and TransX, TransY, TransZ supported!" << std::endl;
-            abort();
-        }
-
-        model.X_lambda[i] = model.X_J[i] * model.X_T[i];
-        model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-    }
-
-    Matrix3d body_rotation = Math::AD::E_from_Matrix(model.X_base[body_id].toMatrix());
-    Vector3d body_position = Math::AD::r_from_Matrix(model.X_base[body_id].toMatrix());
-
-    return body_position + body_rotation.transpose() * point_body_coordinates;
-}
-
-RBDL_DLLAPI
-Vector3d ad_CalcBodyToBaseCoordinatesSingleFunc (
-        Model &model,
-        ADModel &ad_model,
-        const VectorNd &q,
-        const MatrixNd &q_dirs,
-        unsigned int body_id,
-        const Vector3d &point_body_coordinates,
-        MatrixNd &out
-        ) {
-    if (body_id >= model.fixed_body_discriminator) {
-        std::cerr << "Fixed bodies not yet supported!" << std::endl;
-        abort();
-    }
-
-    assert (out.rows() == 3 && out.cols() == model.qdot_size);
-    unsigned int ndirs = q_dirs.cols();
-
-    // Update the kinematics
-    VectorNd QDot_zero (VectorNd::Zero (model.q_size));
-    VectorNd fd_out (MatrixNd::Zero (3, model.q_size));
-
-    ad_model.resize_directions(ndirs);
-
-    std::vector<MatrixNd> ad_X_J_i (ndirs, MatrixNd::Zero (6,6));
-    std::vector<std::vector<MatrixNd> > fd_X_J (model.mBodies.size(), ad_X_J_i);
-    // ad_X_J[3][5] gives for body 3 the 5th direction
-
-    std::vector<MatrixNd> ad_X_lambda_i (ndirs, MatrixNd::Zero (6,6));
-    std::vector<std::vector<MatrixNd> > fd_X_lambda (model.mBodies.size(), ad_X_lambda_i);
-    // ad_X_lambda[3][5] gives for body 3 the 5th direction
-
-    std::vector<MatrixNd> ad_X_base_i (ndirs, MatrixNd::Zero (6,6));
-    std::vector<std::vector<MatrixNd> > fd_X_base (model.mBodies.size(), ad_X_base_i);
-    // ad_X_base[3][5] gives for body 3 the 5th direction
-
-    for (unsigned int i = 1; i < model.mBodies.size(); i++) {
-        unsigned int lambda = model.lambda[i];
-        // Calculate joint dependent variables
-
-        if (model.mJoints[i].mJointType == JointTypeRevoluteX) {
-            for (unsigned int j = 0; j < ndirs; j++) {
-                ad_model.X_J[i][j] = Math::AD::Xrotx (q[model.mJoints[i].q_index], q_dirs(i-1,j));
-            }
-            model.X_J[i] = Xrotx (q[model.mJoints[i].q_index]);
-        } else if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
-            for (unsigned int j = 0; j < ndirs; j++) {
-                ad_model.X_J[i][j] = Math::AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
-            }
-            model.X_J[i] = Xroty (q[model.mJoints[i].q_index]);
-        } else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
-            for (unsigned int j = 0; j < ndirs; j++) {
-                ad_model.X_J[i][j] = Math::AD::Xtrans (
-                    Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index],
-                    Vector3d (q_dirs(i-1, j), 0., 0.)
-                );
-            }
-            model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index]);
-        } else {
-            std::cerr << "Unsupported joint! Only RotX, RotY and TransX supported!" << std::endl;
-            abort();
-        }
-
-        for (unsigned int j = 0; j < ndirs; j++) {
-            ad_model.X_lambda[i][j] = ad_model.X_J[i][j] * model.X_T[i].toMatrix();
-        }
-        model.X_lambda[i] = model.X_J[i] * model.X_T[i];
-
-        for (unsigned int j = 0; j < ndirs; j++) {
-            ad_model.X_base[i][j] = ad_model.X_lambda[i][j] * model.X_base[lambda].toMatrix() + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][j];
-        }
-        model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-    }
-
-    for (unsigned int j = 0; j < ndirs; j++) {
-        SpatialMatrix X_base_ib = model.X_base[body_id].toMatrix();
-        Matrix3d ad_E = Math::AD::E_from_Matrix(ad_model.X_base[body_id][j]);
-        Vector3d ad_r = Math::AD::r_from_Matrix(X_base_ib, ad_model.X_base[body_id][j]);
-
-        out.block<3,1>(0,j) = ad_r + ad_E.transpose() * point_body_coordinates;
-    }
-
-    Matrix3d body_rotation = Math::AD::E_from_Matrix(model.X_base[body_id].toMatrix());
-    Vector3d body_position = Math::AD::r_from_Matrix(model.X_base[body_id].toMatrix());
-
-    return body_position + body_rotation.transpose() * point_body_coordinates;
-}
-
-RBDL_DLLAPI
-Vector3d fd_CalcBodyToBaseCoordinatesSingleFunc (
-		Model &model,
-		const VectorNd &q,
-		const MatrixNd &q_dirs,
-		unsigned int body_id,
-		const Vector3d &point_body_coordinates,
-		MatrixNd &out
-		) {
-	Vector3d ref = CalcBodyToBaseCoordinatesSingleFunc (model, q, body_id, point_body_coordinates);
-
-	unsigned int ndirs = q_dirs.cols();
-	double h = 1.0e-8;
-	for (unsigned int j = 0; j < ndirs; j++) {
-		VectorNd q_dir = q_dirs.block(0,j, model.qdot_size, 1);
-		Vector3d res_hd = CalcBodyToBaseCoordinatesSingleFunc (model, q + h * q_dir, body_id, point_body_coordinates);
-		Vector3d res_hd_rbdl = CalcBodyToBaseCoordinates (model, q + h * q_dir, body_id, point_body_coordinates);
-		//cout << "calc_body err = " << (res_hd - res_hd_rbdl).transpose() << endl;
-
-		out.block<3,1>(0,j) = (res_hd - ref) / h;
-	}
-
-	return ref;
-}
 
 // -----------------------------------------------------------------------------
 
@@ -218,31 +52,58 @@ TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBodyToBaseCoordinatesSingleFunc) {
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyToBaseCoordinatesSingleFunc) {
     CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_proximal);
 }
+
 // -----------------------------------------------------------------------------
 
+template<typename T>
+void JacobianADSimpleTemplate(T & obj, unsigned int id_ee) {
+    Model & model = obj.model;
+    ADModel & ad_model = obj.ad_model;
 
-// TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
-// 	MatrixNd jacobian_ad = MatrixNd::Zero(3, model.qdot_size);
-// 	MatrixNd jacobian_ref = MatrixNd::Zero(3, model.qdot_size);
-// 	MatrixNd jacobian_fd = MatrixNd::Zero(3, model.qdot_size);
+    MatrixNd jacobian_ad = MatrixNd::Zero(3, model.qdot_size);
+    MatrixNd jacobian_ref = MatrixNd::Zero(3, model.qdot_size);
+    MatrixNd jacobian_fd = MatrixNd::Zero(3, model.qdot_size);
 
-// 	q.setZero();
-// 	q[0] = -1.0;
-// 	q[1] = -0.3;
-// 	body_point = Vector3d (1.0, 2.0, 3.0);
+    VectorNd q = VectorNd::Random(model.dof_count);
+    Vector3d body_point = Vector3d (1.0, 2.0, 3.0);
+    int nTrials = 0;
+    do {
+        CalcPointJacobian (model, q, id_ee, body_point, jacobian_ref);
 
-// 	CalcPointJacobian (model, q, id_pendulum, body_point, jacobian_ref);
+        MatrixNd q_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
+        Vector3d base_point_standard = CalcBodyToBaseCoordinates (model, q, id_ee, body_point);
+        Vector3d base_point_ad = RigidBodyDynamics::AD::CalcBodyToBaseCoordinatesSingleFunc (model, ad_model, q, q_dirs, id_ee, body_point, jacobian_ad);
+        Vector3d base_point_fd = RigidBodyDynamics::FD::CalcBodyToBaseCoordinatesSingleFunc (model, q, q_dirs, id_ee, body_point, jacobian_fd);
 
-// 	MatrixNd q_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
-// 	Vector3d base_point_standard = CalcBodyToBaseCoordinates (model, q, id_pendulum, body_point);
-// 	Vector3d base_point_ad = ad_CalcBodyToBaseCoordinatesSingleFunc (model, ad_model, q, q_dirs, id_pendulum, body_point, jacobian_ad);
-// 	Vector3d base_point_fd = fd_CalcBodyToBaseCoordinatesSingleFunc (model, q, q_dirs, id_pendulum, body_point, jacobian_fd);
+        CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model.qdot_size, TEST_PREC);
+        CHECK_ARRAY_CLOSE (base_point_standard.data(), base_point_ad.data(), 3, TEST_PREC);
+        CHECK_ARRAY_CLOSE (base_point_standard.data(), base_point_fd.data(), 3, TEST_PREC);
+        CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_fd.data(), 3 * model.qdot_size, 1e-6);
+        body_point = Vector3d::Random(3);
+    } while (nTrials++ < 10);
+}
 
-// 	CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model.qdot_size, TEST_PREC);
-// //	CHECK_ARRAY_CLOSE (v_fixed_body.data(), v_body.data(), 6, TEST_PREC);
-// }
+TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
+    JacobianADSimpleTemplate(*this, id_pendulum);
+}
 
+TEST_FIXTURE ( Arm2DofX, Arm2DofXJacobianADSimple) {
+    JacobianADSimpleTemplate(*this, id_proximal);
+}
 
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZJacobianADSimple) {
+    JacobianADSimpleTemplate(*this, id_proximal);
+}
+
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpJacobianADSimple) {
+    JacobianADSimpleTemplate(*this, id_slider);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpJacobianADSimple) {
+    JacobianADSimpleTemplate(*this, id_slider);
+}
+
+// -----------------------------------------------------------------------------
 
 
 

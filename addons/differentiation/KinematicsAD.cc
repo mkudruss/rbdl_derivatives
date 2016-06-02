@@ -31,8 +31,149 @@ using namespace RigidBodyDynamics::Math;
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
+
+RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
+        Model &model,
+        const VectorNd &Q,
+        unsigned int body_id,
+        const Vector3d &point_body_coordinates) {
+    if (body_id >= model.fixed_body_discriminator) {
+        std::cerr << "Fixed bodies not yet supported!" << std::endl;
+        abort();
+    }
+
+    // Update the kinematics
+    VectorNd QDot_zero (VectorNd::Zero (model.q_size));
+
+    for (unsigned int i = 1; i < model.mBodies.size(); i++) {
+        unsigned int lambda = model.lambda[i];
+
+        // Calculate joint dependent variables
+        if (model.mJoints[i].mJointType == JointTypeRevoluteX) {
+            model.X_J[i] = Xrotx (Q[model.mJoints[i].q_index]);
+        } else if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
+            model.X_J[i] = Xroty (Q[model.mJoints[i].q_index]);
+        } else if (model.mJoints[i].mJointType == JointTypeRevoluteZ) {
+            model.X_J[i] = Xrotz (Q[model.mJoints[i].q_index]);
+        } else if (model.mJoints[i].mDoFCount == 1) {
+            model.X_J[i] = Xtrans (model.S[i].block<3,1>(3,0) * Q[model.mJoints[i].q_index]);
+        } else {
+            std::cerr << "Unsupported joint! Only RotX, RotY, RotZ and TransX, TransY, TransZ supported!" << std::endl;
+            abort();
+        }
+
+        model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+        model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+    }
+
+    Matrix3d body_rotation = Math::AD::E_from_Matrix(model.X_base[body_id].toMatrix());
+    Vector3d body_position = Math::AD::r_from_Matrix(model.X_base[body_id].toMatrix());
+
+    return body_position + body_rotation.transpose() * point_body_coordinates;
+}
+
+// -----------------------------------------------------------------------------
 namespace AD {
 // -----------------------------------------------------------------------------
+
+RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
+        Model &model,
+        ADModel &ad_model,
+        const VectorNd &q,
+        const MatrixNd &q_dirs,
+        unsigned int body_id,
+        const Vector3d &point_body_coordinates,
+        MatrixNd & out) {
+    if (body_id >= model.fixed_body_discriminator) {
+        std::cerr << "Fixed bodies not yet supported!" << std::endl;
+        abort();
+    }
+
+    assert (out.rows() == 3 && out.cols() == model.qdot_size);
+    unsigned int ndirs = q_dirs.cols();
+
+    // Update the kinematics
+    VectorNd QDot_zero (VectorNd::Zero (model.q_size));
+    VectorNd fd_out (MatrixNd::Zero (3, model.q_size));
+
+    ad_model.resize_directions(ndirs);
+
+    std::vector<MatrixNd> ad_X_J_i (ndirs, MatrixNd::Zero (6,6));
+    std::vector<std::vector<MatrixNd> > fd_X_J (model.mBodies.size(), ad_X_J_i);
+    // ad_X_J[3][5] gives for body 3 the 5th direction
+
+    std::vector<MatrixNd> ad_X_lambda_i (ndirs, MatrixNd::Zero (6,6));
+    std::vector<std::vector<MatrixNd> > fd_X_lambda (model.mBodies.size(), ad_X_lambda_i);
+    // ad_X_lambda[3][5] gives for body 3 the 5th direction
+
+    std::vector<MatrixNd> ad_X_base_i (ndirs, MatrixNd::Zero (6,6));
+    std::vector<std::vector<MatrixNd> > fd_X_base (model.mBodies.size(), ad_X_base_i);
+    // ad_X_base[3][5] gives for body 3 the 5th direction
+
+    for (unsigned int i = 1; i < model.mBodies.size(); i++) {
+        unsigned int lambda = model.lambda[i];
+        // Calculate joint dependent variables
+
+        if (model.mJoints[i].mJointType == JointTypeRevoluteX) {
+            for (unsigned int j = 0; j < ndirs; j++) {
+                ad_model.X_J[i][j] = Math::AD::Xrotx (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+            }
+            model.X_J[i] = Xrotx (q[model.mJoints[i].q_index]);
+        } else if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
+            for (unsigned int j = 0; j < ndirs; j++) {
+                ad_model.X_J[i][j] = Math::AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+            }
+            model.X_J[i] = Xroty (q[model.mJoints[i].q_index]);
+        } else if (model.mJoints[i].mJointType == JointTypeRevoluteZ) {
+            for (unsigned int j = 0; j < ndirs; j++) {
+                ad_model.X_J[i][j] = Math::AD::Xrotz (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+            }
+            model.X_J[i] = Xrotz (q[model.mJoints[i].q_index]);
+        } else if (model.mJoints[i].mDoFCount == 1) {
+            for (unsigned int j = 0; j < ndirs; j++) {
+                ad_model.X_J[i][j] = Math::AD::Xtrans (
+                                        model.S[i].block<3,1>(3,0) * q[model.mJoints[i].q_index],
+                                        model.S[i].block<3,1>(3,0) * q_dirs(i-1, j));
+            }
+            model.X_J[i] = Xtrans (model.S[i].block<3,1>(3,0) * q[model.mJoints[i].q_index]);
+//            } else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
+//            for (unsigned int j = 0; j < ndirs; j++) {
+//                ad_model.X_J[i][j] = Math::AD::Xtrans (
+//                    Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index],
+//                    Vector3d (q_dirs(i-1, j), 0., 0.)
+//                );
+//            }
+//            model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index]);
+        } else {
+            std::cerr << "Unsupported joint! Only RotX, RotY, RotZ and TransX supported!" << std::endl;
+            abort();
+        }
+
+        for (unsigned int j = 0; j < ndirs; j++) {
+            ad_model.X_lambda[i][j] = ad_model.X_J[i][j] * model.X_T[i].toMatrix();
+        }
+        model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+
+        for (unsigned int j = 0; j < ndirs; j++) {
+            ad_model.X_base[i][j] = ad_model.X_lambda[i][j] * model.X_base[lambda].toMatrix() + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][j];
+        }
+        model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+    }
+
+    for (unsigned int j = 0; j < ndirs; j++) {
+        SpatialMatrix X_base_ib = model.X_base[body_id].toMatrix();
+        Matrix3d ad_E = Math::AD::E_from_Matrix(ad_model.X_base[body_id][j]);
+        Vector3d ad_r = Math::AD::r_from_Matrix(X_base_ib, ad_model.X_base[body_id][j]);
+
+        out.block<3,1>(0,j) = ad_r + ad_E.transpose() * point_body_coordinates;
+    }
+
+    Matrix3d body_rotation = Math::AD::E_from_Matrix(model.X_base[body_id].toMatrix());
+    Vector3d body_position = Math::AD::r_from_Matrix(model.X_base[body_id].toMatrix());
+
+    return body_position + body_rotation.transpose() * point_body_coordinates;
+}
+
 
 RBDL_DLLAPI void UpdateKinematicsCustom (
         Model &model,

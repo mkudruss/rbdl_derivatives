@@ -24,6 +24,7 @@ SET (CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 SET ( DIFFERENTIATION_SOURCES
 	ModelAD.cc
 	KinematicsAD.cc
+	KinematicsFD.cc
 	DynamicsAD.cc
 	DynamicsFD.cc
 	JointAD.cc
