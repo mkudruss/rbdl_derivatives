@@ -43,7 +43,7 @@ void ForwardDynamics (
 	unsigned int i = 0;
 
 	// Reset the velocity of the root body
-	model.v[0].setZero();
+    model.v[0].setZero();
 
 	for (i = 1; i < model.mBodies.size(); i++) {
 		unsigned int lambda = model.lambda[i];
@@ -51,50 +51,63 @@ void ForwardDynamics (
         jcalc(model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
 
 		if (lambda != 0) {
+            // derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.X_base[i][j] = ad_model.X_lambda[i][j] * model.X_base[lambda].toMatrix()
-					+ model.X_lambda[i].toMatrix() * ad_model.X_base[i][j];
+                    + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][j];
 			}
+            // nominal evaluation
 			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 		} else {
+            // derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.X_base[i][j] = ad_model.X_lambda[i][j];
 			}
+            // nominal evaluation
 			model.X_base[i] = model.X_lambda[i];
 		}
 
+        // derivative evaluation
 		for(unsigned int j = 0; j < ndirs; j++) {
 			ad_model.v[i][j] = ad_model.X_lambda[i][j] * model.v[lambda]
 				+ model.X_lambda[i].apply(ad_model.v[lambda][j])
 				+ ad_model.v_J[i][j];
 		}
+        // nominal evaluation
 		model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
 
+        // derivative evaluation
 		for(unsigned int j = 0; j < ndirs; j++) {
 			ad_model.c[i][j] = ad_model.c_J[i][j]
-				+ crossm(ad_model.v[i][j],model.v_J[i])
-				+ crossm(model.v[i],ad_model.v_J[i][j]);
+                + crossm(ad_model.v[i][j], model.v_J[i])
+                + crossm(model.v[i], ad_model.v_J[i][j]);
 		}
-		model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
+        // nominal evaluation
+        model.c[i] = model.c_J[i] + crossm(model.v[i], model.v_J[i]);
 
 		for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.IA[i][j].setZero();
 		}
+        // nominal evaluation
 		model.I[i].setSpatialMatrix(model.IA[i]);
 
+        // derivative evaluation
 		for(unsigned int j = 0; j < ndirs; j++) {
 			ad_model.pA[i][j] = crossf(ad_model.v[i][j],model.I[i] * model.v[i])
 				+ crossf(model.v[i],model.I[i] * ad_model.v[i][j]);;
 		}
+        // nominal evaluation
 		model.pA[i] = crossf(model.v[i],model.I[i] * model.v[i]);
 
 		if (f_ext != NULL && (*f_ext)[i] != SpatialVectorZero) {
+            // derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				SpatialMatrix ad_X_base_force(ad_model.X_base[i][j]);
 				ad_X_base_force.block<3,3>(3,0) = Matrix3d::Zero();
 				ad_X_base_force.block<3,3>(0,3) = ad_model.X_base[i][j].block<3,3>(3,0);
 				ad_model.pA[i][j] -= ad_X_base_force * (*f_ext)[i];
 			}
+            // nominal evaluation
 			model.pA[i] -= model.X_base[i].toMatrixAdjoint() * (*f_ext)[i];
 		}
 	}
@@ -129,37 +142,46 @@ void ForwardDynamics (
 // #endif
 //              LOG << "pA[" << lambda << "] = " << model.pA[lambda].transpose() << std::endl;
 //          }
-		}
-		else {
+        } else {
+            // derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
-				ad_model.U[i][j] = model.IA[i] * ad_model.S[i][j];
-				//  + ad_model.IA[i][j] * model.S[i];
+                ad_model.U[i][j] = model.IA[i] * ad_model.S[i][j]
+                    + ad_model.IA[i][j] * model.S[i];
 			}
+            // nominal evaluation
 			model.U[i] = model.IA[i] * model.S[i];
 
+            // derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
-				ad_model.d(i,j) = ad_model.S[i][j].dot(model.U[i]) + model.S[i].dot(ad_model.U[i][j]);
+                ad_model.d(i,j) = ad_model.S[i][j].dot(model.U[i])
+                        + model.S[i].dot(ad_model.U[i][j]);
 			}
+            // nominal evaluation
 			model.d[i] = model.S[i].dot(model.U[i]);
 
+            // derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.u(i,j) = tau_dirs(q_index,j)
 					- ad_model.S[i][j].dot(model.pA[i])
 					- model.S[i].dot(ad_model.pA[i][j]);
 			}
+            // nominal evaluation
 			model.u[i] = tau[q_index] - model.S[i].dot(model.pA[i]);
 
 			unsigned int lambda = model.lambda[i];
 			if (lambda != 0) {
 				vector<SpatialMatrix> ad_Ia(ndirs, SpatialMatrix::Zero());
+                // derivative evaluation
 				for(unsigned int j = 0; j < ndirs; j++) {
 					ad_Ia[j] = ad_model.IA[i][j]
 						- ad_model.U[i][j] * (model.U[i] / model.d[i]).transpose()
 						- model.U[i] * (ad_model.U[i][j] / model.d[i]).transpose()
-						- model.U[i] * (model.U[i] * ad_model.d(i,j) / model.d[i]).transpose();
+                        - model.U[i] * (model.U[i] * (-ad_model.d(i,j)) / (model.d[i] * model.d[i])).transpose();
 				}
+                // nominal evaluation
 				SpatialMatrix Ia = model.IA[i] - model.U[i] * (model.U[i] / model.d[i]).transpose();
 
+                // derivative evaluation
 				vector<SpatialVector> ad_pa(ndirs, SpatialVector::Zero());
 				for(unsigned int j = 0; j < ndirs; j++) {
 					ad_pa[j] = ad_model.pA[i][j]
@@ -167,23 +189,28 @@ void ForwardDynamics (
 						+ Ia * ad_model.c[i][j]
 						+ ad_model.U[i][j] * model.u[i] / model.d[i]
 						+ model.U[i] * ad_model.u(i,j) / model.d[i]
-						+ model.U[i] * model.u[i] * ad_model.d(i,j) / model.d[i];
+                        + model.U[i] * model.u[i] * (-ad_model.d(i,j)) / (model.d[i] * model.d[i]);
 				}
+                // nominal evaluation
 				SpatialVector pa = model.pA[i] + Ia * model.c[i] + model.U[i] * model.u[i] / model.d[i];
 #ifdef EIGEN_CORE_H
+                // derivative evaluation
 				for(unsigned int j = 0; j < ndirs; j++) {
 					ad_model.IA[lambda][j].noalias() +=
 						ad_model.X_lambda[i][j].transpose() * Ia * model.X_lambda[i].toMatrix()
 						+ model.X_lambda[i].toMatrixTranspose() * ad_Ia[j] * model.X_lambda[i].toMatrix()
 						+ model.X_lambda[i].toMatrixTranspose() * Ia * ad_model.X_lambda[i][j];
 				}
+                // nominal evaluation
 				model.IA[lambda].noalias() += model.X_lambda[i].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix();
 
+                // derivative evaluation
 				for(unsigned int j = 0; j < ndirs; j++) {
 					ad_model.pA[lambda][j].noalias() += ad_model.X_lambda[i][j].transpose() * pa
 						+ model.X_lambda[i].applyTranspose(ad_pa[j]);
 				}
-				model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
+                // nominal evaluation
+                model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
 #else
 				cerr << "Simple math not yet supported." << endl;
 				abort();
@@ -201,11 +228,13 @@ void ForwardDynamics (
 		unsigned int lambda = model.lambda[i];
 		SpatialTransform X_lambda = model.X_lambda[i];
 
+        // derivative evaluation
 		for(unsigned int j = 0; j < ndirs; j++) {
 			ad_model.a[i][j] = ad_model.X_lambda[i][j] * model.a[lambda]
 				+ X_lambda.apply(ad_model.a[lambda][j])
 				+ ad_model.c[i][j];
 		}
+        // nominal evaluation
 		model.a[i] = X_lambda.apply(model.a[lambda]) + model.c[i];
 
 		if (model.mJoints[i].mDoFCount == 3) {
@@ -216,19 +245,22 @@ void ForwardDynamics (
 //          qddot[q_index + 1] = qdd_temp[1];
 //          qddot[q_index + 2] = qdd_temp[2];
 //          model.a[i] = model.a[i] + model.multdof3_S[i] * qdd_temp;
-		}
-		else {
+        } else {
+            // derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
-				ad_qddot(q_index,j) = (ad_model.d(i,j)/model.d[i]) * (model.u[i] - model.U[i].dot(model.a[i]))
+                ad_qddot(q_index,j) = -(ad_model.d(i,j)/ (model.d[i] * model.d[i])) * (model.u[i] - model.U[i].dot(model.a[i]))
 					+ (1./model.d[i]) * (ad_model.u(i,j) - ad_model.U[i][j].dot(model.a[i]) - model.U[i].dot(ad_model.a[i][j]));
 			}
+            // nominal evaluation
 			qddot[q_index] = (1./model.d[i]) * (model.u[i] - model.U[i].dot(model.a[i]));
 
+            // derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.a[i][j] = ad_model.a[i][j]
 					+ ad_model.S[i][j] * qddot[q_index]
 					+ model.S[i] * ad_qddot(q_index,j);
 			}
+            // nominal evaluation
 			model.a[i] = model.a[i] + model.S[i] * qddot[q_index];
 		}
 	}

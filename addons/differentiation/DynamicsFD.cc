@@ -9,6 +9,8 @@
 
 using namespace RigidBodyDynamics::Math;
 
+using std::vector;
+
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
@@ -26,7 +28,7 @@ void ForwardDynamics(
 	const MatrixNd& tau_dirs,
 	VectorNd& qddot,
 	MatrixNd& fd_qddot,
-	std::vector<SpatialVector>* f_ext
+    vector<SpatialVector>* f_ext
 ) {
 	assert(q_dirs.cols() == qdot_dirs.cols()
 		&& q_dirs.cols() == fd_qddot.cols()
@@ -48,7 +50,6 @@ void ForwardDynamics(
 		qdot_dir = qdot_dirs.col(i);
 		tau_dir = tau_dirs.col(i);
 		ForwardDynamics(model, q + h*q_dir, qdot + h*qdot_dir, tau + h*tau_dir, hd_qddot,f_ext);
-
 		fd_qddot.col(i) = (hd_qddot - qddot) / h;
 	}
 }

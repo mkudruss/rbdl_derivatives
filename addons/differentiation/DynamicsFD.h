@@ -19,8 +19,6 @@
 #include "rbdl/Dynamics.h"
 #include "rbdl/Kinematics.h"
 
-using namespace RigidBodyDynamics::Math;
-
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
@@ -30,15 +28,15 @@ namespace FD {
 RBDL_DLLAPI
 void ForwardDynamics(
 	Model& model,
-	const VectorNd& q,
-	const MatrixNd& q_dirs,
-	const VectorNd& qdot,
-	const MatrixNd& qdot_dirs,
-	const VectorNd& tau,
-	const MatrixNd& tau_dirs,
-	VectorNd& qddot,
-	MatrixNd& fd_qddot,
-	std::vector<SpatialVector>* f_ext
+    const Math::VectorNd& q,
+    const Math::MatrixNd& q_dirs,
+    const Math::VectorNd& qdot,
+    const Math::MatrixNd& qdot_dirs,
+    const Math::VectorNd& tau,
+    const Math::MatrixNd& tau_dirs,
+    Math::VectorNd& qddot,
+    Math::MatrixNd& fd_qddot,
+    std::vector<Math::SpatialVector>* f_ext
 );
 
 RBDL_DLLAPI
@@ -58,9 +56,9 @@ void InverseDynamics(
 RBDL_DLLAPI
 void CompositeRigidBodyAlgorithm (
 	Model &model,
-	const VectorNd &q,
-	const MatrixNd &q_dirs,
-	std::vector<MatrixNd> &fd_out
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    std::vector<Math::MatrixNd> &fd_out
 );
 
 // -----------------------------------------------------------------------------

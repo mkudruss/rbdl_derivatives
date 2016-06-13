@@ -22,9 +22,12 @@ const double TEST_PREC = 1.0e-8;
 // -----------------------------------------------------------------------------
 
 template <typename T>
-void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials) {
+void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials,
+        double CHECK_ARRAY_PREC = 1e-6) {
     Model & model = obj.model;
-    srand((unsigned int) time(0));
+    ADModel & ad_model = obj.ad_model;
+    //srand((unsigned int) time(0));
+    srand(666);
 
     for(unsigned int trial = 0; trial < numTrials; trial++) {
         VectorNd q = VectorNd::Random(model.q_size);
@@ -42,16 +45,18 @@ void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials) {
             SpatialVector::Zero()
         );
 
-        VectorNd qddot (VectorNd::Zero(model.q_size));
-        MatrixNd ad_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
-        MatrixNd fd_qddot  = MatrixNd::Zero(model.qdot_size, ndirs);
+        VectorNd ad_qddot (VectorNd::Zero(model.q_size));
+        VectorNd fd_qddot (VectorNd::Zero(model.q_size));
+        MatrixNd ad_dqddot  = MatrixNd::Zero(model.qdot_size, ndirs);
+        MatrixNd fd_dqddot  = MatrixNd::Zero(model.qdot_size, ndirs);
 
-        RigidBodyDynamics::FD::ForwardDynamics(
+        RigidBodyDynamics::AD::ForwardDynamics(
             model,
+            ad_model,
             q, q_dirs,
             qdot, qdot_dirs,
             tau, tau_dirs,
-            qddot, fd_qddot,
+            ad_qddot, ad_dqddot,
             &f_ext
         );
 
@@ -60,35 +65,36 @@ void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials) {
             q, q_dirs,
             qdot, qdot_dirs,
             tau, tau_dirs,
-            qddot, ad_qddot,
+            fd_qddot, fd_dqddot,
             &f_ext
         );
 
-        CHECK_ARRAY_CLOSE (
-            fd_qddot.data(), ad_qddot.data(), fd_qddot.cols()*fd_qddot.rows(),
-            TEST_PREC
-        );
+        CHECK_ARRAY_CLOSE(ad_qddot.data(), fd_qddot.data(), model.q_size,
+                CHECK_ARRAY_PREC);
+
+        CHECK_ARRAY_CLOSE(fd_dqddot.data(), ad_dqddot.data(),
+                fd_dqddot.cols() * fd_dqddot.rows(), CHECK_ARRAY_PREC);
     }
 }
 
 TEST_FIXTURE(CartPendulum, CartPendulumForwardDynamicsADTest){
-    ForwardDynamicsADTestTemplate(*this, 10);
+    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE(Arm2DofX, Arm2DofXForwardDynamicsADTest){
-    ForwardDynamicsADTestTemplate(*this, 10);
+    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE(Arm2DofZ, Arm2DofZForwardDynamicsADTest){
-    ForwardDynamicsADTestTemplate(*this, 10);
+    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpForwardDynamicsADTest){
-    ForwardDynamicsADTestTemplate(*this, 10);
+    ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpForwardDynamicsADTest){
-    ForwardDynamicsADTestTemplate(*this, 10);
+    ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
 }
 
 // -----------------------------------------------------------------------------
