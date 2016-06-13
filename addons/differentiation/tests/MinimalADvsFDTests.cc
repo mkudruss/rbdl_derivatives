@@ -105,8 +105,6 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpJacobianADSimple) {
 
 // -----------------------------------------------------------------------------
 
-
-
 // TEST_FIXTURE (CartPendulum, jcalcNominalSolutionTest) {
 // 	// set nominal values
 // 	q.setZero();
