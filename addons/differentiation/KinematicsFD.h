@@ -25,6 +25,19 @@ RBDL_DLLAPI Math::Matrix3d CalcBodyWorldOrientation (
         const unsigned int body_id,
         std::vector<Math::Matrix3d> & fd_derivative);
 
+RBDL_DLLAPI Math::Vector3d CalcPointAcceleration (
+		Model & model,
+		Math::VectorNd const & q,
+		Math::MatrixNd const & q_dirs,
+		Math::VectorNd const & qdot,
+		Math::MatrixNd const & qdot_dirs,
+		Math::VectorNd const & qddot,
+		Math::MatrixNd const & qddot_dirs,
+		unsigned int body_id,
+		Math::Vector3d const & point_position,
+		Math::MatrixNd & fd_derivative);
+
+
 // -----------------------------------------------------------------------------
 } // namespace FD
 // -----------------------------------------------------------------------------

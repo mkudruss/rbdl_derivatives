@@ -18,7 +18,7 @@ namespace AD {
 // -----------------------------------------------------------------------------
 
 RBDL_DLLAPI Math::Vector3d CalcBodyToBaseCoordinatesSingleFunc (
-        Model &model,
+		Model &model,
         ADModel &ad_model,
         const Math::VectorNd &q,
         const Math::MatrixNd &q_dirs,
@@ -66,7 +66,7 @@ RBDL_DLLAPI Math::Vector3d CalcPointAcceleration (
         Math::MatrixNd const & qddot_dirs,
         unsigned int body_id,
         Math::Vector3d const & point_position,
-        Math::MatrixNd const & fd_derivative,
+        Math::MatrixNd & ad_derivative,
         bool update_kinematics = true);
 
 // -----------------------------------------------------------------------------

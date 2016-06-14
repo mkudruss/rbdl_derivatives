@@ -52,15 +52,41 @@ RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
         const unsigned int body_id,
         vector<Matrix3d> & fd_derivative) {
     Matrix3d ref = CalcBodyWorldOrientation(model, q, body_id, true);
-
-    unsigned int ndirs = q_dirs.cols();
-    double h = 1e-8;
+	unsigned int const ndirs = q_dirs.cols();
+	double const h = 1e-8;
     for (unsigned idir = 0; idir < ndirs; idir++) {
         VectorNd q_dir  = q_dirs.block(0, idir, model.q_size, 1);
         Matrix3d res_hd = CalcBodyWorldOrientation(model, q + h * q_dir, body_id, true);
         fd_derivative[idir] = (res_hd - ref) / h;
     }
     return ref;
+}
+
+RBDL_DLLAPI Vector3d CalcPointAcceleration (
+		Model & model,
+		VectorNd const & q,
+		MatrixNd const & q_dirs,
+		VectorNd const & qdot,
+		MatrixNd const & qdot_dirs,
+		VectorNd const & qddot,
+		MatrixNd const & qddot_dirs,
+		unsigned int body_id,
+		Vector3d const & point_position,
+		MatrixNd & fd_derivative) {
+	Vector3d ref = CalcPointAcceleration(model, q, qdot, qddot, body_id,
+			point_position, true);
+	unsigned int const ndirs = q_dirs.cols();
+	double const h = 1e-8;
+	for (unsigned idir = 0; idir < ndirs; idir++) {
+		VectorNd q_dir     = q_dirs.block(0, idir, model.q_size, 1);
+		VectorNd qdot_dir  = qdot_dirs.block(0, idir, model.qdot_size, 1);
+		VectorNd qddot_dir = qddot_dirs.block(0, idir, model.qdot_size, 1);
+		Vector3d res_hd  = CalcPointAcceleration(model, q + h * q_dir,
+				qdot + h * qdot_dir, qddot + h * qddot_dir, body_id,
+				point_position, true);
+		fd_derivative.block<3,1>(0, idir) = (res_hd - ref) / h;
+	}
+	return ref;
 }
 
 }
