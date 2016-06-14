@@ -14,6 +14,8 @@
 #include "KinematicsAD.h"
 #include "KinematicsFD.h"
 
+using std::vector;
+
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
@@ -32,14 +34,32 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
     Vector3d ref = CalcBodyToBaseCoordinatesSingleFunc (model, q, body_id, point_body_coordinates);
 
     unsigned int ndirs = q_dirs.cols();
-    double h = 1.0e-8;
-    for (unsigned int j = 0; j < ndirs; j++) {
-        VectorNd q_dir = q_dirs.block(0,j, model.qdot_size, 1);
+    double h = 1e-8;
+    for (unsigned int idir = 0; idir < ndirs; idir++) {
+        VectorNd q_dir = q_dirs.block(0, idir, model.q_size, 1);
         Vector3d res_hd = CalcBodyToBaseCoordinatesSingleFunc (model, q + h * q_dir, body_id, point_body_coordinates);
 //        Vector3d res_hd_rbdl = CalcBodyToBaseCoordinates (model, q + h * q_dir, body_id, point_body_coordinates);
-        out.block<3,1>(0,j) = (res_hd - ref) / h;
+        out.block<3,1>(0, idir) = (res_hd - ref) / h;
     }
 
+    return ref;
+}
+
+RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
+        Model & model,
+        VectorNd const & q,
+        MatrixNd const & q_dirs,
+        const unsigned int body_id,
+        vector<Matrix3d> & fd_derivative) {
+    Matrix3d ref = CalcBodyWorldOrientation(model, q, body_id, true);
+
+    unsigned int ndirs = q_dirs.cols();
+    double h = 1e-8;
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+        VectorNd q_dir  = q_dirs.block(0, idir, model.q_size, 1);
+        Matrix3d res_hd = CalcBodyWorldOrientation(model, q + h * q_dir, body_id, true);
+        fd_derivative[idir] = (res_hd - ref) / h;
+    }
     return ref;
 }
 

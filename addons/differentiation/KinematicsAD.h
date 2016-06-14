@@ -46,6 +46,15 @@ RBDL_DLLAPI void UpdateKinematics (
         Math::VectorNd const & qddot,
         Math::MatrixNd const & qddot_dirs);
 
+RBDL_DLLAPI Math::Matrix3d CalcBodyWorldOrientation (
+        Model & model,
+        ADModel & ad_model,
+        Math::VectorNd const & q,
+        Math::MatrixNd const & q_dirs,
+        const unsigned int body_id,
+        std::vector<Math::Matrix3d> & ad_derivative,
+        bool update_kinematics = true);
+
 RBDL_DLLAPI Math::Vector3d CalcPointAcceleration (
         Model & model,
         ADModel & ad_model,

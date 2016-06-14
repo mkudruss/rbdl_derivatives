@@ -439,6 +439,36 @@ RBDL_DLLAPI void UpdateKinematics (
     }
 }
 
+
+RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
+        Model & model,
+        ADModel & ad_model,
+        VectorNd const & q,
+        MatrixNd const & q_dirs,
+        const unsigned int body_id,
+        vector<Matrix3d> & ad_derivative,
+        bool update_kinematics) {
+    int ndirs = q_dirs.cols();
+    assert(ad_derivative.size() == ndirs);
+
+    // update the Kinematics if necessary
+    if (update_kinematics) {
+        UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
+    }
+
+    if (body_id >= model.fixed_body_discriminator) {
+        std::cerr << "Fixed bodies not yet supported!" << std::endl;
+        abort();
+    }
+
+    for (int idir = 0; idir < ndirs; idir++) {
+        ad_derivative[idir] = ad_model.X_base[body_id][idir].block<3,3>(0,0);
+    }
+    // nominal evaluation
+    return model.X_base[body_id].E;
+}
+
+
 RBDL_DLLAPI Vector3d CalcPointAcceleration (
         Model &model,
         ADModel &ad_model,
@@ -475,10 +505,8 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
     Vector3d reference_point = point_position;
 
     if (model.IsFixedBodyId(body_id)) {
-        unsigned int fbody_id = body_id - model.fixed_body_discriminator;
-        reference_body_id = model.mFixedBodies[fbody_id].mMovableParent;
-        Vector3d base_coords = CalcBodyToBaseCoordinates (model, q, body_id, point_position, false);
-        reference_point = CalcBaseToBodyCoordinates (model, q, reference_body_id, base_coords, false);
+        std::cerr << "Fixed bodies not yet supported!" << std::endl;
+        abort();
     }
 
     SpatialTransform p_X_i (CalcBodyWorldOrientation (model, q, reference_body_id, false).transpose(), reference_point);

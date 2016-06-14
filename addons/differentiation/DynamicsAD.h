@@ -25,8 +25,6 @@
 #include "ModelAD.h"
 #include "JointAD.h"
 
-using namespace RigidBodyDynamics::Math;
-
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
@@ -37,15 +35,15 @@ RBDL_DLLAPI
 void ForwardDynamics (
     Model& model,
     ADModel& ad_model,
-    const VectorNd& q,
-    const MatrixNd& q_dirs,
-    const VectorNd& qdot,
-    const MatrixNd& qdot_dirs,
-    const VectorNd& tau,
-    const MatrixNd& tau_dirs,
-    VectorNd& qddot,
-    MatrixNd& ad_qddot,
-    std::vector<SpatialVector>* f_ext
+    const Math::VectorNd& q,
+    const Math::MatrixNd& q_dirs,
+    const Math::VectorNd& qdot,
+    const Math::MatrixNd& qdot_dirs,
+    const Math::VectorNd& tau,
+    const Math::MatrixNd& tau_dirs,
+    Math::VectorNd & qddot,
+    Math::MatrixNd & ad_qddot,
+    std::vector<Math::SpatialVector>* f_ext
 );
 
 RBDL_DLLAPI
@@ -67,10 +65,10 @@ RBDL_DLLAPI
 void CompositeRigidBodyAlgorithm (
 	Model &model,
 	ADModel &ad_model,
-	const VectorNd &q,
-	const MatrixNd &q_dirs,
-	MatrixNd &H,
-	std::vector<MatrixNd> &out,
+    Math::VectorNd const & q,
+    Math::MatrixNd const & q_dirs,
+    Math::MatrixNd & H,
+    std::vector<Math::MatrixNd> &out,
 	bool update_kinematics = true
 );
 

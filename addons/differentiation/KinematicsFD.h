@@ -18,6 +18,13 @@ RBDL_DLLAPI Math::Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 		const Math::Vector3d &point_body_coordinates,
 		Math::MatrixNd &out);
 
+RBDL_DLLAPI Math::Matrix3d CalcBodyWorldOrientation (
+        Model & model,
+        Math::VectorNd const & q,
+        Math::MatrixNd const & q_dirs,
+        const unsigned int body_id,
+        std::vector<Math::Matrix3d> & fd_derivative);
+
 // -----------------------------------------------------------------------------
 } // namespace FD
 // -----------------------------------------------------------------------------

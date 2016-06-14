@@ -10,11 +10,12 @@ FIND_PACKAGE (UnitTest++ REQUIRED)
 INCLUDE_DIRECTORIES (${UNITTEST++_INCLUDE_DIR})
 
 SET ( TESTS_SRCS
-    runtests.cc
-    rbdl_mathutilsADvsFDTests.cc
+	runtests.cc
+	rbdl_mathutilsADvsFDTests.cc
 	rbdl_utilsADvsFDTests.cc
-    DynamicsADvsFDTests.cc
-    MinimalADvsFDTests.cc
+	DynamicsADvsFDTests.cc
+	KinematicsADvsFDTests.cc
+	MinimalADvsFDTests.cc
 )
 
 INCLUDE_DIRECTORIES ( ../src/ )

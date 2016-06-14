@@ -33,8 +33,7 @@ void ForwardDynamics (
 	const MatrixNd& tau_dirs,
 	VectorNd& qddot,
 	MatrixNd& ad_qddot,
-	std::vector<SpatialVector>* f_ext
-) {
+	std::vector<SpatialVector>* f_ext) {
 	SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
 
 	unsigned int ndirs = q_dirs.cols();
