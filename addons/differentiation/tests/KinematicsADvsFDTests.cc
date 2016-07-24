@@ -20,6 +20,95 @@ const double TEST_PREC = 1.0e-8;
 // -----------------------------------------------------------------------------
 
 template <typename T>
+void CalcBodyToBaseCoordinatesTemplate(T & obj) {
+    Model &model = obj.model;
+    ADModel &ad_model = obj.ad_model;
+
+    // set up input quantities
+    int const nq = model.dof_count;
+    int const ndirs = nq;
+
+    bool update_kinematics = true;
+    Vector3d point_position = Vector3d::Zero();
+
+    VectorNd q = VectorNd::Zero(nq);
+    MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+
+    // set up no output quantities
+    Vector3d G = Vector3d::Zero ();
+    Vector3d G_ad = Vector3d::Zero ();
+    Vector3d G_fd = Vector3d::Zero ();
+
+    // set up derivative output quantities
+    vector<Vector3d> derivative_ad (ndirs, G_ad);
+    vector<Vector3d> derivative_fd (ndirs, G_fd);
+
+    for (unsigned i = 1; i < model.mBodies.size(); i++) {
+        unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
+        // call nominal version
+        G = CalcBodyToBaseCoordinates (
+            model, q, body_id, point_position, update_kinematics
+        );
+
+        // call FD version
+        G_fd = FD::CalcBodyToBaseCoordinates (
+            model, ad_model,
+            q, q_dirs,
+            body_id,
+            point_position,
+            &derivative_fd,
+            update_kinematics
+        );
+
+        // call AD version
+        G_ad = AD::CalcBodyToBaseCoordinates (
+            model, ad_model,
+            q, q_dirs,
+            body_id,
+            point_position,
+            &derivative_ad,
+            update_kinematics
+        );
+
+        // compare nominal results
+        CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
+        CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
+        CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
+
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+            CHECK_ARRAY_CLOSE(
+                derivative_ad[idir].data(),
+                derivative_fd[idir].data(),
+                derivative_ad[idir].size(),
+                TEST_PREC
+            );
+        }
+    }
+}
+
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseCoordinates) {
+    CalcBodyToBaseCoordinatesTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcBodyToBaseCoordinates) {
+    CalcBodyToBaseCoordinatesTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcBodyToBaseCoordinates) {
+    CalcBodyToBaseCoordinatesTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBodyToBaseCoordinates) {
+    CalcBodyToBaseCoordinatesTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyToBaseCoordinates) {
+    CalcBodyToBaseCoordinatesTemplate(*this);
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename T>
 void CalcBodyWorldOrientationTemplate(T & obj) {
     Model & model = obj.model;
     ADModel & ad_model = obj.ad_model;
@@ -135,4 +224,99 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointAcceleration) {
 
 // -----------------------------------------------------------------------------
 
+template <typename T>
+void CalcPointJacobianTemplate(T & obj) {
+    // rename for convenience
+    Model& model = obj.model;
+    ADModel& ad_model = obj.ad_model;
 
+    // set up input quantities
+    int const nq = model.dof_count;
+    int const ndirs = nq;
+
+    bool update_kinematics = true;
+    Vector3d point_position = Vector3d::Zero();
+
+    VectorNd q = VectorNd::Zero(nq);
+    MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+
+    // set up no output quantities
+    MatrixNd G = MatrixNd::Zero (3, nq);
+    MatrixNd G_ad = MatrixNd::Zero (3, nq);
+    MatrixNd G_fd = MatrixNd::Zero (3, nq);
+
+    // set up derivative output quantities
+    vector<MatrixNd> derivative_ad (ndirs, G_ad);
+    vector<MatrixNd> derivative_fd (ndirs, G_fd);
+
+    for (unsigned i = 1; i < model.mBodies.size(); i++) {
+        unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
+        // call nominal version
+        CalcPointJacobian (
+            model, q, body_id, point_position, G, update_kinematics
+        );
+
+        // call AD version
+        AD::CalcPointJacobian (
+            model, ad_model,
+            q, q_dirs,
+            body_id,
+            point_position,
+            G_ad, derivative_ad,
+            update_kinematics
+        );
+
+        // call FD version
+        FD::CalcPointJacobian (
+            model, ad_model,
+            q, q_dirs,
+            body_id,
+            point_position,
+            G_fd, derivative_fd,
+            update_kinematics
+        );
+
+        // compare nominal results
+        CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
+        CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
+        CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
+
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+            std::cout << "derivative_ad["<< idir << "] =" << std::endl;
+            std::cout << derivative_ad[idir] << std::endl;
+            std::cout << "derivative_fd["<< idir << "] =" << std::endl;
+            std::cout << derivative_fd[idir] << std::endl;
+            CHECK_ARRAY_CLOSE(
+                derivative_ad[idir].data(),
+                derivative_fd[idir].data(),
+                derivative_ad[idir].size(),
+                TEST_PREC
+            );
+        }
+    }
+}
+
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointJacobian) {
+    CalcPointJacobianTemplate(*this);
+}
+
+/*
+TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointJacobian) {
+    CalcPointJacobianTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointJacobian) {
+    CalcPointJacobianTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointJacobian) {
+    CalcPointJacobianTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian) {
+    CalcPointJacobianTemplate(*this);
+}
+*/
+
+
+// -----------------------------------------------------------------------------

@@ -18,6 +18,7 @@
 
 #include "JointAD.h"
 #include "ModelAD.h"
+#include "KinematicsAD.h"
 
 #include "rbdl_mathutilsAD.h"
 #include "rbdl_mathutilsFD.h"
@@ -172,6 +173,88 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
     Vector3d body_position = Math::AD::r_from_Matrix(model.X_base[body_id].toMatrix());
 
     return body_position + body_rotation.transpose() * point_body_coordinates;
+}
+
+RBDL_DLLAPI
+Vector3d CalcBodyToBaseCoordinates (
+        Model &model,
+        ADModel &ad_model,
+        const VectorNd &Q,
+        const MatrixNd &Q_dirs,
+        unsigned int body_id,
+        const Vector3d &point_body_coordinates,
+        std::vector<Math::Vector3d> *ad_body_to_base_coordinates,
+        bool update_kinematics
+) {
+    unsigned int ndirs = Q_dirs.cols();
+
+    std::vector<Matrix3d> ad_body_rotation (ndirs, Matrix3d::Zero());
+    std::vector<Vector3d> ad_body_position (ndirs, Vector3d::Zero());
+
+    // update the Kinematics if necessary
+    if (update_kinematics) {
+        // derivative evaluation
+        AD::UpdateKinematicsCustom (
+            model, ad_model,
+            &Q, &Q_dirs,
+            NULL, NULL,
+            NULL, NULL
+        );
+        // nominal evaluation
+        // NOTE: nominal evaluation is already done in AD::UpdateKinematicsCustom
+        // UpdateKinematicsCustom (model, &Q, NULL, NULL);
+    }
+
+    if (body_id >= model.fixed_body_discriminator) {
+        cerr << "fixed bodies not supported yet." << endl;
+        abort();
+
+        unsigned int fbody_id = body_id - model.fixed_body_discriminator;
+        unsigned int parent_id = model.mFixedBodies[fbody_id].mMovableParent;
+
+        // derivative evaluation
+        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+        // Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
+        // Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
+        }
+        // nominal evaluation
+        Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
+        Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
+
+        // derivative evaluation
+        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+        // Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
+        // Vector3d parent_body_position = model.X_base[parent_id].r;
+        }
+        // nominal evaluation
+        Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
+        Vector3d parent_body_position = model.X_base[parent_id].r;
+
+        // derivative evaluation
+        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+            // *(ad_body_to_base_coordinates)[idirs] =
+            // parent_body_position + parent_body_rotation * (fixed_position + fixed_rotation * (point_body_coordinates));
+        }
+        // nominal evaluation
+        return parent_body_position + parent_body_rotation * (fixed_position + fixed_rotation * (point_body_coordinates));
+    }
+
+    // derivative evaluation
+    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+        ad_body_rotation[idirs] = Math::AD::E_from_Matrix(ad_model.X_base[body_id][idirs]).transpose();
+        ad_body_position[idirs] = Math::AD::r_from_Matrix(
+            model.X_base[body_id].toMatrix(), ad_model.X_base[body_id][idirs]
+        );
+
+        // NOTE point_body_coordinates is a constant, no derivative needed!
+        (*ad_body_to_base_coordinates)[idirs] = ad_body_position[idirs]
+             + ad_body_rotation[idirs] * point_body_coordinates;
+    }
+
+    // nominal evaluation
+    Matrix3d body_rotation = model.X_base[body_id].E.transpose();
+    Vector3d body_position = model.X_base[body_id].r;
+    return body_position + body_rotation * point_body_coordinates;
 }
 
 
@@ -448,7 +531,7 @@ RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
         const unsigned int body_id,
         vector<Matrix3d> & ad_derivative,
         bool update_kinematics) {
-    int ndirs = q_dirs.cols();
+    unsigned int ndirs = q_dirs.cols();
     assert(ad_derivative.size() == ndirs);
 
     // update the Kinematics if necessary
@@ -461,7 +544,7 @@ RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
         abort();
     }
 
-    for (int idir = 0; idir < ndirs; idir++) {
+    for (unsigned int idir = 0; idir < ndirs; idir++) {
         ad_derivative[idir] = ad_model.X_base[body_id][idir].block<3,3>(0,0);
     }
     // nominal evaluation
@@ -481,7 +564,8 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
         unsigned int body_id,
         const Math::Vector3d &point_position,
         Math::MatrixNd &ad_derivative,
-        bool update_kinematics = true) {
+        bool update_kinematics
+) {
     LOG << "-------- " << __func__ << " --------" << std::endl;
 
     int const ndirs = q_dirs.cols();
@@ -573,6 +657,77 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
             p_a_i[3] + a_dash[0],
             p_a_i[4] + a_dash[1],
             p_a_i[5] + a_dash[2]);
+}
+
+RBDL_DLLAPI
+void CalcPointJacobian (
+        Model &model,
+        ADModel &ad_model,
+        Math::VectorNd const &Q,
+        Math::MatrixNd const &Q_dirs,
+        unsigned int body_id,
+        Math::Vector3d const &point_position,
+        Math::MatrixNd &G,
+        std::vector<Math::MatrixNd> &G_dirs,
+        bool update_kinematics
+) {
+    LOG << "-------- " << __func__ << " --------" << std::endl;
+
+    unsigned int ndirs = Q_dirs.cols();
+    ad_model.resize_directions(ndirs);
+
+    // update the Kinematics if necessary
+    if (update_kinematics) {
+        // derivative evaluation
+        UpdateKinematicsCustom (
+            model, ad_model,
+            &Q, &Q_dirs,
+            NULL, NULL,
+            NULL, NULL
+        );
+        // nominal evaluation
+        // NOTE kinematics are already updated in the AD version
+        // UpdateKinematicsCustom (model, &Q, NULL, NULL);
+    }
+
+    // nominal evaluation
+    SpatialTransform point_trans = SpatialTransform (
+            Matrix3d::Identity(),
+            CalcBodyToBaseCoordinates (
+                model, Q, body_id, point_position, false
+            )
+    );
+
+    assert (G.rows() == 3 && G.cols() == model.qdot_size );
+
+    unsigned int reference_body_id = body_id;
+
+    if (model.IsFixedBodyId(body_id)) {
+        unsigned int fbody_id = body_id - model.fixed_body_discriminator;
+        reference_body_id = model.mFixedBodies[fbody_id].mMovableParent;
+    }
+
+    unsigned int j = reference_body_id;
+
+    // e[j] is set to 1 if joint j contributes to the jacobian that we are
+    // computing. For all other joints the column will be zero.
+    while (j != 0) {
+        unsigned int q_index = model.mJoints[j].q_index;
+
+        if (model.mJoints[j].mDoFCount == 3) {
+            std::cout << "3DoF joints are not yet supported!" << std::endl;
+            std::cout << "bailing out ..." << std::endl;
+            abort();
+            G.block(0, q_index, 3, 3) = ((point_trans * model.X_base[j].inverse()).toMatrix() * model.multdof3_S[j]).block(3,0,3,3);
+        } else {
+            // nominal evaluation
+            G.block(0, q_index, 3, 1) = point_trans.apply(
+                model.X_base[j].inverse().apply(model.S[j])
+            ).block(3,0,3,1);
+        }
+
+        j = model.lambda[j];
+    }
 }
 
 // -----------------------------------------------------------------------------
