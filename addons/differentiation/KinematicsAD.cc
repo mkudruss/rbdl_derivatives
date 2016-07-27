@@ -95,7 +95,7 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 
     // Update the kinematics
     VectorNd QDot_zero (VectorNd::Zero (model.q_size));
-    VectorNd fd_out (MatrixNd::Zero (3, model.q_size));
+    MatrixNd fd_out (MatrixNd::Zero (3, model.q_size));
 
     ad_model.resize_directions(ndirs);
 

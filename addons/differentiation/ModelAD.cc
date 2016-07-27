@@ -49,8 +49,8 @@ ADModel::ADModel (RigidBodyDynamics::Model& model) {
     IA.resize(model.mBodies.size(), X);
     //u.resize(model.mBodies.size(), double);
     //d.resize(model.mBodies.size(), double);
-    u.resize(model.q_size, ndirs);
-    d.resize(model.q_size, ndirs);
+    u.resize(model.u.rows(), ndirs);
+    d.resize(model.d.rows(), ndirs);
 };
 
 void ADModel::resize_directions (unsigned requested_ndirs){
