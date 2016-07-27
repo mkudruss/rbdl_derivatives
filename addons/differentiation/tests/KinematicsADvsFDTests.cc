@@ -123,7 +123,6 @@ void CalcBodyWorldOrientationTemplate(T & obj) {
 
     int nTrials = 0;
     do {
-
         for (unsigned i = 1; i < model.mBodies.size(); i++) {
             unsigned id = model.mBodyNameMap[model.GetBodyName(i)];
             Matrix3d ad_E = RigidBodyDynamics::AD::CalcBodyWorldOrientation(model, ad_model, q, q_dirs, id, ad_derivative);
@@ -200,7 +199,6 @@ void CalcPointAccelerationTemplate(T & obj) {
 		qdd = VectorNd::Random(nq);
 	} while(nTrials++ < 10);
 }
-
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointAcceleration) {
 	CalcPointAccelerationTemplate(*this);
