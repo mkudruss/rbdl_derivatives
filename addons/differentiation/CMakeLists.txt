@@ -46,7 +46,7 @@ IF ( RBDL_BUILD_STATIC )
 	)
 ELSE (RBDL_BUILD_STATIC)
 	ADD_LIBRARY ( rbdl_ad SHARED ${DIFFERENTIATION_SOURCES} )
-	target_compile_features(rbdl_ad PRIVATE cxx_range_for)
+	# target_compile_features(rbdl_ad PRIVATE cxx_range_for)
 	SET_TARGET_PROPERTIES ( rbdl_ad PROPERTIES
 		VERSION ${RBDL_VERSION}
 		SOVERSION ${RBDL_SO_VERSION}

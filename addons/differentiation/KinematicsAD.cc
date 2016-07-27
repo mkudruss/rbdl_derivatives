@@ -690,6 +690,30 @@ void CalcPointJacobian (
         // UpdateKinematicsCustom (model, &Q, NULL, NULL);
     }
 
+    std::vector<SpatialMatrix> ad_point_trans (ndirs);
+    // derivative evaluation
+    for (unsigned int idirs = 0; idirs < ndirs; idirs++) {
+        // NOTE point_trans is spatial transform from E, r, i.e,
+        //
+        //      X = [   E 0], E = I
+        //          [-Erx E]
+        //
+        //      for the derivative the blocks E vanish as they are constant
+        //      and for the dot product the product rule applies, i.e.,
+        //
+        //      X_ad = [                   0 0]
+        //             [-E_dot*rx - E*rx_dot 0]
+        //
+        // SpatialMatrix& ad_point_trans_i = ad_point_trans[idirs];
+        // Matrix3d Erx = Matrix3d::Zero();
+        // Erx = X.block<3,3>(3,0);
+        // = SpatialTransform (
+        //     Matrix3d::Identity(),
+        //     CalcBodyToBaseCoordinates (
+        //         model, Q, body_id, point_position, false
+        //     )
+        // );
+    }
     // nominal evaluation
     SpatialTransform point_trans = SpatialTransform (
             Matrix3d::Identity(),
@@ -720,6 +744,7 @@ void CalcPointJacobian (
             abort();
             G.block(0, q_index, 3, 3) = ((point_trans * model.X_base[j].inverse()).toMatrix() * model.multdof3_S[j]).block(3,0,3,3);
         } else {
+            // derivative evaluation
             // nominal evaluation
             G.block(0, q_index, 3, 1) = point_trans.apply(
                 model.X_base[j].inverse().apply(model.S[j])

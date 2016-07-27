@@ -77,6 +77,7 @@ void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials,
     }
 }
 
+/*
 TEST_FIXTURE(CartPendulum, CartPendulumForwardDynamicsADTest){
     ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
 }
@@ -96,6 +97,7 @@ TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpForwardDynamicsADTest){
 TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpForwardDynamicsADTest){
     ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
 }
+*/
 
 // -----------------------------------------------------------------------------
 
