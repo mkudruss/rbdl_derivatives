@@ -54,7 +54,7 @@ void UpdateKinematics (Model &model,
  * In contrast to UpdateKinematics() this function allows to update the model
  * state with values one is interested and thus reduce computations (e.g. only
  * positions, only positions + accelerations, only velocities, etc.).
- 
+
  * \param model the model
  * \param Q     the positional variables of the model
  * \param QDot  the generalized velocities of the joints
@@ -142,9 +142,10 @@ Math::Matrix3d CalcBodyWorldOrientation (
  * Before calling this function one has to ensure that all other values
  * have been set to zero, e.g. by calling G.setZero().
  *
- */ 
+ */
 RBDL_DLLAPI
-void CalcPointJacobian (Model &model,
+void CalcPointJacobian (
+		Model &model,
 		const Math::VectorNd &Q,
 		unsigned int body_id,
 		const Math::Vector3d &point_position,
@@ -181,7 +182,7 @@ void CalcBodySpatialJacobian (
 		bool update_kinematics = true
 		);
 
-/** \brief Computes the velocity of a point on a body 
+/** \brief Computes the velocity of a point on a body
  *
  * \param model   rigid body model
  * \param Q       state vector of the internal joints
@@ -202,7 +203,7 @@ Math::Vector3d CalcPointVelocity (
 		bool update_kinematics = true
 		);
 
-/** \brief Computes the acceleration of a point on a body 
+/** \brief Computes the acceleration of a point on a body
  *
  * \param model   rigid body model
  * \param Q       state vector of the internal joints
@@ -289,4 +290,4 @@ bool InverseKinematics (
 }
 
 /* RBDL_KINEMATICS_H */
-#endif 
+#endif

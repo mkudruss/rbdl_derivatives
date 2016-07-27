@@ -30,7 +30,9 @@ void UpdateKinematics (Model &model,
 
 	unsigned int i;
 
-	SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
+	SpatialVector spatial_gravity (
+		0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]
+	);
 
 	model.a[0].setZero();
 	//model.a[0] = spatial_gravity;
@@ -52,7 +54,7 @@ void UpdateKinematics (Model &model,
 			model.X_base[i] = model.X_lambda[i];
 			model.v[i] = model.v_J[i];
 		}
-		
+
 		model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
 		model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
 
@@ -61,7 +63,7 @@ void UpdateKinematics (Model &model,
 			model.a[i] = model.a[i] + model.multdof3_S[i] * omegadot_temp;
 		} else {
 			model.a[i] = model.a[i] + model.S[i] * QDDot[q_index];
-		}	
+		}
 	}
 
 	for (i = 1; i < model.mBodies.size(); i++) {
@@ -76,7 +78,7 @@ void UpdateKinematicsCustom (Model &model,
 		const VectorNd *QDDot
 		) {
 	LOG << "-------- " << __func__ << " --------" << std::endl;
-	
+
 	unsigned int i;
 
 	if (Q) {
@@ -300,7 +302,7 @@ void CalcBodySpatialJacobian (
 		} else {
 			G.block(0,q_index,6,1) = base_to_body.apply(model.X_base[j].inverse().apply(model.S[j]));
 		}
-	
+
 		j = model.lambda[j];
 	}
 }
@@ -392,7 +394,7 @@ Vector3d CalcPointAcceleration (
 			);
 }
 
-RBDL_DLLAPI 
+RBDL_DLLAPI
 bool InverseKinematics (
 		Model &model,
 		const VectorNd &Qinit,

@@ -160,13 +160,13 @@ void ConstraintSet::clear() {
 
 RBDL_DLLAPI
 void SolveContactSystemDirect (
-		Math::MatrixNd &H, 
-		const Math::MatrixNd &G, 
-		const Math::VectorNd &c, 
-		const Math::VectorNd &gamma, 
-		Math::VectorNd &qddot, 
-		Math::VectorNd &lambda, 
-		Math::MatrixNd &A, 
+		Math::MatrixNd &H,
+		const Math::MatrixNd &G,
+		const Math::VectorNd &c,
+		const Math::VectorNd &gamma,
+		Math::VectorNd &qddot,
+		Math::VectorNd &lambda,
+		Math::MatrixNd &A,
 		Math::VectorNd &b,
 		Math::VectorNd &x,
 		Math::LinearSolver &linear_solver
@@ -211,14 +211,14 @@ void SolveContactSystemDirect (
 
 RBDL_DLLAPI
 void SolveContactSystemRangeSpaceSparse (
-		Model &model, 
-		Math::MatrixNd &H, 
-		const Math::MatrixNd &G, 
-		const Math::VectorNd &c, 
-		const Math::VectorNd &gamma, 
-		Math::VectorNd &qddot, 
-		Math::VectorNd &lambda, 
-		Math::MatrixNd &K, 
+		Model &model,
+		Math::MatrixNd &H,
+		const Math::MatrixNd &G,
+		const Math::VectorNd &c,
+		const Math::VectorNd &gamma,
+		Math::VectorNd &qddot,
+		Math::VectorNd &lambda,
+		Math::MatrixNd &K,
 		Math::VectorNd &a,
 		Math::LinearSolver linear_solver
 	) {
@@ -248,11 +248,11 @@ void SolveContactSystemRangeSpaceSparse (
 
 RBDL_DLLAPI
 void SolveContactSystemNullSpace (
-		Math::MatrixNd &H, 
-		const Math::MatrixNd &G, 
-		const Math::VectorNd &c, 
-		const Math::VectorNd &gamma, 
-		Math::VectorNd &qddot, 
+		Math::MatrixNd &H,
+		const Math::MatrixNd &G,
+		const Math::VectorNd &c,
+		const Math::VectorNd &gamma,
+		Math::VectorNd &qddot,
 		Math::VectorNd &lambda,
 		Math::MatrixNd &Y,
 		Math::MatrixNd &Z,
@@ -472,7 +472,7 @@ void ComputeContactImpulsesDirect (
 	for (unsigned int i = 0; i < model.dof_count; i++)
 		QDotPlus[i] = CS.x[i];
 
-	// Copy back constraint impulses 
+	// Copy back constraint impulses
 	for (unsigned int i = 0; i < CS.size(); i++) {
 		CS.impulse[i] = CS.x[model.dof_count + i];
 	}
@@ -591,7 +591,7 @@ void ForwardDynamicsApplyConstraintForces (
 			}
 		}
 	}
-	
+
 	model.a[0] = SpatialVector (0., 0., 0., -model.gravity[0], -model.gravity[1], -model.gravity[2]);
 
 	for (i = 1; i < model.mBodies.size(); i++) {
@@ -615,7 +615,7 @@ void ForwardDynamicsApplyConstraintForces (
 	}
 
 	LOG << "QDDot = " << QDDot.transpose() << std::endl;
-} 
+}
 
 /** \brief Computes the effect of external forces on the generalized accelerations.
  *
@@ -698,7 +698,7 @@ void ForwardDynamicsAccelerationDeltas (
 			QDDot_t[q_index] = (CS.d_u[i] - model.U[i].dot(Xa) ) / model.d[i];
 			CS.d_a[i] = Xa + model.S[i] * QDDot_t[q_index];
 		}
-	
+
 		LOG << "QDDot_t[" << i - 1 << "] = " << QDDot_t[i - 1] << std::endl;
 		LOG << "d_a[i] = " << CS.d_a[i].transpose() << std::endl;
 	}
@@ -733,7 +733,7 @@ void ForwardDynamicsContactsKokkevis (
 	Vector3d point_accel_t;
 
 	unsigned int ci = 0;
-	
+
 	// The default acceleration only needs to be computed once
 	{
 		SUPPRESS_LOGGING;
@@ -811,7 +811,7 @@ void ForwardDynamicsContactsKokkevis (
 
 				point_accel_t = CalcPointAcceleration (model, Q, QDot, CS.QDDot_t, CS.body[cj], CS.point[cj], false);
 			}
-	
+
 			LOG << "point_accel_0  = " << CS.point_accel_0[ci].transpose() << std::endl;
 			CS.K(ci,cj) = CS.normal[cj].dot(point_accel_t - CS.point_accel_0[cj]);
 			LOG << "point_accel_t = " << point_accel_t.transpose() << std::endl;
@@ -853,7 +853,7 @@ void ForwardDynamicsContactsKokkevis (
 			movable_body_id = model.mFixedBodies[fbody_id].mMovableParent;
 		}
 
-		CS.f_ext_constraints[movable_body_id] -= CS.f_t[ci] * CS.force[ci]; 
+		CS.f_ext_constraints[movable_body_id] -= CS.f_t[ci] * CS.force[ci];
 		LOG << "f_ext[" << movable_body_id << "] = " << CS.f_ext_constraints[movable_body_id].transpose() << std::endl;
 	}
 
