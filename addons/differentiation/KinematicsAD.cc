@@ -671,6 +671,7 @@ void CalcPointJacobian (
         std::vector<Math::MatrixNd> &G_dirs,
         bool update_kinematics
 ) {
+/*
     LOG << "-------- " << __func__ << " --------" << std::endl;
 
     unsigned int ndirs = Q_dirs.cols();
@@ -691,6 +692,10 @@ void CalcPointJacobian (
     }
 
     std::vector<SpatialMatrix> ad_point_trans (ndirs);
+    std::vector<Vector3d> ad_r (ndirs);
+    Vector3d r = AD::CalcBodyToBaseCoordinates (
+        model, ad_model, Q, Q_dirs, body_id, point_position, &ad_r, false
+    );
     // derivative evaluation
     for (unsigned int idirs = 0; idirs < ndirs; idirs++) {
         // NOTE point_trans is spatial transform from E, r, i.e,
@@ -701,27 +706,27 @@ void CalcPointJacobian (
         //      for the derivative the blocks E vanish as they are constant
         //      and for the dot product the product rule applies, i.e.,
         //
-        //      X_ad = [                   0 0]
+        //      X_ad = [                   0 0], -E_dot*rx = 0, E is constant
         //             [-E_dot*rx - E*rx_dot 0]
         //
-        // SpatialMatrix& ad_point_trans_i = ad_point_trans[idirs];
-        // Matrix3d Erx = Matrix3d::Zero();
-        // Erx = X.block<3,3>(3,0);
-        // = SpatialTransform (
-        //     Matrix3d::Identity(),
-        //     CalcBodyToBaseCoordinates (
-        //         model, Q, body_id, point_position, false
-        //     )
-        // );
+        //           = [        0 0]
+        //             [-E*rx_dot 0]
+        //
+        SpatialMatrix& X = ad_point_trans[idirs];
+        Matrix3d Erx = X.block<3,3>(3,0);
+        Matrix3d E = Matrix3d::Identity();
+        Erx = -E * Math::AD::cross3d(ad_r[idirs]);
     }
     // nominal evaluation
-    SpatialTransform point_trans = SpatialTransform (
-            Matrix3d::Identity(),
-            CalcBodyToBaseCoordinates (
-                model, Q, body_id, point_position, false
-            )
-    );
+    // NOTE vector r is already evaluated in derivative evaluation
+    SpatialTransform point_trans = SpatialTransform (Matrix3d::Identity(), r);
 
+    // derivative evaluation
+    for (unsigned int idirs = 0; idirs < ndirs; idirs++) {
+        assert (G_dirs[idirs].rows() == 3);
+        assert (G_dirs[idirs].cols() == model.qdot_size );
+    }
+    // nominal evaluation
     assert (G.rows() == 3 && G.cols() == model.qdot_size );
 
     unsigned int reference_body_id = body_id;
@@ -733,7 +738,7 @@ void CalcPointJacobian (
 
     unsigned int j = reference_body_id;
 
-    // e[j] is set to 1 if joint j contributes to the jacobian that we are
+    // e[j] is set to 1 if joint j contributes to the Jacobian that we are
     // computing. For all other joints the column will be zero.
     while (j != 0) {
         unsigned int q_index = model.mJoints[j].q_index;
@@ -744,15 +749,35 @@ void CalcPointJacobian (
             abort();
             G.block(0, q_index, 3, 3) = ((point_trans * model.X_base[j].inverse()).toMatrix() * model.multdof3_S[j]).block(3,0,3,3);
         } else {
-            // derivative evaluation
             // nominal evaluation
-            G.block(0, q_index, 3, 1) = point_trans.apply(
-                model.X_base[j].inverse().apply(model.S[j])
-            ).block(3,0,3,1);
+            SpatialVector v = model.X_base[j].inverse().apply(model.S[j]);
+            // derivative evaluation
+            for (unsigned int idirs = 0; idirs < ndirs; idirs++) {
+                SpatialMatrix ad_X_base_inv = ad_model.X_base[j][idirs];
+                std::cout << "ad_X_base_inv = " << std::endl;
+                std::cout << ad_X_base_inv << std::endl;
+                std::cout << "ad_X_base_inv = " << std::endl;
+                std::cout << ad_X_base_inv << std::endl;
+                    + model.X_base[j].inverse().apply(ad_model.S[j][idirs]);
+                SpatialVector v_dot =
+                    ad_X_base_inv * model.S[j]
+                    + model.X_base[j].inverse().apply(ad_model.S[j][idirs]);
+                // NOTE G_i = [e_i1*S_1 ... e_iNB S_NB ]
+                MatrixNd& G_dir = G_dirs[idirs];
+                G_dir.block(0, q_index, 3, 1) = (
+                    ad_point_trans[idirs]*v + point_trans.apply(v_dot)
+                ).block(3,0,3,1);
+            }
+            std::cout << std::endl;
+
+            // nominal evaluation
+            // NOTE v = model.X_base[j].inverse().apply(model.S[j]) is computed before
+            G.block(0, q_index, 3, 1) = point_trans.apply(v).block(3,0,3,1);
         }
 
         j = model.lambda[j];
     }
+*/
 }
 
 // -----------------------------------------------------------------------------

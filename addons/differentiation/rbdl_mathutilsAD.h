@@ -142,6 +142,15 @@ inline SpatialMatrix Xtrans (const Vector3d &trans, const Vector3d &trans_dirs) 
     return result;
 }
 
+RBDL_DLLAPI
+inline Matrix3d cross3d (const Vector3d &v) {
+    return Matrix3d (
+                0, -v[2],  v[1],
+             v[2],     0, -v[0],
+            -v[1],  v[0],     0
+            );
+}
+
 // NOTE: ad_crossm is equal to crossm applied to the directions
 RBDL_DLLAPI
 inline SpatialMatrix crossm (const SpatialVector &v) {
