@@ -15,7 +15,7 @@ SET ( TESTS_SRCS
     rbdl_utilsADvsFDTests.cc
     DynamicsADvsFDTests.cc
     KinematicsADvsFDTests.cc
-    # MinimalADvsFDTests.cc
+	MinimalADvsFDTests.cc
     ContactsADvsFDTests.cc
 )
 
