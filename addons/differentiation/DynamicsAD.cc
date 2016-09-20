@@ -208,8 +208,8 @@ void ForwardDynamics (
 					ad_model.pA[lambda][j].noalias() += ad_model.X_lambda[i][j].transpose() * pa
 						+ model.X_lambda[i].applyTranspose(ad_pa[j]);
 				}
-                // nominal evaluation
-                model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
+        // nominal evaluation
+        model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
 #else
 				cerr << "Simple math not yet supported." << endl;
 				abort();
@@ -415,6 +415,135 @@ void InverseDynamics(
 				+ model.X_lambda[i].applyTranspose(model.f[i]);
 		}
 	}
+}
+
+RBDL_DLLAPI
+void NonlinearEffects (
+    Model & model,
+    ADModel & ad_model,
+    const VectorNd & q,
+    const MatrixNd & q_dirs,
+    const VectorNd & qDot,
+    const MatrixNd & qDot_dirs,
+    VectorNd & tau,
+    MatrixNd & ad_tau
+) {
+  int ndirs = q_dirs.cols();
+  assert(ndirs == qDot_dirs.cols());
+  assert(ndirs == tau_dirs.cols());
+
+  LOG << "-------- " << __func__ << " --------" << std::endl;
+
+  SpatialVector spatial_gravity (0., 0., 0., -model.gravity[0], -model.gravity[1], -model.gravity[2]);
+
+  // Reset the velocity of the root body
+  // derivative code
+  for (int idir = 0; idir < ndirs; idir++) {
+    ad_model.v[0][idir].setZero();
+    ad_model.a[0][idir].setZero();
+  }
+  // nominal code
+  model.v[0].setZero();
+  model.a[0] = spatial_gravity;
+
+  for (unsigned i = 1; i < model.mJointUpdateOrder.size(); i++) {
+    // derivative and nominal code
+    jcalc(model, ad_model, model.mJointUpdateOrder[i], q, q_dirs, qDot, qDot_dirs);
+  }
+
+  for (unsigned i = 1; i < model.mBodies.size(); i++) {
+    unsigned lambda = model.lambda[i];
+    if (lambda == 0) {
+      // derivative code
+      for (int idir = 0; idir < ndirs; idir++) {
+        ad_model.v[i][idir] = ad_model.v_J[i][idir];
+      }
+      // nominal code
+      model.v[i] = model.v_J[i];
+
+      // derivative code
+      for (int idir = 0; idir < ndirs; idir++) {
+        ad_model.a[i][idir] = ad_model.X_lambda[i][idir] * spatial_gravity;
+      }
+      // nominal code
+      model.a[i] = model.X_lambda[i].apply(spatial_gravity);
+    }	else {
+      // derivative code
+      for (int idir = 0; idir < ndirs; idir++) {
+        ad_model.v[i][idir] = ad_model.X_lambda[i][idir] * model.v[lambda]
+            + model.X_lambda[i].apply(ad_model.v[lambda][idir])
+            + ad_model.v_J[i][idir];
+      }
+      // nominal code
+      model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
+
+      // derivative code
+      for (int idir = 0; idir < ndirs; idir++) {
+        ad_model.c[i][idir] = ad_model.c_J[i][idir]
+            + crossm(ad_model.v[i][idir],model.v_J[i])
+            + crossm(model.v[i], ad_model.v_J[i][idir]);
+      }
+      // nominal code
+      model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
+
+      // derivative code
+      for (int idir = 0; idir < ndirs; idir++) {
+        ad_model.a[i][idir] = ad_model.X_lambda[i][idir] * model.a[lambda]
+            + model.X_lambda[i].apply(ad_model.a[lambda][idir])
+            + ad_model.c[i][idir];
+      }
+      // nominal code
+      model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
+    }
+
+    if (!model.mBodies[i].mIsVirtual) {
+      // derivative code
+      for (int idir = 0; idir < ndirs; idir++) {
+        ad_model.f[i][idir] = model.I[i] * ad_model.a[i][idir]
+            + crossf(ad_model.v[i][idir], model.I[i] * model.v[i])
+            + crossf(model.v[i], model.I[i] * ad_model.v[i][idir]);
+      }
+      // nominal code
+      model.f[i] = model.I[i] * model.a[i] + crossf(model.v[i],model.I[i] * model.v[i]);
+    } else {
+      // derivative code
+      for (int idir = 0; idir < ndirs; idir++) {
+        ad_model.f[i][idir].setZero();
+      }
+      // nominal code
+      model.f[i].setZero();
+    }
+  }
+
+  for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
+    if (model.mJoints[i].mDoFCount == 3) {
+      cerr << "Multi-dof not supported." << endl;
+      abort();
+      // nominal code
+      tau.block<3,1>(model.mJoints[i].q_index, 0) = model.multdof3_S[i].transpose() * model.f[i];
+    } else {
+      int q_index = model.mJoints[i].q_index;
+      // derivative code
+      for (int idir = 0; idir < ndirs; idir++) {
+        ad_tau(q_index, idir) = ad_model.S[i][idir].dot(model.f[i])
+            + model.S[i].dot(ad_model.f[i][idir]);
+      }
+      // nominal code
+      tau[q_index] = model.S[i].dot(model.f[i]);
+    }
+
+    unsigned lambda = model.lambda[i];
+    if (lambda != 0) {
+      // derivative code
+      for (int idir = 0; idir < ndirs; idir++) {
+        ad_model.f[lambda][idir] +=
+            ad_model.X_lambda[i][idir].transpose() * model.f[i]
+            + model.X_lambda[i].applyTranspose(ad_model.f[i][idir]);
+      }
+      // nominal code
+      model.f[lambda] += model.X_lambda[i].applyTranspose(model.f[i]);
+    }
+  }
 }
 
 RBDL_DLLAPI

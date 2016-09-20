@@ -54,6 +54,17 @@ void InverseDynamics(
 );
 
 RBDL_DLLAPI
+void NonlinearEffects (
+    Model & model,
+    const Math::VectorNd & q,
+    const Math::MatrixNd & q_dirs,
+    const Math::VectorNd & qDot,
+    const Math::MatrixNd & qDot_dirs,
+    Math::VectorNd & tau,
+    Math::MatrixNd & fd_tau
+    );
+
+RBDL_DLLAPI
 void CompositeRigidBodyAlgorithm (
 	Model &model,
     const Math::VectorNd &q,

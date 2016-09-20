@@ -44,33 +44,44 @@ void ForwardDynamics (
     Math::VectorNd & qddot,
     Math::MatrixNd & ad_qddot,
     std::vector<Math::SpatialVector>* f_ext
-);
+    );
 
 RBDL_DLLAPI
 void InverseDynamics(
-	Model& model,
-	ADModel &ad_model,
-	const Math::VectorNd& q,
-	const Math::MatrixNd& q_dirs,
-	const Math::VectorNd& qdot,
-	const Math::MatrixNd& qdot_dirs,
-	const Math::VectorNd& qddot,
-	const Math::MatrixNd& qddot_dirs,
-	Math::VectorNd& tau,
-	Math::MatrixNd& ad_tau,
-	std::vector<Math::SpatialVector> *f_ext
-);
+    Model& model,
+    ADModel &ad_model,
+    const Math::VectorNd& q,
+    const Math::MatrixNd& q_dirs,
+    const Math::VectorNd& qdot,
+    const Math::MatrixNd& qdot_dirs,
+    const Math::VectorNd& qddot,
+    const Math::MatrixNd& qddot_dirs,
+    Math::VectorNd& tau,
+    Math::MatrixNd& ad_tau,
+    std::vector<Math::SpatialVector> *f_ext
+    );
+
+RBDL_DLLAPI
+void NonlinearEffects (Model & model,
+    ADModel & ad_model,
+    const Math::VectorNd & q,
+    const Math::MatrixNd & q_dirs,
+    const Math::VectorNd & qDot,
+    const Math::MatrixNd & qDot_dirs,
+    Math::VectorNd & tau,
+    Math::MatrixNd & ad_tau
+    );
 
 RBDL_DLLAPI
 void CompositeRigidBodyAlgorithm (
-  Model &model,
-  ADModel &ad_model,
-  Math::VectorNd const & q,
-  Math::MatrixNd const & q_dirs,
-  Math::MatrixNd & H,
-  std::vector<Math::MatrixNd> & H_ad,
-  bool update_kinematics = true
-);
+    Model &model,
+    ADModel &ad_model,
+    Math::VectorNd const & q,
+    Math::MatrixNd const & q_dirs,
+    Math::MatrixNd & H,
+    std::vector<Math::MatrixNd> & H_ad,
+    bool update_kinematics = true
+    );
 
 // -----------------------------------------------------------------------------
 } /* AD */

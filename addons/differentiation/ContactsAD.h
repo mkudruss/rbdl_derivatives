@@ -18,10 +18,12 @@ struct ADConstraintSet {
 
   std::vector<Math::MatrixNd> G;
   std::vector<Math::MatrixNd> A;
+  std::vector<Math::MatrixNd> H;
   Math::MatrixNd              b;
   Math::MatrixNd              v_plus;
   Math::MatrixNd              x;
   Math::MatrixNd              impulse;
+  Math::MatrixNd              QDDot_0;
 
   ADConstraintSet() {}
   ADConstraintSet(const ConstraintSet &CS, int dof_count);
@@ -94,15 +96,23 @@ void ForwardDynamicsContactsKokkevis (
         Math::VectorNd &QDDot
         );
 
-RBDL_DLLAPI
-void ComputeContactImpulsesDirect (
-        Model &model,
-        const Math::VectorNd &Q,
-        const Math::VectorNd &QDotMinus,
-        ConstraintSet &CS,
-        Math::VectorNd &QDotPlus
-        );
+*/
 
+RBDL_DLLAPI
+void ComputeContactImpulsesDirect(
+    Model & model,
+    ADModel & ad_model,
+    const Math::VectorNd & q,
+    const Math::MatrixNd & q_dirs,
+    const Math::VectorNd & qDotMinus,
+    const Math::MatrixNd & qDotMinus_dirs,
+    ConstraintSet & CS,
+    ADConstraintSet & ad_CS,
+    Math::VectorNd & qDotPlus,
+    Math::MatrixNd & ad_qDotPlus
+    );
+
+/*
 RBDL_DLLAPI
 void ComputeContactImpulsesRangeSpaceSparse (
         Model &model,

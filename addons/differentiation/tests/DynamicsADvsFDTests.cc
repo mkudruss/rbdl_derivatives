@@ -175,6 +175,64 @@ TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZYpInverseDynamicsADTest) {
 // -----------------------------------------------------------------------------
 
 template<typename T>
+void NonlinearEffectsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-7) {
+  Model & model      = obj.model;
+  ADModel & ad_model = obj.ad_model;
+  VectorNd & q     = obj.q;
+  VectorNd & qdot  = obj.qdot;
+  VectorNd & tau   = obj.tau;
+
+  for(unsigned int i = 0; i < model.qdot_size; i++) {
+      q[i]     = (i+1)*(0.897878435);
+      qdot[i]  = (i+1)*(0.27563682);
+  }
+
+  MatrixNd q_dirs     = MatrixNd::Identity (model.qdot_size, model.qdot_size);
+  MatrixNd qdot_dirs  = MatrixNd::Identity (model.qdot_size, model.qdot_size);
+
+  VectorNd tau_nom (tau);
+  VectorNd ad_tau_nom (tau);
+  VectorNd fd_tau_nom (tau);
+  MatrixNd ad_tau_der = MatrixNd::Zero(model.qdot_size, model.qdot_size);
+  MatrixNd fd_tau_der = MatrixNd::Zero(model.qdot_size, model.qdot_size);
+
+  NonlinearEffects(model, q, qdot, tau_nom);
+
+  RigidBodyDynamics::AD::NonlinearEffects(model, ad_model, q, q_dirs,
+      qdot, qdot_dirs, ad_tau_nom, ad_tau_der);
+
+  RigidBodyDynamics::FD::NonlinearEffects(model, q, q_dirs, qdot, qdot_dirs,
+      fd_tau_nom, fd_tau_der);
+
+  CHECK_ARRAY_CLOSE (tau_nom.data(), ad_tau_nom.data(), tau_nom.rows(), CHECK_ARRAY_PREC);
+  CHECK_ARRAY_CLOSE (tau_nom.data(), fd_tau_nom.data(), tau_nom.rows(), CHECK_ARRAY_PREC);
+  CHECK_ARRAY_CLOSE (fd_tau_der.data(), ad_tau_der.data(),
+                     fd_tau_der.cols() * fd_tau_der.rows(), CHECK_ARRAY_PREC);
+}
+
+TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsADTest) {
+    NonlinearEffectsADTestTemplate(*this);
+}
+
+TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsADTest) {
+    NonlinearEffectsADTestTemplate(*this, 1e-6);
+}
+
+TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsADTest) {
+    NonlinearEffectsADTestTemplate(*this, 1e-6);
+}
+
+TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsADTest) {
+    NonlinearEffectsADTestTemplate(*this, 1e-5);
+}
+
+TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsADTest) {
+    NonlinearEffectsADTestTemplate(*this, 1e-5);
+}
+
+// -----------------------------------------------------------------------------
+
+template<typename T>
 void CompositeRigidBodyAlgorithmADTestTemplate(T & obj) {
     Model & model = obj.model;
 

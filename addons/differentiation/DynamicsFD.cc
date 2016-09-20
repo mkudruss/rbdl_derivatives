@@ -66,7 +66,7 @@ void InverseDynamics(
 	Math::VectorNd& tau,
 	Math::MatrixNd& fd_tau,
 	std::vector<Math::SpatialVector> *f_ext
-){
+) {
 
 	assert(q_dirs.cols() == qdot_dirs.cols() &&
 		q_dirs.cols() == qddot_dirs.cols() &&
@@ -98,6 +98,31 @@ void InverseDynamics(
 
 		fd_tau.block(0,i,hd_tau.rows(),1) = (hd_tau - tau) / h;
 	}
+}
+
+RBDL_DLLAPI
+void NonlinearEffects (
+    Model & model,
+    const Math::VectorNd & q,
+    const Math::MatrixNd & q_dirs,
+    const Math::VectorNd & qDot,
+    const Math::MatrixNd & qDot_dirs,
+    Math::VectorNd & tau,
+    Math::MatrixNd & fd_tau
+) {
+  int ndirs = q_dirs.cols();
+  assert(ndirs == qDot_dirs.cols());
+  assert(ndirs == fd_tau.cols());
+
+  NonlinearEffects (model, q, qDot, tau);
+  double h = 1.0e-8;
+  for (int idir = 0; idir < ndirs; idir++) {
+    VectorNd q_dir  = q_dirs.col(idir);
+    VectorNd qd_dir = qDot_dirs.col(idir);
+    VectorNd hd_tau(tau.rows());
+    NonlinearEffects (model, q + h * q_dir, qDot + h * qd_dir, hd_tau);
+    fd_tau.col(idir) = (hd_tau - tau) / h;
+  }
 }
 
 RBDL_DLLAPI

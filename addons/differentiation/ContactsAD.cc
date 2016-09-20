@@ -13,10 +13,12 @@ ADConstraintSet::ADConstraintSet(const ConstraintSet & CS, int dof_count) {
 
   G.resize(ndirs, MatrixNd::Zero(CS.G.rows(), CS.G.cols()));
   A.resize(ndirs, MatrixNd::Zero(CS.A.rows(), CS.A.cols()));
+  H.resize(ndirs, MatrixNd::Zero(CS.H.rows(), CS.H.cols()));
   b             = MatrixNd::Zero(CS.b.rows(), ndirs);
   v_plus        = MatrixNd::Zero(CS.v_plus.rows(), ndirs);
   x             = MatrixNd::Zero(CS.x.rows(), ndirs);
   impulse       = MatrixNd::Zero(CS.impulse.rows(), ndirs);
+  QDDot_0       = MatrixNd::Zero(CS.QDDot_0.rows(), ndirs);
 }
 
 // -----------------------------------------------------------------------------
@@ -99,6 +101,123 @@ void CalcContactJacobian(
             G(i,j) = gaxis.transpose() * CS.normal[i];
         }
     }
+}
+
+RBDL_DLLAPI
+void CalcContactSystemVariables (
+    Model & model,
+    ADModel & ad_model,
+    const VectorNd & q,
+    const MatrixNd & q_dirs,
+    const VectorNd & qDot,
+    const MatrixNd & qDot_dirs,
+    const VectorNd & tau,
+    const MatrixNd & tau_dirs,
+    ConstraintSet &      CS,
+    ADConstraintSet &    ad_CS
+) {
+  int ndirs = q_dirs.cols();
+  assert(ndirs == qDot_dirs.cols());
+  assert(ndirs == tau_dirs.cols());
+
+  // Compute C
+  NonlinearEffects (model, q, qDot, CS.C);
+  /// TODO: AD implementation of NonlinearEffects
+  assert (CS.H.cols() == model.dof_count && CS.H.rows() == model.dof_count);
+
+  // Compute H
+  CompositeRigidBodyAlgorithm (model, ad_model, q, q_dirs, CS.H, ad_CS.H, false);
+  /// TODO: Check if false makes sense as last argument here.
+
+  // Compute G
+  // We have to update model.X_base as they are not automatically computed
+  // by NonlinearEffects()
+  for (unsigned int i = 1; i < model.mBodies.size(); i++) {
+    unsigned int lambda = model.lambda[i];
+    // derivative evaluation
+    for (int idir = 0; idir < ndirs; idir++) {
+      ad_model.X_base[i][idir] =
+          ad_model.X_lambda[i][idir] * model.X_base[lambda].toMatrix()
+          + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idir];
+    }
+    // nominal evaluation
+    model.X_base[i] = model.X_lambda[i] * model.X_base[model.lambda[i]];
+  }
+  CalcContactJacobian(model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
+  /// TODO: Check if false makes sense as last argument here.
+
+  // Compute gamma
+  unsigned int prev_body_id = 0;
+  Vector3d prev_body_point = Vector3d::Zero();
+  Vector3d gamma_i = Vector3d::Zero();
+
+  CS.QDDot_0.setZero();
+  UpdateKinematicsCustom (model, ad_model, 0, 0, 0, 0, &CS.QDDot_0, &ad_CS.QDDot_0);
+
+  for (unsigned int i = 0; i < CS.size(); i++) {
+    // only compute point accelerations when necessary
+    if (prev_body_id != CS.body[i] || prev_body_point != CS.point[i]) {
+      gamma_i = CalcPointAcceleration (model, q, qDot, CS.QDDot_0, CS.body[i], CS.point[i], false);
+      prev_body_id = CS.body[i];
+      prev_body_point = CS.point[i];
+    }
+
+    // we also substract ContactData[i].acceleration such that the contact
+    // point will have the desired acceleration
+    CS.gamma[i] = CS.acceleration[i] - CS.normal[i].dot(gamma_i);
+  }
+  /// TODO: Implement derivative of for loop, esp. CalcPointAcceleration
+}
+
+RBDL_DLLAPI
+void ComputeContactImpulsesDirect (
+    Model & model,
+    ADModel & ad_model,
+    const VectorNd & q,
+    const MatrixNd & q_dirs,
+    const VectorNd & qDotMinus,
+    const MatrixNd & qDotMinus_dirs,
+    ConstraintSet & CS,
+    ADConstraintSet & ad_CS,
+    VectorNd & qDotPlus,
+    MatrixNd & ad_qDotPlus
+) {
+  int ndirs = q_dirs.size();
+  assert(ndirs == qDotMinus_dirs.cols());
+  assert(ndirs == ad_qDotPlus.cols());
+
+  // Compute H
+  UpdateKinematicsCustom(model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
+
+  vector<MatrixNd> H_ad(ndirs, CS.H);
+  CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, CS.H, H_ad, false);
+  /// TODO: Check if false makes sense as last argument here.
+
+  // Compute G
+  CalcContactJacobian (model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
+  /// TODO: Check if false makes sense as last argument here.
+
+  VectorNd c   = CS.H * qDotMinus;
+  MatrixNd c_ad(CS.H.rows(), ndirs);
+  for (int i = 0; i < ndirs; i++) {
+    c_ad.block(0, i, CS.H.rows(), 1) = CS.H * qDotMinus_dirs.col(i) + H_ad[i] * qDotMinus;
+  }
+
+  SolveContactSystemDirect (CS.H, H_ad, CS.G, ad_CS.G, c, c_ad, CS.v_plus,
+                            ad_CS.v_plus, CS.A, ad_CS.A, CS.b, ad_CS.b,
+                            CS.x, ad_CS.x, CS.linear_solver);
+
+  // derivative evaluation
+  ad_qDotPlus = ad_CS.x.block(0, 0, model.dof_count, ndirs);
+  // nominal evaluation
+  //    Copy back QDotPlus
+  qDotPlus = CS.x.segment(0, model.dof_count);
+
+  // derivative evaluation
+  ad_CS.impulse = ad_CS.x.block(model.dof_count, 0, CS.size(), ndirs);
+  // nominal evaluation
+  //    Copy back constraint impulses
+  CS.impulse = CS.x.segment(model.dof_count, CS.size());
 }
 
 RBDL_DLLAPI
@@ -198,56 +317,6 @@ void SolveContactSystemDirect (
   LOG << "x = " << std::endl << x << std::endl;
 }
 
-RBDL_DLLAPI
-void ComputeContactImpulsesDirect (
-    Model & model,
-    ADModel & ad_model,
-    const VectorNd & q,
-    const MatrixNd & q_dirs,
-    const VectorNd & qDotMinus,
-    const MatrixNd & qDotMinus_dirs,
-    ConstraintSet & CS,
-    ADConstraintSet & ad_CS,
-    VectorNd & qDotPlus,
-    MatrixNd & ad_qDotPlus
-) {
-  int ndirs = q_dirs.size();
-  assert(ndirs == qDotMinus_dirs.cols());
-  assert(ndirs == ad_qDotPlus.cols());
-
-  // Compute H
-  UpdateKinematicsCustom(model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
-
-  vector<MatrixNd> H_ad(ndirs, CS.H);
-  CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, CS.H, H_ad, false);
-  /// TODO: Check if false makes sense as last argument here.
-
-  // Compute G
-  CalcContactJacobian (model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
-  /// TODO: Check if false makes sense as last argument here.
-
-  VectorNd c   = CS.H * qDotMinus;
-  MatrixNd c_ad(CS.H.rows(), ndirs);
-  for (int i = 0; i < ndirs; i++) {
-    c_ad.block(0, i, CS.H.rows(), 1) = CS.H * qDotMinus_dirs.col(i) + H_ad[i] * qDotMinus;
-  }
-
-  SolveContactSystemDirect (CS.H, H_ad, CS.G, ad_CS.G, c, c_ad, CS.v_plus,
-                            ad_CS.v_plus, CS.A, ad_CS.A, CS.b, ad_CS.b,
-                            CS.x, ad_CS.x, CS.linear_solver);
-
-  // derivative evaluation
-  ad_qDotPlus = ad_CS.x.block(0, 0, model.dof_count, ndirs);
-  // nominal evaluation
-  //    Copy back QDotPlus
-  qDotPlus = CS.x.segment(0, model.dof_count);
-
-  // derivative evaluation
-  ad_CS.impulse = ad_CS.x.block(model.dof_count, 0, CS.size(), ndirs);
-  // nominal evaluation
-  //    Copy back constraint impulses
-  CS.impulse = CS.x.segment(model.dof_count, CS.size());
-}
 
 // -----------------------------------------------------------------------------
 } // namespace AD
