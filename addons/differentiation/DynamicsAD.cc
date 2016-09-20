@@ -430,7 +430,7 @@ void NonlinearEffects (
 ) {
   int ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
-  assert(ndirs == tau_dirs.cols());
+  assert(ndirs == ad_tau.cols());
 
   LOG << "-------- " << __func__ << " --------" << std::endl;
 

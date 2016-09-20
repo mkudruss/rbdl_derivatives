@@ -32,15 +32,15 @@ RBDL_DLLAPI
 void CalcContactJacobian(
         Model &model,
         ADModel &ad_model,
-        const Math::VectorNd &Q,
-        const Math::MatrixNd &Q_dirs,
+        const Math::VectorNd &q,
+        const Math::MatrixNd &q_dirs,
         const ConstraintSet &CS,
         ADConstraintSet &ad_CS,
         Math::MatrixNd &G,
         std::vector<Math::MatrixNd> &G_dirs,
         bool update_kinematics
 ) {
-    unsigned int ndirs = Q_dirs.cols();
+    unsigned int ndirs = q_dirs.cols();
     ad_model.resize_directions(ndirs);
 
     if (update_kinematics) {
@@ -75,7 +75,7 @@ void CalcContactJacobian(
             // derivative evaluation
             AD::CalcPointJacobian(
                 model, ad_model,
-                Q, Q_dirs,
+                q, q_dirs,
                 CS.body[i], CS.point[i],
                 Gi, Gi_dirs,
                 false
@@ -236,16 +236,16 @@ void ComputeContactImpulsesDirect (
     ADModel & ad_model,
     const VectorNd & q,
     const MatrixNd & q_dirs,
-    const VectorNd & qDotMinus,
-    const MatrixNd & qDotMinus_dirs,
+    const VectorNd & qdot_minus,
+    const MatrixNd & qdot_minus_dirs,
     ConstraintSet & CS,
     ADConstraintSet & ad_CS,
-    VectorNd & qDotPlus,
-    MatrixNd & ad_qDotPlus
+    VectorNd & qdot_plus,
+    MatrixNd & ad_qdot_plus
 ) {
   int ndirs = q_dirs.size();
-  assert(ndirs == qDotMinus_dirs.cols());
-  assert(ndirs == ad_qDotPlus.cols());
+  assert(ndirs == qdot_minus_dirs.cols());
+  assert(ndirs == ad_qdot_plus.cols());
 
   // Compute H
   UpdateKinematicsCustom(model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
@@ -258,10 +258,10 @@ void ComputeContactImpulsesDirect (
   CalcContactJacobian (model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
   /// TODO: Check if false makes sense as last argument here.
 
-  VectorNd c   = CS.H * qDotMinus;
+  VectorNd c   = CS.H * qdot_minus;
   MatrixNd c_ad(CS.H.rows(), ndirs);
   for (int i = 0; i < ndirs; i++) {
-    c_ad.block(0, i, CS.H.rows(), 1) = CS.H * qDotMinus_dirs.col(i) + H_ad[i] * qDotMinus;
+    c_ad.block(0, i, CS.H.rows(), 1) = CS.H * qdot_minus_dirs.col(i) + H_ad[i] * qdot_minus;
   }
 
   SolveContactSystemDirect (CS.H, H_ad, CS.G, ad_CS.G, c, c_ad, CS.v_plus,
@@ -269,10 +269,10 @@ void ComputeContactImpulsesDirect (
                             CS.x, ad_CS.x, CS.linear_solver, ndirs);
 
   // derivative evaluation
-  ad_qDotPlus = ad_CS.x.block(0, 0, model.dof_count, ndirs);
+  ad_qdot_plus = ad_CS.x.block(0, 0, model.dof_count, ndirs);
   // nominal evaluation
   //    Copy back QDotPlus
-  qDotPlus = CS.x.segment(0, model.dof_count);
+  qdot_plus = CS.x.segment(0, model.dof_count);
 
   // derivative evaluation
   ad_CS.impulse = ad_CS.x.block(model.dof_count, 0, CS.size(), ndirs);

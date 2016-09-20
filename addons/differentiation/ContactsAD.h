@@ -38,14 +38,14 @@ namespace AD {
 
 RBDL_DLLAPI
 void CalcContactJacobian(
-        Model &model,
-        ADModel &ad_model,
-        const Math::VectorNd &Q,
-        const Math::VectorNd &Q_dirs,
-        const ConstraintSet &CS,
-        ADConstraintSet &ad_CS,
-        Math::MatrixNd &G,
-        std::vector<Math::MatrixNd> &G_dirs,
+        Model   & model,
+        ADModel & ad_model,
+        const Math::VectorNd & q,
+        const Math::VectorNd & q_dirs,
+        const ConstraintSet  & CS,
+        ADConstraintSet & ad_CS,
+        Math::MatrixNd  & G,
+        std::vector<Math::MatrixNd> & G_dirs,
         bool update_kinematics = true
         );
 
@@ -69,10 +69,10 @@ void ForwardDynamicsContactsDirect (
     const Math::MatrixNd & qdot_dirs,
     const Math::VectorNd & tau,
     const Math::MatrixNd & tau_dirs,
-    ConstraintSet & CS,
+    ConstraintSet   & CS,
     ADConstraintSet & ad_CS,
-    Math::VectorNd & qddot,
-    Math::MatrixNd & ad_qddot
+    Math::VectorNd  & qddot,
+    Math::MatrixNd  & ad_qddot
     );
 
 /*
@@ -109,17 +109,16 @@ void ForwardDynamicsContactsKokkevis (
 */
 
 RBDL_DLLAPI
-void ComputeContactImpulsesDirect(
-    Model & model,
+void ComputeContactImpulsesDirect(Model & model,
     ADModel & ad_model,
     const Math::VectorNd & q,
     const Math::MatrixNd & q_dirs,
-    const Math::VectorNd & qDotMinus,
-    const Math::MatrixNd & qDotMinus_dirs,
-    ConstraintSet & CS,
+    const Math::VectorNd & qdot_minus,
+    const Math::MatrixNd & qdot_minus_dirs,
+    ConstraintSet   & CS,
     ADConstraintSet & ad_CS,
-    Math::VectorNd & qDotPlus,
-    Math::MatrixNd & ad_qDotPlus
+    Math::VectorNd  & qdot_plus,
+    Math::MatrixNd  & ad_qdot_plus
     );
 
 /*
@@ -151,7 +150,7 @@ void SolveContactSystemDirect (const Math::MatrixNd &H,
     const Math::MatrixNd & c_dirs,
     const Math::VectorNd & gamma,
     const Math::MatrixNd & gamma_dirs,
-    Math::MatrixNd &A,
+    Math::MatrixNd & A,
     std::vector<Math::MatrixNd> & A_dirs,
     Math::VectorNd & b,
     Math::MatrixNd & b_dirs,
