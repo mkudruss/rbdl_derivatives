@@ -294,7 +294,6 @@ void CalcPointJacobianTemplate(T & obj) {
     }
 }
 
-/*
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointJacobian) {
     CalcPointJacobianTemplate(*this);
 }
@@ -306,17 +305,14 @@ TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointJacobian) {
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointJacobian) {
     CalcPointJacobianTemplate(*this);
 }
-*/
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointJacobian) {
     CalcPointJacobianTemplate(*this);
 }
 
-/*
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian) {
     CalcPointJacobianTemplate(*this);
 }
-*/
 
 
 // -----------------------------------------------------------------------------

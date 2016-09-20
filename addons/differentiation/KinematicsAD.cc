@@ -671,7 +671,6 @@ void CalcPointJacobian (
         std::vector<Math::MatrixNd> &G_dirs,
         bool update_kinematics
 ) {
-/*
     LOG << "-------- " << __func__ << " --------" << std::endl;
 
     unsigned int ndirs = Q_dirs.cols();
@@ -691,12 +690,15 @@ void CalcPointJacobian (
         // UpdateKinematicsCustom (model, &Q, NULL, NULL);
     }
 
-    std::vector<SpatialMatrix> ad_point_trans (ndirs);
+    // NOTE we split the evaluation of the derivatives. Therefore, we first
+    //      derive CalcBodyToBaseCoordinates then the spatial transform!
     std::vector<Vector3d> ad_r (ndirs);
     Vector3d r = AD::CalcBodyToBaseCoordinates (
         model, ad_model, Q, Q_dirs, body_id, point_position, &ad_r, false
     );
+
     // derivative evaluation
+    std::vector<SpatialMatrix> ad_point_trans (ndirs, SpatialMatrix::Zero());
     for (unsigned int idirs = 0; idirs < ndirs; idirs++) {
         // NOTE point_trans is spatial transform from E, r, i.e,
         //
@@ -713,9 +715,10 @@ void CalcPointJacobian (
         //             [-E*rx_dot 0]
         //
         SpatialMatrix& X = ad_point_trans[idirs];
-        Matrix3d Erx = X.block<3,3>(3,0);
+        Matrix3d Erx;
         Matrix3d E = Matrix3d::Identity();
-        Erx = -E * Math::AD::cross3d(ad_r[idirs]);
+        Erx = -E * Math::AD::cross3d(ad_r[idirs]); // E is constant
+        X.block<3,3>(3,0) = Erx;
     }
     // nominal evaluation
     // NOTE vector r is already evaluated in derivative evaluation
@@ -753,23 +756,26 @@ void CalcPointJacobian (
             SpatialVector v = model.X_base[j].inverse().apply(model.S[j]);
             // derivative evaluation
             for (unsigned int idirs = 0; idirs < ndirs; idirs++) {
-                SpatialMatrix ad_X_base_inv = ad_model.X_base[j][idirs];
-                std::cout << "ad_X_base_inv = " << std::endl;
-                std::cout << ad_X_base_inv << std::endl;
-                std::cout << "ad_X_base_inv = " << std::endl;
-                std::cout << ad_X_base_inv << std::endl;
-                    + model.X_base[j].inverse().apply(ad_model.S[j][idirs]);
+                // v_dot = d (X_base)^-1 * S_j + (X_base)^-1 * d S_j
                 SpatialVector v_dot =
-                    ad_X_base_inv * model.S[j]
+                    RigidBodyDynamics::Math::AD::inverse(
+                        model.X_base[j].toMatrix(), ad_model.X_base[j][idirs]
+                    ) * model.S[j]
                     + model.X_base[j].inverse().apply(ad_model.S[j][idirs]);
                 // NOTE G_i = [e_i1*S_1 ... e_iNB S_NB ]
+
+                // d (point_trans * (X_base)^-1 * S_j) =
+                // d point_trans * ((X_base)^-1 * S_j)
+                //   + point_trans * d ((X_base)^-1 * S_j) =
+                // d point_trans * ((X_base)^-1 * S_j)
+                //   + point_trans * (
+                //     d (X_base)^-1 * S_j + (X_base)^-1 * d S_j
+                //   )
                 MatrixNd& G_dir = G_dirs[idirs];
                 G_dir.block(0, q_index, 3, 1) = (
                     ad_point_trans[idirs]*v + point_trans.apply(v_dot)
                 ).block(3,0,3,1);
             }
-            std::cout << std::endl;
-
             // nominal evaluation
             // NOTE v = model.X_base[j].inverse().apply(model.S[j]) is computed before
             G.block(0, q_index, 3, 1) = point_trans.apply(v).block(3,0,3,1);
@@ -777,7 +783,6 @@ void CalcPointJacobian (
 
         j = model.lambda[j];
     }
-*/
 }
 
 // -----------------------------------------------------------------------------
