@@ -160,7 +160,7 @@ void ConstraintSet::clear() {
 
 RBDL_DLLAPI
 void SolveContactSystemDirect (
-		Math::MatrixNd &H,
+    Math::MatrixNd const &H,
 		const Math::MatrixNd &G,
 		const Math::VectorNd &c,
 		const Math::VectorNd &gamma,

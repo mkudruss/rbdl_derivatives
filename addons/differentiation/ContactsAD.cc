@@ -1,17 +1,25 @@
 #include "ContactsAD.h"
 
+#include <rbdl/rbdl_math.h>
+#include <rbdl/rbdl_mathutils.h>
+
+//#include <Eigen/LU>
+
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
 namespace AD {
 // -----------------------------------------------------------------------------
 
+using namespace RigidBodyDynamics::Math;
+using namespace std;
+
 RBDL_DLLAPI
 void CalcContactJacobian(
         Model &model,
         ADModel &ad_model,
         const Math::VectorNd &Q,
-        const Math::VectorNd &Q_dirs,
+        const Math::MatrixNd &Q_dirs,
         const ConstraintSet &CS,
         const ADConstraintSet &ad_CS,
         Math::MatrixNd &G,
@@ -59,6 +67,103 @@ void CalcContactJacobian(
         }
     }
 }
+
+
+RBDL_DLLAPI
+void SolveContactSystemDirect (
+    const MatrixNd &H,
+    const vector<MatrixNd> & H_dirs,
+    const MatrixNd &G,
+    const vector<MatrixNd> & G_dirs,
+    const VectorNd &c,
+    const vector<MatrixNd> & c_dirs,
+    const VectorNd &gamma,
+    const vector<MatrixNd> & gamma_dirs,
+    VectorNd &qddot,
+    VectorNd &lambda,
+    MatrixNd &A,
+    vector<MatrixNd> & A_dirs,
+    VectorNd &b,
+    vector<MatrixNd> & b_dirs,
+    VectorNd &x,
+    vector<VectorNd> & ad_x,
+    LinearSolver &linear_solver
+    ) {
+  int ndirs = H_dirs.size();
+  assert(ndirs == G_dirs.size());
+  assert(ndirs == c_dirs.size());
+  assert(ndirs == gamma_dirs.size());
+  assert(ndirs == A_dirs.size());
+  assert(ndirs == b_dirs.size());
+
+  // derivative construction
+  for (int i = 0; i < ndirs; i++) {
+    A_dirs[i].block(0, 0, c.rows(), c.rows())            = H_dirs[i];
+    A_dirs[i].block(0, c.rows(), c.rows(), gamma.rows()) = G_dirs[i].transpose();
+    A_dirs[i].block(c.rows(), 0, gamma.rows(), c.rows()) = G_dirs[i];
+    b_dirs[i].block(0, 0, c.rows(), 1)                   = c_dirs[i];
+    b_dirs[i].block(c.rows(), 0, gamma.rows(), 1)        = gamma_dirs[i];
+  }
+  // nominal construction
+  //    Build the system: Copy H
+  A.block(0, 0, c.rows(), c.rows()) = H;
+  //    Copy G and G^T
+  A.block(0, c.rows(), c.rows(), gamma.rows()) = G.transpose();
+  A.block(c.rows(), 0, gamma.rows(), c.rows()) = G;
+  //    Build the system: Copy -C + \tau
+  b.block(0, 0, c.rows(), 1) = c;
+  b.block(c.rows(), 0, gamma.rows(), 1) = gamma;
+
+  LOG << "A = " << std::endl << A << std::endl;
+  LOG << "b = " << std::endl << b << std::endl;
+
+  switch (linear_solver) {
+    case (LinearSolverPartialPivLU) :
+#ifdef RBDL_USE_SIMPLE_MATH
+      // SimpleMath does not have a LU solver so just use its QR solver
+      x = A.householderQr().solve(b);
+#else
+      {
+        Eigen::PartialPivLU<MatrixNd::PlainObject> A_LU = A.partialPivLu();
+        // nominal evaluation
+        x = A_LU.solve(b);
+        // derivative evaluation
+        for (int i = 0; i < ndirs; i++) {
+          ad_x[i] = A_LU.solve(b_dirs[i] - A_dirs[i] * x);
+        }
+      }
+#endif
+      break;
+    case (LinearSolverColPivHouseholderQR) :
+      {
+        Eigen::ColPivHouseholderQR<MatrixNd::PlainObject> A_CPQR = A.colPivHouseholderQr();
+        // nominal evaluation
+        x = A_CPQR.solve(b);
+        // derivative evaluation
+        for (int i = 0; i < ndirs; i++) {
+          ad_x[i] = A_CPQR.solve(b_dirs[i] - A_dirs[i] * x);
+        }
+      }
+      break;
+    case (LinearSolverHouseholderQR) :
+      {
+        Eigen::HouseholderQR<MatrixNd::PlainObject> A_QR = A.householderQr();
+        // nominal evaluation
+        x = A_QR.solve(b);
+        // derivative evaluation;
+        for (int i = 0; i < ndirs; i++) {
+          ad_x[i] = A_QR.solve(b_dirs[i] - A_dirs[i] * x);
+        }
+      }
+      break;
+    default:
+      LOG << "Error: Invalid linear solver: " << linear_solver << std::endl;
+      assert (0);
+      break;
+  }
+  LOG << "x = " << std::endl << x << std::endl;
+}
+
 
 // -----------------------------------------------------------------------------
 } // namespace AD

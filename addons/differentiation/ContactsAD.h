@@ -106,6 +106,7 @@ void ComputeContactImpulsesNullSpace (
         ConstraintSet &CS,
         Math::VectorNd &QDotPlus
         );
+*/
 
 RBDL_DLLAPI
 void SolveContactSystemDirect (
@@ -121,6 +122,7 @@ void SolveContactSystemDirect (
         Math::LinearSolver &linear_solver
         );
 
+/*
 RBDL_DLLAPI
 void SolveContactSystemRangeSpaceSparse (
         Model &model,

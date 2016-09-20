@@ -575,7 +575,7 @@ void ComputeContactImpulsesNullSpace (
  */
 RBDL_DLLAPI
 void SolveContactSystemDirect (
-		Math::MatrixNd &H, 
+        const Math::MatrixNd &H,
 		const Math::MatrixNd &G, 
 		const Math::VectorNd &c, 
 		const Math::VectorNd &gamma, 
