@@ -1,7 +1,16 @@
 #include "ContactsAD.h"
+#include "DynamicsAD.h"
 
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
+// -----------------------------------------------------------------------------
+
+ADConstraintSet::ADConstraintSet(ConstraintSet CS, int dof_count) {
+  ndirs = 4 * dof_count;
+
+  G.resize(ndirs, CS.G);
+}
+
 // -----------------------------------------------------------------------------
 namespace AD {
 // -----------------------------------------------------------------------------
@@ -192,7 +201,8 @@ void ComputeContactImpulsesDirect (
     const MatrixNd & q_dirs,
     const VectorNd & qDotMinus,
     const MatrixNd & qDotMinus_dirs,
-    ConstraintSet &CS,
+    ConstraintSet & CS,
+    ADConstraintSet & ad_CS,
     VectorNd & qDotPlus,
     MatrixNd & ad_qDotPlus
 ) {
@@ -204,12 +214,11 @@ void ComputeContactImpulsesDirect (
 
   vector<MatrixNd> H_ad(ndirs, CS.H);
   CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, CS.H, H_ad, false);
-  /// TODO: Check if false makes sense here.
+  /// TODO: Check if false makes sense as last argument here.
 
   // Compute G
-  vector<MatrixNd> G_ad(ndirs, CS.G);
-  CalcContactJacobian (model, q, CS, CS.G, false);
-  /// TODO: Replace call to CalcContactJacobian to AD version to compute G_ad
+  CalcContactJacobian (model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
+  /// TODO: Check if false makes sense as last argument here.
 
   VectorNd c   = CS.H * qDotMinus;
   MatrixNd c_ad(CS.H.rows(), ndirs);
@@ -221,7 +230,7 @@ void ComputeContactImpulsesDirect (
   vector<MatrixNd> A_dirs(ndirs, MatrixNd::Zero(CS.A.rows(), CS.A.cols()));
   MatrixNd         b_dirs = MatrixNd::Zero(CS.b.rows(), ndirs);
   MatrixNd         x_ad   = MatrixNd::Zero(CS.x.rows(), ndirs);
-  SolveContactSystemDirect (CS.H, H_ad, CS.G, G_ad, c, c_ad, CS.v_plus,
+  SolveContactSystemDirect (CS.H, H_ad, CS.G, ad_CS.G, c, c_ad, CS.v_plus,
                             gamma_dirs, CS.A, A_dirs, CS.b, b_dirs,
                             CS.x, x_ad, CS.linear_solver);
   /// TODO: make gamma_dirs, A_dirs, b_dirs, x_ad members of ADConstraintSet

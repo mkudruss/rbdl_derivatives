@@ -14,7 +14,11 @@ namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
 
 struct ADConstraintSet {
-    ADConstraintSet() {};
+  int ndirs;
+  std::vector<Math::MatrixNd> G;
+
+  ADConstraintSet() {}
+  ADConstraintSet(ConstraintSet CS, int dof_count);
 };
 
 // -----------------------------------------------------------------------------
