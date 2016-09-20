@@ -5,18 +5,23 @@
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
 
-ADConstraintSet::ADConstraintSet(ConstraintSet CS, int dof_count) {
+using namespace RigidBodyDynamics::Math;
+using namespace std;
+
+ADConstraintSet::ADConstraintSet(const ConstraintSet & CS, int dof_count) {
   ndirs = 4 * dof_count;
 
-  G.resize(ndirs, CS.G);
+  G.resize(ndirs, MatrixNd::Zero(CS.G.rows(), CS.G.cols()));
+  A.resize(ndirs, MatrixNd::Zero(CS.A.rows(), CS.A.cols()));
+  b             = MatrixNd::Zero(CS.b.rows(), ndirs);
+  v_plus        = MatrixNd::Zero(CS.v_plus.rows(), ndirs);
+  x             = MatrixNd::Zero(CS.x.rows(), ndirs);
+  impulse       = MatrixNd::Zero(CS.impulse.rows(), ndirs);
 }
 
 // -----------------------------------------------------------------------------
 namespace AD {
 // -----------------------------------------------------------------------------
-
-using namespace RigidBodyDynamics::Math;
-using namespace std;
 
 RBDL_DLLAPI
 void CalcContactJacobian(
@@ -207,7 +212,8 @@ void ComputeContactImpulsesDirect (
     MatrixNd & ad_qDotPlus
 ) {
   int ndirs = q_dirs.size();
-  assert(ndirs + qDotMinus_dirs.size());
+  assert(ndirs == qDotMinus_dirs.cols());
+  assert(ndirs == ad_qDotPlus.cols());
 
   // Compute H
   UpdateKinematicsCustom(model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
@@ -226,26 +232,21 @@ void ComputeContactImpulsesDirect (
     c_ad.block(0, i, CS.H.rows(), 1) = CS.H * qDotMinus_dirs.col(i) + H_ad[i] * qDotMinus;
   }
 
-  MatrixNd         gamma_dirs = MatrixNd::Zero(CS.v_plus.rows(), ndirs);
-  vector<MatrixNd> A_dirs(ndirs, MatrixNd::Zero(CS.A.rows(), CS.A.cols()));
-  MatrixNd         b_dirs = MatrixNd::Zero(CS.b.rows(), ndirs);
-  MatrixNd         x_ad   = MatrixNd::Zero(CS.x.rows(), ndirs);
   SolveContactSystemDirect (CS.H, H_ad, CS.G, ad_CS.G, c, c_ad, CS.v_plus,
-                            gamma_dirs, CS.A, A_dirs, CS.b, b_dirs,
-                            CS.x, x_ad, CS.linear_solver);
-  /// TODO: make gamma_dirs, A_dirs, b_dirs, x_ad members of ADConstraintSet
+                            ad_CS.v_plus, CS.A, ad_CS.A, CS.b, ad_CS.b,
+                            CS.x, ad_CS.x, CS.linear_solver);
 
   // derivative evaluation
-  ad_qDotPlus = x_ad.block(0, 0, model.dof_count, ndirs);
+  ad_qDotPlus = ad_CS.x.block(0, 0, model.dof_count, ndirs);
   // nominal evaluation
   //    Copy back QDotPlus
   qDotPlus = CS.x.segment(0, model.dof_count);
 
-  // Copy back constraint impulses
-  for (unsigned int i = 0; i < CS.size(); i++) {
-    CS.impulse[i] = CS.x[model.dof_count + i];
-  }
-  /// TODO: compute derivative of impulse
+  // derivative evaluation
+  ad_CS.impulse = ad_CS.x.block(model.dof_count, 0, CS.size(), ndirs);
+  // nominal evaluation
+  //    Copy back constraint impulses
+  CS.impulse = CS.x.segment(model.dof_count, CS.size());
 }
 
 // -----------------------------------------------------------------------------
