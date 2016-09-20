@@ -53,14 +53,13 @@ inline Vector3d r_from_Matrix(const SpatialMatrix X, const SpatialMatrix X_dirs)
     Matrix3d E_dirs = E_from_Matrix(X_dirs);
     Matrix3d E = E_from_Matrix(X);
 
-    Matrix3d Erx_dirs = Matrix3d::Zero();
-    Matrix3d Erx = Matrix3d::Zero();
-    Erx_dirs = X_dirs.block<3,3>(3,0);
-    Erx = X.block<3,3>(3,0);
+    Matrix3d Erx = X.block<3,3>(3,0);
+    Matrix3d Erx_dirs = X_dirs.block<3,3>(3,0);
 
+    // derivative evaluation
     Matrix3d rx_dirs = E_dirs.transpose() * Erx + E.transpose() * Erx_dirs;
-    // NOTE: currently not used
-    // Matrix3d rx = E.transpose() * Erx;
+    // nominal evaluation
+    // Matrix3d rx = E.transpose() * Erx; // currently not used
 
     Vector3d r_dirs = Vector3d::Zero();
     r_dirs(0) = -rx_dirs(2,1);
@@ -69,6 +68,41 @@ inline Vector3d r_from_Matrix(const SpatialMatrix X, const SpatialMatrix X_dirs)
 
     return r_dirs;
 }
+
+RBDL_DLLAPI
+inline SpatialMatrix inverse(SpatialMatrix X, SpatialMatrix X_dirs) {
+    SpatialMatrix result (SpatialMatrix::Zero(6,6));
+    // derivative evaluation
+    Matrix3d E_dirs = E_from_Matrix(X_dirs);
+    Matrix3d E = E_from_Matrix(X);
+
+    Matrix3d Erx_dirs = X_dirs.block<3,3>(3,0);
+    Matrix3d Erx = X.block<3,3>(3,0);
+
+    Matrix3d rx_dirs = E_dirs.transpose() * Erx + E.transpose() * Erx_dirs;
+    Matrix3d rx = E.transpose() * Erx;
+
+    // derivative evaluation
+    // S^-1 =
+    //   [ X.E^T        0     ]
+    //   [ X.rx*X.E^T   X.E^T ]
+    result.block<3,3>(0,0) = E_dirs.transpose();
+    result.block<3,3>(3,3) = E_dirs.transpose();
+    result.block<3,3>(3,0) =
+        -rx_dirs * E.transpose()
+        -rx * E_dirs.transpose();
+
+    // // nominal evaluation
+    // // S^-1 =
+    // //   [ X.E^T        0     ]
+    // //   [ X.rx*X.E^T   X.E^T ]
+    // result.block<3,3>(0,0) = E.transpose();
+    // result.block<3,3>(3,3) = E.transpose();
+    // result.block<3,3>(3,0) = -rx * E.transpose();
+
+    return result;
+}
+
 
 RBDL_DLLAPI
 inline SpatialMatrix Xrotx (double const & xrot, double const & xrot_dirs) {

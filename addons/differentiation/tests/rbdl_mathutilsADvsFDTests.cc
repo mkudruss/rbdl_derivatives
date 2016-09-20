@@ -68,7 +68,7 @@ TEST (crossm_v_ADvsAnalyticTest) {
     double TEST_PREC = 1e-08;
     unsigned int ndirs = 20;
 
-    SpatialVector v = SpatialVector::Random();
+    // SpatialVector v = SpatialVector::Random();
     MatrixNd v_dirs = MatrixNd::Random(6, ndirs);
 
     std::vector<SpatialMatrix> ad_res (ndirs, SpatialMatrix::Zero());
