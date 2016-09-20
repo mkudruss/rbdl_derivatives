@@ -280,10 +280,6 @@ void CalcPointJacobianTemplate(T & obj) {
         CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
 
         for (unsigned idir = 0; idir < ndirs; idir++) {
-            // std::cout << "derivative_ad["<< idir << "] =" << std::endl;
-            // std::cout << derivative_ad[idir] << std::endl;
-            // std::cout << "derivative_fd["<< idir << "] =" << std::endl;
-            // std::cout << derivative_fd[idir] << std::endl;
             CHECK_ARRAY_CLOSE(
                 derivative_ad[idir].data(),
                 derivative_fd[idir].data(),

@@ -27,6 +27,8 @@ SET ( DIFFERENTIATION_SOURCES
 	KinematicsFD.cc
 	DynamicsAD.cc
 	DynamicsFD.cc
+	ContactsAD.cc
+	# ContactsFD.cc
 	JointAD.cc
 	rbdl_utilsAD.cc
 	rbdl_utilsFD.cc

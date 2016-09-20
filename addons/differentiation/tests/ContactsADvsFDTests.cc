@@ -19,9 +19,8 @@ double const TEST_PREC = 1.0e-8;
 
 // -----------------------------------------------------------------------------
 
-/*
 template <typename T>
-void CalcPointJacobianTemplate(T & obj) {
+void CalcContactJacobianTemplate(T & obj) {
     // rename for convenience
     Model& model = obj.model;
     ADModel& ad_model = obj.ad_model;
@@ -47,43 +46,42 @@ void CalcPointJacobianTemplate(T & obj) {
     vector<MatrixNd> derivative_fd (ndirs, G_fd);
 
     // call nominal version
-    CalcPointJacobian (model, q, cs, G, update_kinematics);
+    CalcContactJacobian(model, q, cs, G, update_kinematics);
 
-    // int nTrials = 0;
-    // do {
-        // call AD version
-        AD::CalcPointJacobian (
-            model, ad_model,
-            q, q_dirs,
-            cs, ad_cs,
-            G_ad, ad_derivative,
-            update_kinematics
+    // call AD version
+    AD::CalcContactJacobian(
+        model, ad_model,
+        q, q_dirs,
+        cs, ad_cs,
+        G, derivative_ad,
+        update_kinematics
+    );
+
+    // call FD version
+    FD::CalcContactJacobian(
+        model, ad_model,
+        q, q_dirs,
+        cs, ad_cs,
+        G, derivative_fd,
+        update_kinematics
+    );
+
+    // compare nominal results
+    CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
+    CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
+    CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
+
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+        CHECK_ARRAY_CLOSE(
+            derivative_ad[idir].data(),
+            derivative_fd[idir].data(),
+            derivative_ad[idir].size(),
+            TEST_PREC
         );
-
-        // call FD version
-        FD::CalcPointJacobian (
-            model, ad_model,
-            q, q_dirs,
-            cs, ad_cs,
-            G_fd, fd_derivative,
-            update_kinematics
-        );
-
-        // compare nominal results
-        CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
-        CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
-        CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
-
-        for (unsigned idir = 0; idir < ndirs; idir++) {
-            // CHECK_ARRAY_CLOSE(ad_E.data(), fd_E.data(), 9, 1e-6);
-            // for (int idir = 0; idir < ndirs; idir++) {
-            //     CHECK_ARRAY_CLOSE(fd_derivative[idir].data(), ad_derivative[idir].data(), 9, 1e-6);
-            // }
-        }
-        // q = VectorNd::Random(nq);
-    // } while(nTrials++ < 10);
+    }
 }
 
+/*
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyWorldOrientation) {
     CalcBodyWorldOrientationTemplate(*this);
 }
