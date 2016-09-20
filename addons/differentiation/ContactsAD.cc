@@ -88,7 +88,7 @@ void SolveContactSystemDirect (
     VectorNd &x,
     vector<VectorNd> & ad_x,
     LinearSolver &linear_solver
-    ) {
+) {
   int ndirs = H_dirs.size();
   assert(ndirs == G_dirs.size());
   assert(ndirs == c_dirs.size());
