@@ -66,8 +66,8 @@ void NonlinearEffects (Model & model,
     ADModel & ad_model,
     const Math::VectorNd & q,
     const Math::MatrixNd & q_dirs,
-    const Math::VectorNd & qDot,
-    const Math::MatrixNd & qDot_dirs,
+    const Math::VectorNd & qdot,
+    const Math::MatrixNd & qdot_dirs,
     Math::VectorNd & tau,
     Math::MatrixNd & ad_tau
     );

@@ -21,6 +21,7 @@ ADConstraintSet::ADConstraintSet(const ConstraintSet & CS, int dof_count) {
   QDDot_0       = MatrixNd::Zero(CS.QDDot_0.rows(), ndirs);
   C             = MatrixNd::Zero(CS.C.rows(), ndirs);
   gamma         = MatrixNd::Zero(CS.gamma.rows(), ndirs);
+  force         = MatrixNd::Zero(CS.force.rows(), ndirs);
 }
 
 // -----------------------------------------------------------------------------
@@ -109,14 +110,14 @@ RBDL_DLLAPI
 void CalcContactSystemVariables (
     Model & model,
     ADModel & ad_model,
-    const VectorNd & q,
-    const MatrixNd & q_dirs,
-    const VectorNd & qdot,
-    const MatrixNd & qdot_dirs,
-    const VectorNd & tau,
-    const MatrixNd & tau_dirs,
-    ConstraintSet &      CS,
-    ADConstraintSet &    ad_CS
+    const VectorNd  & q,
+    const MatrixNd  & q_dirs,
+    const VectorNd  & qdot,
+    const MatrixNd  & qdot_dirs,
+    const VectorNd  & tau,
+    const MatrixNd  & tau_dirs,
+    ConstraintSet   & CS,
+    ADConstraintSet & ad_CS
 ) {
   int ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
@@ -180,6 +181,53 @@ void CalcContactSystemVariables (
     CS.gamma[i] = CS.acceleration[i] - CS.normal[i].dot(gamma_i);
   }
   /// TODO: Implement derivative of for loop, esp. CalcPointAcceleration
+}
+
+RBDL_DLLAPI
+void ForwardDynamicsContactsDirect (
+    ADModel & ad_model,
+    Model   & model,
+    const VectorNd & q,
+    const MatrixNd & q_dirs,
+    const VectorNd & qdot,
+    const MatrixNd & qdot_dirs,
+    const VectorNd & tau,
+    const MatrixNd & tau_dirs,
+    ConstraintSet & CS,
+    ADConstraintSet & ad_CS,
+    VectorNd & qddot,
+    MatrixNd & ad_qddot
+    ) {
+  LOG << "-------- " << __func__ << " --------" << std::endl;
+  int ndirs = q_dirs.cols();
+  assert(ndirs == qdot_dirs.cols());
+  assert(ndirs == tau_dirs.cols());
+
+  // derivative and nominal code
+  CalcContactSystemVariables (model, ad_model, q, q_dirs, qdot, qdot_dirs,
+                              tau, tau_dirs, CS, ad_CS);
+
+  // derivative and nominal code
+  VectorNd c    = tau - CS.C;
+  MatrixNd ad_c(c.rows(), ndirs);
+  for (int idir = 0; idir < ndirs; idir++) {
+    ad_c.col(idir) = tau_dirs.col(idir) - ad_CS.C.col(idir);
+  }
+  SolveContactSystemDirect (CS.H, ad_CS.H, CS.G, ad_CS.G, c, ad_c,
+                            CS.gamma, ad_CS.gamma, CS.A, ad_CS.A, CS.b, ad_CS.b,
+                            CS.x, ad_CS.x, CS.linear_solver, ndirs);
+
+  // Copy back QDDot
+  // derivative code
+  ad_qddot = ad_CS.x.block(0, 0, model.dof_count, ndirs);
+  // nominal code
+  qddot = CS.x.segment(0, model.dof_count);
+
+  // Copy back contact forces
+  // derivative code
+  ad_CS.force = -ad_CS.x.block(model.dof_count, 0, CS.size(), ndirs);
+  // nominal code
+  CS.force    = -CS.x.segment(model.dof_count, CS.size());
 }
 
 RBDL_DLLAPI

@@ -423,13 +423,13 @@ void NonlinearEffects (
     ADModel & ad_model,
     const VectorNd & q,
     const MatrixNd & q_dirs,
-    const VectorNd & qDot,
-    const MatrixNd & qDot_dirs,
+    const VectorNd & qdot,
+    const MatrixNd & qdot_dirs,
     VectorNd & tau,
     MatrixNd & ad_tau
 ) {
   int ndirs = q_dirs.cols();
-  assert(ndirs == qDot_dirs.cols());
+  assert(ndirs == qdot_dirs.cols());
   assert(ndirs == tau_dirs.cols());
 
   LOG << "-------- " << __func__ << " --------" << std::endl;
@@ -448,7 +448,7 @@ void NonlinearEffects (
 
   for (unsigned i = 1; i < model.mJointUpdateOrder.size(); i++) {
     // derivative and nominal code
-    jcalc(model, ad_model, model.mJointUpdateOrder[i], q, q_dirs, qDot, qDot_dirs);
+    jcalc(model, ad_model, model.mJointUpdateOrder[i], q, q_dirs, qdot, qdot_dirs);
   }
 
   for (unsigned i = 1; i < model.mBodies.size(); i++) {

@@ -26,6 +26,7 @@ struct ADConstraintSet {
   Math::MatrixNd              QDDot_0;
   Math::MatrixNd              C;
   Math::MatrixNd              gamma;
+  Math::MatrixNd              force;
 
   ADConstraintSet() {}
   ADConstraintSet(const ConstraintSet &CS, int dof_count);
@@ -56,18 +57,25 @@ void CalcContactSystemVariables (
         const Math::VectorNd &QDot,
         const Math::VectorNd &Tau,
         ConstraintSet &CS
-        );
+        ); */
 
 RBDL_DLLAPI
 void ForwardDynamicsContactsDirect (
-        Model &model,
-        const Math::VectorNd &Q,
-        const Math::VectorNd &QDot,
-        const Math::VectorNd &Tau,
-        ConstraintSet &CS,
-        Math::VectorNd &QDDot
-        );
+    ADModel & ad_model,
+    Model   & model,
+    const Math::VectorNd & q,
+    const Math::MatrixNd & q_dirs,
+    const Math::VectorNd & qdot,
+    const Math::MatrixNd & qdot_dirs,
+    const Math::VectorNd & tau,
+    const Math::MatrixNd & tau_dirs,
+    ConstraintSet & CS,
+    ADConstraintSet & ad_CS,
+    Math::VectorNd & qddot,
+    Math::MatrixNd & ad_qddot
+    );
 
+/*
 RBDL_DLLAPI
 void ForwardDynamicsContactsRangeSpaceSparse (
         Model &model,
