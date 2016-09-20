@@ -23,16 +23,16 @@ namespace AD {
 
 RBDL_DLLAPI
 void CalcContactJacobian(
-    Model &model,
-    ADModel &ad_model,
-    const Math::VectorNd &Q,
-    const Math::MatrixNd &Q_dirs,
-    const ConstraintSet &CS,
-    const ADConstraintSet &ad_CS,
-    Math::MatrixNd &G,
-    Math::MatrixNd &G_dirs,
-    bool update_kinematics = true
-    );
+        Model &model,
+        ADModel &ad_model,
+        const Math::VectorNd &Q,
+        const Math::VectorNd &Q_dirs,
+        const ConstraintSet &CS,
+        ADConstraintSet &ad_CS,
+        Math::MatrixNd &G,
+        std::vector<Math::MatrixNd> &G_dirs,
+        bool update_kinematics = true
+        );
 
 /*
 RBDL_DLLAPI

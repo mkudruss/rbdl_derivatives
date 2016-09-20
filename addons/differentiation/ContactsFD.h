@@ -23,9 +23,9 @@ void CalcContactJacobian(
         const Math::VectorNd &Q,
         const Math::VectorNd &Q_dirs,
         const ConstraintSet &CS,
-        const ADConstraintSet &ad_CS,
+        ADConstraintSet &ad_CS,
         Math::MatrixNd &G,
-        Math::MatrixNd &G_dirs,
+        std::vector<Math::MatrixNd> &G_dirs,
         bool update_kinematics = true
         );
 
