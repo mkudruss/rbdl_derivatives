@@ -1,9 +1,6 @@
 #include "ContactsAD.h"
+#include "DynamicsAD.h"
 
-#include <rbdl/rbdl_math.h>
-#include <rbdl/rbdl_mathutils.h>
-
-//#include <Eigen/LU>
 
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
@@ -24,7 +21,7 @@ void CalcContactJacobian(
         const ADConstraintSet &ad_CS,
         Math::MatrixNd &G,
         Math::MatrixNd &G_dirs,
-        bool update_kinematics = true
+        bool update_kinematics
 ) {
     unsigned int ndirs = Q_dirs.cols();
     ad_model.resize_directions(ndirs);
@@ -68,41 +65,40 @@ void CalcContactJacobian(
     }
 }
 
-
 RBDL_DLLAPI
 void SolveContactSystemDirect (
     const MatrixNd &H,
     const vector<MatrixNd> & H_dirs,
     const MatrixNd &G,
     const vector<MatrixNd> & G_dirs,
-    const VectorNd &c,
-    const vector<MatrixNd> & c_dirs,
-    const VectorNd &gamma,
-    const vector<MatrixNd> & gamma_dirs,
-    VectorNd &qddot,
-    VectorNd &lambda,
+    const VectorNd & c,
+    const MatrixNd & c_dirs,
+    const VectorNd & gamma,
+    const MatrixNd & gamma_dirs,
     MatrixNd &A,
     vector<MatrixNd> & A_dirs,
-    VectorNd &b,
-    vector<MatrixNd> & b_dirs,
-    VectorNd &x,
-    vector<VectorNd> & ad_x,
-    LinearSolver &linear_solver
+    VectorNd & b,
+    MatrixNd & b_dirs,
+    VectorNd & x,
+    MatrixNd & x_ad,
+    LinearSolver & linear_solver
 ) {
   int ndirs = H_dirs.size();
   assert(ndirs == G_dirs.size());
-  assert(ndirs == c_dirs.size());
-  assert(ndirs == gamma_dirs.size());
+  assert(ndirs == c_dirs.cols());
+  assert(ndirs == gamma_dirs.cols());
   assert(ndirs == A_dirs.size());
-  assert(ndirs == b_dirs.size());
+  assert(ndirs == b_dirs.cols());
+  assert(ndirs == x_ad.cols());
 
   // derivative construction
   for (int i = 0; i < ndirs; i++) {
     A_dirs[i].block(0, 0, c.rows(), c.rows())            = H_dirs[i];
-    A_dirs[i].block(0, c.rows(), c.rows(), gamma.rows()) = G_dirs[i].transpose();
+    A_dirs[i].block(0, c.rows(), c.rows(), gamma.rows()) =
+        G_dirs[i].transpose();
     A_dirs[i].block(c.rows(), 0, gamma.rows(), c.rows()) = G_dirs[i];
-    b_dirs[i].block(0, 0, c.rows(), 1)                   = c_dirs[i];
-    b_dirs[i].block(c.rows(), 0, gamma.rows(), 1)        = gamma_dirs[i];
+    b_dirs.block(0, i, c.rows(), 1)                      = c_dirs.col(i);
+    b_dirs.block(c.rows(), i, gamma.rows(), 1)           = gamma_dirs.col(i);
   }
   // nominal construction
   //    Build the system: Copy H
@@ -122,6 +118,7 @@ void SolveContactSystemDirect (
 #ifdef RBDL_USE_SIMPLE_MATH
       // SimpleMath does not have a LU solver so just use its QR solver
       x = A.householderQr().solve(b);
+      /// TODO: implement for simple math
 #else
       {
         Eigen::PartialPivLU<MatrixNd::PlainObject> A_LU = A.partialPivLu();
@@ -129,19 +126,20 @@ void SolveContactSystemDirect (
         x = A_LU.solve(b);
         // derivative evaluation
         for (int i = 0; i < ndirs; i++) {
-          ad_x[i] = A_LU.solve(b_dirs[i] - A_dirs[i] * x);
+          x_ad.col(i) = A_LU.solve(b_dirs.col(i) - A_dirs[i] * x);
         }
       }
 #endif
       break;
     case (LinearSolverColPivHouseholderQR) :
       {
-        Eigen::ColPivHouseholderQR<MatrixNd::PlainObject> A_CPQR = A.colPivHouseholderQr();
+        Eigen::ColPivHouseholderQR<MatrixNd::PlainObject> A_CPQR =
+            A.colPivHouseholderQr();
         // nominal evaluation
         x = A_CPQR.solve(b);
         // derivative evaluation
         for (int i = 0; i < ndirs; i++) {
-          ad_x[i] = A_CPQR.solve(b_dirs[i] - A_dirs[i] * x);
+          x_ad.col(i) = A_CPQR.solve(b_dirs.col(i) - A_dirs[i] * x);
         }
       }
       break;
@@ -152,7 +150,7 @@ void SolveContactSystemDirect (
         x = A_QR.solve(b);
         // derivative evaluation;
         for (int i = 0; i < ndirs; i++) {
-          ad_x[i] = A_QR.solve(b_dirs[i] - A_dirs[i] * x);
+          x_ad.col(i) = A_QR.solve(b_dirs.col(i) - A_dirs[i] * x);
         }
       }
       break;
@@ -164,6 +162,60 @@ void SolveContactSystemDirect (
   LOG << "x = " << std::endl << x << std::endl;
 }
 
+RBDL_DLLAPI
+void ComputeContactImpulsesDirect (
+    Model & model,
+    ADModel & ad_model,
+    const VectorNd & q,
+    const MatrixNd & q_dirs,
+    const VectorNd & qDotMinus,
+    const MatrixNd & qDotMinus_dirs,
+    ConstraintSet &CS,
+    VectorNd & qDotPlus,
+    MatrixNd & ad_qDotPlus
+) {
+  int ndirs = q_dirs.size();
+  assert(ndirs + qDotMinus_dirs.size());
+
+  // Compute H
+  UpdateKinematicsCustom(model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
+
+  vector<MatrixNd> H_ad(ndirs, CS.H);
+  CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, CS.H, H_ad, false);
+  /// TODO: Check if false makes sense here.
+
+  // Compute G
+  vector<MatrixNd> G_ad(ndirs, CS.G);
+  CalcContactJacobian (model, q, CS, CS.G, false);
+  /// TODO: Replace call to CalcContactJacobian to AD version to compute G_ad
+
+  VectorNd c   = CS.H * qDotMinus;
+  MatrixNd c_ad(CS.H.rows(), ndirs);
+  for (int i = 0; i < ndirs; i++) {
+    c_ad.block(0, i, CS.H.rows(), 1) = CS.H * qDotMinus_dirs.col(i) + H_ad[i] * qDotMinus;
+  }
+
+  MatrixNd         gamma_dirs = MatrixNd::Zero(CS.v_plus.rows(), ndirs);
+  vector<MatrixNd> A_dirs(ndirs, MatrixNd::Zero(CS.A.rows(), CS.A.cols()));
+  MatrixNd         b_dirs = MatrixNd::Zero(CS.b.rows(), ndirs);
+  MatrixNd         x_ad   = MatrixNd::Zero(CS.x.rows(), ndirs);
+  SolveContactSystemDirect (CS.H, H_ad, CS.G, G_ad, c, c_ad, CS.v_plus,
+                            gamma_dirs, CS.A, A_dirs, CS.b, b_dirs,
+                            CS.x, x_ad, CS.linear_solver);
+  /// TODO: make gamma_dirs, A_dirs, b_dirs, x_ad members of ADConstraintSet
+
+  // derivative evaluation
+  ad_qDotPlus = x_ad.block(0, 0, model.dof_count, ndirs);
+  // nominal evaluation
+  //    Copy back QDotPlus
+  qDotPlus = CS.x.segment(0, model.dof_count);
+
+  // Copy back constraint impulses
+  for (unsigned int i = 0; i < CS.size(); i++) {
+    CS.impulse[i] = CS.x[model.dof_count + i];
+  }
+  /// TODO: compute derivative of impulse
+}
 
 // -----------------------------------------------------------------------------
 } // namespace AD

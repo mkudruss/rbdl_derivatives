@@ -23,12 +23,16 @@ namespace AD {
 
 RBDL_DLLAPI
 void CalcContactJacobian(
-        Model &model,
-        const Math::VectorNd &Q,
-        const ConstraintSet &CS,
-        Math::MatrixNd &G,
-        bool update_kinematics = true
-        );
+    Model &model,
+    ADModel &ad_model,
+    const Math::VectorNd &Q,
+    const Math::MatrixNd &Q_dirs,
+    const ConstraintSet &CS,
+    const ADConstraintSet &ad_CS,
+    Math::MatrixNd &G,
+    Math::MatrixNd &G_dirs,
+    bool update_kinematics = true
+    );
 
 /*
 RBDL_DLLAPI
@@ -110,17 +114,22 @@ void ComputeContactImpulsesNullSpace (
 
 RBDL_DLLAPI
 void SolveContactSystemDirect (
-        Math::MatrixNd &H,
-        const Math::MatrixNd &G,
-        const Math::VectorNd &c,
-        const Math::VectorNd &gamma,
-        Math::VectorNd &qddot,
-        Math::VectorNd &lambda,
-        Math::MatrixNd &A,
-        Math::VectorNd &b,
-        Math::VectorNd &x,
-        Math::LinearSolver &linear_solver
-        );
+    const Math::MatrixNd &H,
+    const std::vector<Math::MatrixNd> & H_dirs,
+    const Math::MatrixNd &G,
+    const std::vector<Math::MatrixNd> & G_dirs,
+    const Math::VectorNd & c,
+    const Math::MatrixNd & c_dirs,
+    const Math::VectorNd & gamma,
+    const Math::MatrixNd & gamma_dirs,
+    Math::MatrixNd &A,
+    std::vector<Math::MatrixNd> & A_dirs,
+    Math::VectorNd & b,
+    Math::MatrixNd & b_dirs,
+    Math::VectorNd & x,
+    Math::MatrixNd & x_ad,
+    Math::LinearSolver & linear_solver
+    );
 
 /*
 RBDL_DLLAPI

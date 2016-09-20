@@ -63,13 +63,13 @@ void InverseDynamics(
 
 RBDL_DLLAPI
 void CompositeRigidBodyAlgorithm (
-	Model &model,
-	ADModel &ad_model,
-    Math::VectorNd const & q,
-    Math::MatrixNd const & q_dirs,
-    Math::MatrixNd & H,
-    std::vector<Math::MatrixNd> &out,
-	bool update_kinematics = true
+  Model &model,
+  ADModel &ad_model,
+  Math::VectorNd const & q,
+  Math::MatrixNd const & q_dirs,
+  Math::MatrixNd & H,
+  std::vector<Math::MatrixNd> & H_ad,
+  bool update_kinematics = true
 );
 
 // -----------------------------------------------------------------------------
