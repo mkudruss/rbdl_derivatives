@@ -19,6 +19,8 @@ ADConstraintSet::ADConstraintSet(const ConstraintSet & CS, int dof_count) {
   x             = MatrixNd::Zero(CS.x.rows(), ndirs);
   impulse       = MatrixNd::Zero(CS.impulse.rows(), ndirs);
   QDDot_0       = MatrixNd::Zero(CS.QDDot_0.rows(), ndirs);
+  C             = MatrixNd::Zero(CS.C.rows(), ndirs);
+  gamma         = MatrixNd::Zero(CS.gamma.rows(), ndirs);
 }
 
 // -----------------------------------------------------------------------------
@@ -109,20 +111,19 @@ void CalcContactSystemVariables (
     ADModel & ad_model,
     const VectorNd & q,
     const MatrixNd & q_dirs,
-    const VectorNd & qDot,
-    const MatrixNd & qDot_dirs,
+    const VectorNd & qdot,
+    const MatrixNd & qdot_dirs,
     const VectorNd & tau,
     const MatrixNd & tau_dirs,
     ConstraintSet &      CS,
     ADConstraintSet &    ad_CS
 ) {
   int ndirs = q_dirs.cols();
-  assert(ndirs == qDot_dirs.cols());
+  assert(ndirs == qdot_dirs.cols());
   assert(ndirs == tau_dirs.cols());
 
   // Compute C
-  NonlinearEffects (model, q, qDot, CS.C);
-  /// TODO: AD implementation of NonlinearEffects
+  NonlinearEffects (model, ad_model, q, q_dirs, qdot, qdot_dirs, CS.C, ad_CS.C);
   assert (CS.H.cols() == model.dof_count && CS.H.rows() == model.dof_count);
 
   // Compute H
@@ -150,20 +151,32 @@ void CalcContactSystemVariables (
   unsigned int prev_body_id = 0;
   Vector3d prev_body_point = Vector3d::Zero();
   Vector3d gamma_i = Vector3d::Zero();
-
+  MatrixNd ad_gamma_i(gamma_i.rows(), ndirs);
+  // derivative code
+  ad_CS.QDDot_0.setZero();
+  // nominal code
   CS.QDDot_0.setZero();
   UpdateKinematicsCustom (model, ad_model, 0, 0, 0, 0, &CS.QDDot_0, &ad_CS.QDDot_0);
-
   for (unsigned int i = 0; i < CS.size(); i++) {
     // only compute point accelerations when necessary
     if (prev_body_id != CS.body[i] || prev_body_point != CS.point[i]) {
-      gamma_i = CalcPointAcceleration (model, q, qDot, CS.QDDot_0, CS.body[i], CS.point[i], false);
+      // derivative and nominal  code
+      gamma_i = CalcPointAcceleration(model, ad_model, q, q_dirs,
+          qdot, qdot_dirs, CS.QDDot_0, ad_CS.QDDot_0, CS.body[i], CS.point[i],
+          ad_gamma_i, false);
+      /// TODO: Check if false makes sense as last argument here.
+      // nominal code
       prev_body_id = CS.body[i];
       prev_body_point = CS.point[i];
     }
 
     // we also substract ContactData[i].acceleration such that the contact
     // point will have the desired acceleration
+    // derivative code
+    for (int idir = 0; idir < ndirs; idir++) {
+      ad_CS.gamma(i, idir) = - CS.normal[i].dot(ad_gamma_i.col(idir));
+    }
+    // nominal code
     CS.gamma[i] = CS.acceleration[i] - CS.normal[i].dot(gamma_i);
   }
   /// TODO: Implement derivative of for loop, esp. CalcPointAcceleration
@@ -205,7 +218,7 @@ void ComputeContactImpulsesDirect (
 
   SolveContactSystemDirect (CS.H, H_ad, CS.G, ad_CS.G, c, c_ad, CS.v_plus,
                             ad_CS.v_plus, CS.A, ad_CS.A, CS.b, ad_CS.b,
-                            CS.x, ad_CS.x, CS.linear_solver);
+                            CS.x, ad_CS.x, CS.linear_solver, ndirs);
 
   // derivative evaluation
   ad_qDotPlus = ad_CS.x.block(0, 0, model.dof_count, ndirs);
@@ -236,15 +249,16 @@ void SolveContactSystemDirect (
     MatrixNd & b_dirs,
     VectorNd & x,
     MatrixNd & x_ad,
-    LinearSolver & linear_solver
+    LinearSolver & linear_solver,
+    int ndirs
 ) {
-  int ndirs = H_dirs.size();
-  assert(ndirs == G_dirs.size());
-  assert(ndirs == c_dirs.cols());
-  assert(ndirs == gamma_dirs.cols());
-  assert(ndirs == A_dirs.size());
-  assert(ndirs == b_dirs.cols());
-  assert(ndirs == x_ad.cols());
+  assert(ndirs <= H_dirs.size());
+  assert(ndirs <= G_dirs.size());
+  assert(ndirs <= c_dirs.cols());
+  assert(ndirs <= gamma_dirs.cols());
+  assert(ndirs <= A_dirs.size());
+  assert(ndirs <= b_dirs.cols());
+  assert(ndirs <= x_ad.cols());
 
   // derivative construction
   for (int i = 0; i < ndirs; i++) {

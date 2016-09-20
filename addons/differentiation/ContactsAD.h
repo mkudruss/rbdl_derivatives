@@ -24,6 +24,8 @@ struct ADConstraintSet {
   Math::MatrixNd              x;
   Math::MatrixNd              impulse;
   Math::MatrixNd              QDDot_0;
+  Math::MatrixNd              C;
+  Math::MatrixNd              gamma;
 
   ADConstraintSet() {}
   ADConstraintSet(const ConstraintSet &CS, int dof_count);
@@ -133,8 +135,7 @@ void ComputeContactImpulsesNullSpace (
 */
 
 RBDL_DLLAPI
-void SolveContactSystemDirect (
-    const Math::MatrixNd &H,
+void SolveContactSystemDirect (const Math::MatrixNd &H,
     const std::vector<Math::MatrixNd> & H_dirs,
     const Math::MatrixNd &G,
     const std::vector<Math::MatrixNd> & G_dirs,
@@ -148,7 +149,8 @@ void SolveContactSystemDirect (
     Math::MatrixNd & b_dirs,
     Math::VectorNd & x,
     Math::MatrixNd & x_ad,
-    Math::LinearSolver & linear_solver
+    Math::LinearSolver & linear_solver,
+    int ndirs
     );
 
 /*
