@@ -19,7 +19,7 @@ TEST (GaussElimPivot) {
 	MatrixNd A;
 	A.resize(3,3);
 	VectorNd b(3);
-	VectorNd x(3);
+  VectorNd x(3);
 
 	A(0,0) = 0; A(0,1) = 2; A(0,2) = 1;
 	A(1,0) = 1; A(1,1) = 1; A(1,2) = 5;
@@ -35,20 +35,20 @@ TEST (GaussElimPivot) {
 	test_result[1] = -1;
 	test_result[2] = 3;
 
-	LinSolveGaussElimPivot (A, b, x);
+  LinSolveGaussElimPivot (A, b, x);
 
-	CHECK_ARRAY_CLOSE (test_result.data(), x.data(), 3, TEST_PREC);
+  CHECK_ARRAY_CLOSE (test_result.data(), x.data(), 3, TEST_PREC);
 
 	A(0,0) = 0; A(0,1) = -2; A(0,2) = 1;
 	A(1,0) = 1; A(1,1) =  1; A(1,2) = 5;
 	A(2,0) = 0; A(2,1) =  0; A(2,2) = 1;
 
-	LinSolveGaussElimPivot (A, b, x);
+  LinSolveGaussElimPivot (A, b, x);
 	test_result[0] = -14;
 	test_result[1] = 1;
 	test_result[2] = 3;
 
-	CHECK_ARRAY_CLOSE (test_result.data(), x.data(), 3, TEST_PREC);
+  CHECK_ARRAY_CLOSE (test_result.data(), x.data(), 3, TEST_PREC);
 }
 
 TEST (Dynamic_1D_initialize_value) {

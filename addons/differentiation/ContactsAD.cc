@@ -339,9 +339,9 @@ void SolveContactSystemDirect (
 #else
       {
         Eigen::PartialPivLU<MatrixNd::PlainObject> A_LU = A.partialPivLu();
-        // nominal evaluation
+        // nominal code
         x = A_LU.solve(b);
-        // derivative evaluation
+        // derivative code
         for (int i = 0; i < ndirs; i++) {
           x_ad.col(i) = A_LU.solve(b_dirs.col(i) - A_dirs[i] * x);
         }
@@ -352,9 +352,9 @@ void SolveContactSystemDirect (
       {
         Eigen::ColPivHouseholderQR<MatrixNd::PlainObject> A_CPQR =
             A.colPivHouseholderQr();
-        // nominal evaluation
+        // nominal code
         x = A_CPQR.solve(b);
-        // derivative evaluation
+        // derivative code
         for (int i = 0; i < ndirs; i++) {
           x_ad.col(i) = A_CPQR.solve(b_dirs.col(i) - A_dirs[i] * x);
         }
@@ -365,14 +365,27 @@ void SolveContactSystemDirect (
         Eigen::HouseholderQR<MatrixNd::PlainObject> A_QR = A.householderQr();
         // nominal evaluation
         x = A_QR.solve(b);
-        // derivative evaluation;
+        // derivative evaluation
         for (int i = 0; i < ndirs; i++) {
           x_ad.col(i) = A_QR.solve(b_dirs.col(i) - A_dirs[i] * x);
         }
       }
       break;
+//    case (LinearSolverLLT) :
+//      {
+//        Eigen::LLT<MatrixNd::PlainObject> A_LLT = A.llt();
+//        // nominal code
+//        x = A_LLT.solve(b);
+//        // derivative code
+//        for (int i = 0; i < ndirs; i++) {
+//          x_ad.col(i) = A_LLT.solve(b_dirs.col(i) - A_dirs[i] * x);
+//        }
+//      }
+//      break;
+/// TODO: Add support for this solver also.
     default:
       LOG << "Error: Invalid linear solver: " << linear_solver << std::endl;
+      cerr << "Error: Invalid linear solver: " << linear_solver << std::endl;
       assert (0);
       break;
   }

@@ -67,6 +67,45 @@ void ComputeContactImpulsesDirect (
   }
 }
 
+RBDL_DLLAPI
+void SolveContactSystemDirect (
+    const MatrixNd &H,
+    const vector<MatrixNd> & H_dirs,
+    const MatrixNd &G,
+    const vector<MatrixNd> & G_dirs,
+    const VectorNd & c,
+    const MatrixNd & c_dirs,
+    const VectorNd & gamma,
+    const MatrixNd & gamma_dirs,
+    MatrixNd & A,
+    vector<MatrixNd> & A_dirs,
+    VectorNd & b,
+    MatrixNd & b_dirs,
+    VectorNd & x,
+    MatrixNd & x_fd,
+    LinearSolver & linear_solver,
+    int ndirs
+) {
+  double h = 1e-8;
+
+  VectorNd qddot(H.rows());
+  VectorNd lambda(H.rows());
+
+  RigidBodyDynamics::SolveContactSystemDirect (H, G, c, gamma, qddot, lambda,
+      A, b, x, linear_solver);
+  for (int i = 0; i < ndirs; i++) {
+    MatrixNd Ah(A);
+    VectorNd bh(b);
+    VectorNd xh(x);
+    RigidBodyDynamics::SolveContactSystemDirect (H + h * H_dirs[i],
+        G + h * G_dirs[i], c + h * c_dirs.col(i), gamma + h * gamma_dirs.col(i),
+        qddot, lambda, Ah, bh, xh, linear_solver);
+    A_dirs[i] = (Ah - A) / h;
+    b_dirs.col(i) = (bh - b) / h;
+    x_fd.col(i) = (xh - x) / h;
+  }
+}
+
 
 // -----------------------------------------------------------------------------
 } // namespace FD
