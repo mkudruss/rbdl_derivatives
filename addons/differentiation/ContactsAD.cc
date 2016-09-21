@@ -243,7 +243,7 @@ void ComputeContactImpulsesDirect (
     VectorNd & qdot_plus,
     MatrixNd & ad_qdot_plus
 ) {
-  int ndirs = q_dirs.size();
+  int ndirs = q_dirs.cols();
   assert(ndirs == qdot_minus_dirs.cols());
   assert(ndirs == ad_qdot_plus.cols());
 
