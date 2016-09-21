@@ -22,11 +22,11 @@ double const TEST_PREC = 1.0e-8;
 template <typename T>
 void CalcContactJacobianTemplate(T & obj) {
     // rename for convenience
-    Model& model = obj.model;
-    ADModel& ad_model = obj.ad_model;
+    Model& model = *(obj.model);
+    ADModel& ad_model = *(obj.ad_model);
 
-    ConstraintSet& cs = obj.cs;
-    ADConstraintSet& ad_cs = obj.ad_cs;
+    ConstraintSet& cs = obj.constraint_set;
+    ADConstraintSet& ad_cs = obj.ad_constraint_set;
 
     // set up input quantities
     int const nq = model.dof_count;
@@ -46,10 +46,10 @@ void CalcContactJacobianTemplate(T & obj) {
     vector<MatrixNd> derivative_fd (ndirs, G_fd);
 
     // call nominal version
-    CalcContactJacobian(model, q, cs, G, update_kinematics);
+    RigidBodyDynamics::CalcContactJacobian(model, q, cs, G, update_kinematics);
 
     // call AD version
-    AD::CalcContactJacobian(
+    RigidBodyDynamics::AD::CalcContactJacobian(
         model, ad_model,
         q, q_dirs,
         cs, ad_cs,
@@ -58,7 +58,7 @@ void CalcContactJacobianTemplate(T & obj) {
     );
 
     // call FD version
-    FD::CalcContactJacobian(
+    RigidBodyDynamics::FD::CalcContactJacobian(
         model, ad_model,
         q, q_dirs,
         cs, ad_cs,
@@ -80,6 +80,41 @@ void CalcContactJacobianTemplate(T & obj) {
         );
     }
 }
+
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobian) {
+
+    // add contacts and bind them to constraint set
+    constraint_set.AddConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+    constraint_set.AddConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+    constraint_set.Bind (*model);
+
+/*
+    VectorNd QDDot_lagrangian = VectorNd::Constant (model->mBodies.size() - 1, 0.);
+
+    ClearLogOutput();
+
+    ForwardDynamicsContactsDirect (*model, Q, QDot, Tau, constraint_set_lagrangian, QDDot_lagrangian);
+    ForwardDynamicsContactsKokkevis (*model, Q, QDot, Tau, constraint_set, QDDot_contacts);
+
+    point_accel_lagrangian = CalcPointAcceleration (*model, Q, QDot, QDDot_lagrangian, contact_body_id, contact_point, true);
+    point_accel_contacts = CalcPointAcceleration (*model, Q, QDot, QDDot_contacts, contact_body_id, contact_point, true);
+
+    // check whether FDContactsLagrangian and FDContacts match
+    CHECK_ARRAY_CLOSE (
+            constraint_set_lagrangian.force.data(),
+            constraint_set.force.data(),
+            constraint_set.size(), TEST_PREC
+            );
+
+    // check whether the point accelerations match
+    CHECK_ARRAY_CLOSE (point_accel_lagrangian.data(), point_accel_contacts.data(), 3, TEST_PREC);
+
+    // check whether the generalized accelerations match
+    CHECK_ARRAY_CLOSE (QDDot_lagrangian.data(), QDDot_contacts.data(), QDDot_lagrangian.size(), TEST_PREC);
+    */
+    CalcContactJacobianTemplate(*this);
+}
+
 
 /*
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyWorldOrientation) {

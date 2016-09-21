@@ -12,7 +12,7 @@ struct FixedBase3DoF {
 		 * and the CoM of the last (3rd) body comes out of the Y=X=0 plane.
 		 *
 		 *      Z
-		 *      *---* 
+		 *      *---*
 		 *      |
 		 *      |
 		 *  Z   |
@@ -50,7 +50,7 @@ struct FixedBase3DoF {
 	~FixedBase3DoF () {
 		delete model;
 	}
-	
+
 	RigidBodyDynamics::Model *model;
 
 	unsigned int body_a_id, body_b_id, body_c_id, ref_body_id;
@@ -148,7 +148,7 @@ struct FixedBase6DoF {
 
 		ClearLogOutput();
 	}
-	
+
 	~FixedBase6DoF () {
 		delete model;
 	}
@@ -261,7 +261,7 @@ struct FloatingBase12DoF {
 
 		ClearLogOutput();
 	}
-	
+
 	~FloatingBase12DoF () {
 		delete model;
 	}
@@ -322,7 +322,7 @@ struct FixedJoint2DoF {
 		 * and the CoM of the last (3rd) body comes out of the Y=X=0 plane.
 		 *
 		 *      Z
-		 *      *---* 
+		 *      *---*
 		 *      |
 		 *      |
 		 *  Z   |
@@ -359,7 +359,7 @@ struct FixedJoint2DoF {
 	~FixedJoint2DoF () {
 		delete model;
 	}
-	
+
 	RigidBodyDynamics::Model *model;
 
 	unsigned int body_a_id, body_b_id, body_c_id, ref_body_id;
@@ -387,7 +387,7 @@ struct FixedAndMovableJoint {
 		 * and the CoM of the last (3rd) body comes out of the Y=X=0 plane.
 		 *
 		 *      Z
-		 *      *---* 
+		 *      *---*
 		 *      |
 		 *      |
 		 *  Z   |
@@ -466,7 +466,7 @@ struct FixedAndMovableJoint {
 
 		return H;
 	}
-	
+
 	RigidBodyDynamics::Model *model_fixed;
 	RigidBodyDynamics::Model *model_movable;
 
@@ -482,7 +482,7 @@ struct FixedAndMovableJoint {
 	RigidBodyDynamics::Math::VectorNd Tau;
 	RigidBodyDynamics::Math::VectorNd C_movable;
 	RigidBodyDynamics::Math::MatrixNd H_movable;
-	
+
 	RigidBodyDynamics::Math::VectorNd Q_fixed;
 	RigidBodyDynamics::Math::VectorNd QDot_fixed;
 	RigidBodyDynamics::Math::VectorNd QDDot_fixed;
@@ -528,7 +528,7 @@ struct RotZRotZYXFixed {
 	~RotZRotZYXFixed() {
 		delete model;
 	}
-	
+
 	RigidBodyDynamics::Model *model;
 
 	unsigned int body_a_id, body_b_id, body_fixed_id;
@@ -571,7 +571,7 @@ struct TwoArms12DoF {
 //		model->AppendBody (Xtrans (Vector3d (0., -0.4, 0.)), joint_zyx, body_lower, "RightLower");
 		left_upper_arm = model->AddBody (0, Xtrans (Vector3d (0., 0., 0.3)), joint_zyx, body_upper, "LeftUpper");
 //		model->AppendBody (Xtrans (Vector3d (0., -0.4, 0.)), joint_zyx, body_lower, "LeftLower");
-				
+
 		q = VectorNd::Constant ((size_t) model->dof_count, 0.);
 		qdot = VectorNd::Constant ((size_t) model->dof_count, 0.);
 		qddot = VectorNd::Constant ((size_t) model->dof_count, 0.);
@@ -582,7 +582,7 @@ struct TwoArms12DoF {
 	~TwoArms12DoF() {
 		delete model;
 	}
-	
+
 	RigidBodyDynamics::Model *model;
 
 	RigidBodyDynamics::Math::VectorNd q;
@@ -653,7 +653,7 @@ struct FixedBase6DoF12DoFFloatingBase {
 
 		ClearLogOutput();
 	}
-	
+
 	~FixedBase6DoF12DoFFloatingBase () {
 		delete model;
 	}
@@ -675,3 +675,106 @@ struct FixedBase6DoF12DoFFloatingBase {
 	RigidBodyDynamics::Math::Vector3d contact_normal;
 	RigidBodyDynamics::ConstraintSet constraint_set;
 };
+
+
+struct FixedBase6DoF9DoF {
+	FixedBase6DoF9DoF () {
+		ClearLogOutput();
+		model = new RigidBodyDynamics::Model;
+
+		model->gravity = RigidBodyDynamics::Math::Vector3d  (0., -9.81, 0.);
+
+		/* 3 DoF (rot.) joint at base
+		 * 3 DoF (rot.) joint child origin
+		 *
+		 *          X Contact point (ref child)
+		 *          |
+		 *    Base  |
+		 *   / body |
+		 *  O-------*
+		 *           \
+		 *             Child body
+		 */
+
+		// base body (3 DoF)
+		base = RigidBodyDynamics::Body (
+				1.,
+				RigidBodyDynamics::Math::Vector3d (0.5, 0., 0.),
+				RigidBodyDynamics::Math::Vector3d (1., 1., 1.)
+				);
+		joint_rotzyx = RigidBodyDynamics::Joint (
+				RigidBodyDynamics::Math::SpatialVector (0., 0., 1., 0., 0., 0.),
+				RigidBodyDynamics::Math::SpatialVector (0., 1., 0., 0., 0., 0.),
+				RigidBodyDynamics::Math::SpatialVector (1., 0., 0., 0., 0., 0.)
+				);
+		base_id = model->AddBody (
+				0,
+				RigidBodyDynamics::Math::Xtrans (
+					RigidBodyDynamics::Math::Vector3d (0., 0., 0.)
+					),
+				joint_rotzyx, base
+				);
+
+		// child body 1 (3 DoF)
+		child = RigidBodyDynamics::Body (
+				1.,
+				RigidBodyDynamics::Math::Vector3d (0., 0.5, 0.),
+				RigidBodyDynamics::Math::Vector3d (1., 1., 1.)
+				);
+		child_id = model->AddBody (
+				base_id,
+				RigidBodyDynamics::Math::Xtrans (
+					RigidBodyDynamics::Math::Vector3d (0., 0., 0.)
+					),
+				joint_rotzyx, child
+				);
+
+		// child body (3 DoF)
+		child_2 = RigidBodyDynamics::Body (
+				1.,
+				RigidBodyDynamics::Math::Vector3d (0., 0.5, 0.),
+				RigidBodyDynamics::Math::Vector3d (1., 1., 1.)
+				);
+		child_2_id = model->AddBody (
+				child_id,
+				RigidBodyDynamics::Math::Xtrans (
+					RigidBodyDynamics::Math::Vector3d (0., 0., 0.)
+					),
+				joint_rotzyx,
+				child_2
+				);
+
+		Q = RigidBodyDynamics::Math::VectorNd::Constant (model->mBodies.size() - 1, 0.);
+		QDot = RigidBodyDynamics::Math::VectorNd::Constant (model->mBodies.size() - 1, 0.);
+		QDDot = RigidBodyDynamics::Math::VectorNd::Constant (model->mBodies.size() - 1, 0.);
+		Tau = RigidBodyDynamics::Math::VectorNd::Constant (model->mBodies.size() - 1, 0.);
+
+		contact_body_id = child_id;
+		contact_point = RigidBodyDynamics::Math::Vector3d  (0.5, 0.5, 0.);
+		contact_normal =RigidBodyDynamics::Math::Vector3d  (0., 1., 0.);
+
+		ClearLogOutput();
+	}
+
+	~FixedBase6DoF9DoF () {
+		delete model;
+	}
+	RigidBodyDynamics::Model *model;
+
+	unsigned int base_id, child_id, child_2_id;
+
+	RigidBodyDynamics::Body base, child, child_2;
+
+	RigidBodyDynamics::Joint joint_rotzyx;
+
+	RigidBodyDynamics::Math::VectorNd Q;
+	RigidBodyDynamics::Math::VectorNd QDot;
+	RigidBodyDynamics::Math::VectorNd QDDot;
+	RigidBodyDynamics::Math::VectorNd Tau;
+
+	unsigned int contact_body_id;
+	RigidBodyDynamics::Math::Vector3d contact_point;
+	RigidBodyDynamics::Math::Vector3d contact_normal;
+	RigidBodyDynamics::ConstraintSet constraint_set;
+};
+
