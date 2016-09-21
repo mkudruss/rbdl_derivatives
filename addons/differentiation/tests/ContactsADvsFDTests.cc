@@ -88,6 +88,8 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobian) {
     constraint_set.AddConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
     constraint_set.Bind (*model);
 
+    ad_constraint_set = ADConstraintSet(constraint_set, model->dof_count);
+
 /*
     VectorNd QDDot_lagrangian = VectorNd::Constant (model->mBodies.size() - 1, 0.);
 
