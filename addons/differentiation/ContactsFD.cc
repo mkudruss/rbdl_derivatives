@@ -17,9 +17,11 @@ void CalcContactJacobian(
         const ConstraintSet &CS,
         ADConstraintSet &ad_CS,
         Math::MatrixNd &G,
-        std::vector<Math::MatrixNd> &G_dirs,
-        bool update_kinematics
+        std::vector<Math::MatrixNd> &G_dirs
 ) {
+    // NOTE we provide new Qs every call, therefore update kinematics!
+    bool update_kinematics = true;
+
     unsigned int ndirs = Q_dirs.cols();
 
     // temporary evaluation at current point

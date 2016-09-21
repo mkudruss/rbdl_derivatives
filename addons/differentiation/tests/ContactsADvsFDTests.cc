@@ -62,8 +62,7 @@ void CalcContactJacobianTemplate(T & obj) {
         model,
         q, q_dirs,
         cs, ad_cs,
-        G, derivative_fd,
-        update_kinematics
+        G, derivative_fd
     );
 
     // compare nominal results

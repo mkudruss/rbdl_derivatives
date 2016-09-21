@@ -17,14 +17,14 @@ namespace FD {
 
 RBDL_DLLAPI
 void CalcContactJacobian(
-    Model &model,
-    const Math::VectorNd &Q,
-    const Math::VectorNd &Q_dirs,
-    const ConstraintSet &CS,
-    ADConstraintSet &ad_CS,
-    Math::MatrixNd &G,
-    std::vector<Math::MatrixNd> &G_dirs,
-    bool update_kinematics = true
+        Model &model,
+        ADModel &ad_model,
+        const Math::VectorNd &Q,
+        const Math::VectorNd &Q_dirs,
+        const ConstraintSet &CS,
+        ADConstraintSet &ad_CS,
+        Math::MatrixNd &G,
+        std::vector<Math::MatrixNd> &G_dirs
     );
 
 RBDL_DLLAPI
@@ -36,7 +36,7 @@ void ComputeContactImpulsesDirect(Model & model,
     ConstraintSet   & CS,
     Math::VectorNd  & qdot_plus,
     Math::MatrixNd  & ad_qdot_plus
-    );
+        );
 
 // -----------------------------------------------------------------------------
 } // namespace FD
