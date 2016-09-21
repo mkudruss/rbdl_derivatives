@@ -389,7 +389,7 @@ TEST ( TestClearContactsInertiaMatrix ) {
 	constraint_set_right.H = MatrixNd::Zero (model->dof_count, model->dof_count);
 	for (unsigned int i = 0; i < model->dof_count; i++) {
 		for (unsigned int j = 0; j < model->dof_count; j++) {
-			constraint_set_right.H(i,j) = 1.234;
+      constraint_set_right.H(i,j) = 1.234;
 		}
 	}
 
