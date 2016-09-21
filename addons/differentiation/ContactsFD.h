@@ -20,7 +20,7 @@ void CalcContactJacobian(
         Model &model,
         ADModel &ad_model,
         const Math::VectorNd &Q,
-        const Math::VectorNd &Q_dirs,
+        const Math::MatrixNd &Q_dirs,
         const ConstraintSet &CS,
         ADConstraintSet &ad_CS,
         Math::MatrixNd &G,

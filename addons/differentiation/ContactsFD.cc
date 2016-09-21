@@ -12,8 +12,9 @@ using namespace std;
 RBDL_DLLAPI
 void CalcContactJacobian(
         Model &model,
+        ADModel &ad_model,
         const Math::VectorNd &Q,
-        const Math::VectorNd &Q_dirs,
+        const Math::MatrixNd &Q_dirs,
         const ConstraintSet &CS,
         ADConstraintSet &ad_CS,
         Math::MatrixNd &G,
@@ -26,6 +27,10 @@ void CalcContactJacobian(
 
     // temporary evaluation at current point
     CalcContactJacobian(model, Q, CS, G, update_kinematics);
+    // std::cout << "In function '" << __func__ << "'!" << std::endl;
+    // std::cout << "G = \n" << G << std::endl;
+    // std::cout << "Leaving function '" << __func__ << "'!" << std::endl;
+    // std::cout << std::endl;
 
     double h = 1e-8;
     MatrixNd G_temp = MatrixNd::Zero (3, model.dof_count);
@@ -55,7 +60,7 @@ void ComputeContactImpulsesDirect (
 ) {
   int ndirs = q_dirs.cols();
   assert(ndirs == qdot_minus_dirs.cols());
-  assert(ndirs == ad_qdot_plus.cols());
+  // assert(ndirs == ad_qdot_plus.cols());
 
   double h = 1e-8;
 

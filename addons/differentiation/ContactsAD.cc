@@ -45,12 +45,12 @@ void CalcContactJacobian(
 
     if (update_kinematics) {
         // derivative evaluation
-        // UpdateKinematicsCustom (
-        //     model, ad_model,
-        //     &Q, &Q_dirs,
-        //     NULL, NULL,
-        //     NULL, NULL
-        // );
+        UpdateKinematicsCustom (
+            model, ad_model,
+            &q, &q_dirs,
+            NULL, NULL,
+            NULL, NULL
+        );
         // nominal evaluation
         // NOTE kinematics are already updated in the AD version
         // UpdateKinematicsCustom (model, &Q, NULL, NULL);
