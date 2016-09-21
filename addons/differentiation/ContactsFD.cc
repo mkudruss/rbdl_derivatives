@@ -6,6 +6,9 @@ namespace RigidBodyDynamics {
 namespace FD {
 // -----------------------------------------------------------------------------
 
+using namespace RigidBodyDynamics::Math;
+using namespace std;
+
 RBDL_DLLAPI
 void CalcContactJacobian(
         Model &model,
