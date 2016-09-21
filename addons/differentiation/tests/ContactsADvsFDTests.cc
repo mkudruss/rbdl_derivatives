@@ -155,12 +155,11 @@ TEST (SolveContactSystemDirectTest) {
   lss[1] = LinearSolverColPivHouseholderQR;
   lss[2] = LinearSolverHouseholderQR;
 
-
   for (int i = 0; i < lss.size() * 3; i++) {
     int nc = 3;
     int nm = 11;
     int ndirs = 20;
-    LinearSolver ls = lss[i % lss.size()]; //LinearSolverColPivHouseholderQR;
+    LinearSolver ls = lss[i % lss.size()];
 
     MatrixNd H      = MatrixNd::Identity(nm, nm);
     MatrixNd G      = MatrixNd::Random(nc, nm);
