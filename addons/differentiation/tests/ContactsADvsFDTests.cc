@@ -59,7 +59,7 @@ void CalcContactJacobianTemplate(T & obj) {
 
     // call FD version
     RigidBodyDynamics::FD::CalcContactJacobian(
-        model, ad_model,
+        model,
         q, q_dirs,
         cs, ad_cs,
         G, derivative_fd,
@@ -140,4 +140,59 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyWorldOrientation) {
 }
 */
 
+
+
+
+
+
+
 // -----------------------------------------------------------------------------
+
+template <typename T>
+void ComputeContactImpulsesDirectTestTemplate(T & obj,
+    double const TEST_PREC = 1e-8) {
+  Model   & model    = *(obj.model);
+  ADModel & ad_model = *(obj.ad_model);
+
+  ConstraintSet   & cs    = obj.constraint_set;
+  ADConstraintSet & ad_cs = obj.ad_constraint_set;
+
+  int const nq       = model.dof_count;
+  int const ndirs    = 2 * nq;
+
+  VectorNd q         = VectorNd::Random(nq);
+  MatrixNd q_dirs    = MatrixNd::Zero(nq, ndirs);
+  q_dirs.block(0, 0, nq, nq) = MatrixNd::Identity(nq, nq);
+
+  VectorNd qd        = VectorNd::Random(nq);
+  MatrixNd qd_dirs   = MatrixNd::Zero(nq, ndirs);
+  qd_dirs.block(0, nq, nq, nq) = MatrixNd::Identity(nq, nq);
+
+  VectorNd qd_plus(nq);
+  VectorNd ad_qd_plus(nq);
+  MatrixNd ad_qd_plus_dirs(nq, ndirs);
+  VectorNd fd_qd_plus(nq);
+  MatrixNd fd_qd_plus_dirs(nq, ndirs);
+
+  ComputeContactImpulsesDirect(model, q, qd, cs, qd_plus);
+  AD::ComputeContactImpulsesDirect(model, ad_model, q, q_dirs, qd, qd_dirs,
+                                   cs, ad_cs, ad_qd_plus, ad_qd_plus_dirs);
+  FD::ComputeContactImpulsesDirect(model, q, q_dirs, qd, qd_dirs, cs,
+                                   fd_qd_plus, fd_qd_plus_dirs);
+
+  CHECK_ARRAY_CLOSE(qd_plus.data(), ad_qd_plus.data(), nq, TEST_PREC);
+  CHECK_ARRAY_CLOSE(qd_plus.data(), fd_qd_plus.data(), nq, TEST_PREC);
+
+
+}
+
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFComputeContactImpulsesDirect) {
+    constraint_set.AddConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+    constraint_set.AddConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+    constraint_set.Bind (*model);
+    ad_constraint_set = ADConstraintSet(constraint_set, model->dof_count);
+    ComputeContactImpulsesDirectTestTemplate(*this);
+}
+
+// -----------------------------------------------------------------------------
+

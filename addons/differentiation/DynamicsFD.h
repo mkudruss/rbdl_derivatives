@@ -27,7 +27,7 @@ namespace FD {
 
 RBDL_DLLAPI
 void ForwardDynamics(
-	Model& model,
+    Model& model,
     const Math::VectorNd& q,
     const Math::MatrixNd& q_dirs,
     const Math::VectorNd& qdot,
@@ -37,21 +37,21 @@ void ForwardDynamics(
     Math::VectorNd& qddot,
     Math::MatrixNd& fd_qddot,
     std::vector<Math::SpatialVector>* f_ext
-);
+    );
 
 RBDL_DLLAPI
 void InverseDynamics(
-	Model& model,
-	const Math::VectorNd& q,
-	const Math::MatrixNd& q_dirs,
-	const Math::VectorNd& qdot,
-	const Math::MatrixNd& qdot_dirs,
-	const Math::VectorNd& qddot,
-	const Math::MatrixNd& qddot_dirs,
-	Math::VectorNd& tau,
-	Math::MatrixNd& fd_tau,
-	std::vector<Math::SpatialVector> *f_ext
-);
+    Model& model,
+    const Math::VectorNd& q,
+    const Math::MatrixNd& q_dirs,
+    const Math::VectorNd& qdot,
+    const Math::MatrixNd& qdot_dirs,
+    const Math::VectorNd& qddot,
+    const Math::MatrixNd& qddot_dirs,
+    Math::VectorNd& tau,
+    Math::MatrixNd& fd_tau,
+    std::vector<Math::SpatialVector> *f_ext
+    );
 
 RBDL_DLLAPI
 void NonlinearEffects (
@@ -66,11 +66,11 @@ void NonlinearEffects (
 
 RBDL_DLLAPI
 void CompositeRigidBodyAlgorithm (
-	Model &model,
+    Model &model,
     const Math::VectorNd &q,
     const Math::MatrixNd &q_dirs,
     std::vector<Math::MatrixNd> &fd_out
-);
+    );
 
 // -----------------------------------------------------------------------------
 } /* FD */

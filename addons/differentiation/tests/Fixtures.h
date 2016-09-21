@@ -388,7 +388,6 @@ struct FixedBase6DoF {
 
         ClearLogOutput();
         model = new Model;
-        ad_model = new ADModel;
 
         model->gravity = Vector3d  (0., -9.81, 0.);
 
@@ -464,6 +463,7 @@ struct FixedBase6DoF {
         contact_normal = Vector3d  (0., 1., 0.);
 
         ClearLogOutput();
+        ad_model = new ADModel(*model);
     }
 
     ~FixedBase6DoF () {
@@ -498,7 +498,6 @@ struct FixedBase6DoF9DoF {
     FixedBase6DoF9DoF () {
         ClearLogOutput();
         model = new RigidBodyDynamics::Model;
-        ad_model = new ADModel;
 
         model->gravity = RigidBodyDynamics::Math::Vector3d  (0., -9.81, 0.);
 
@@ -572,6 +571,7 @@ struct FixedBase6DoF9DoF {
         contact_normal =RigidBodyDynamics::Math::Vector3d  (0., 1., 0.);
 
         ClearLogOutput();
+        ad_model = new ADModel(*model);
     }
 
     ~FixedBase6DoF9DoF () {

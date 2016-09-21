@@ -12,7 +12,6 @@ using namespace std;
 RBDL_DLLAPI
 void CalcContactJacobian(
         Model &model,
-        ADModel &ad_model,
         const Math::VectorNd &Q,
         const Math::VectorNd &Q_dirs,
         const ConstraintSet &CS,
@@ -22,7 +21,6 @@ void CalcContactJacobian(
         bool update_kinematics
 ) {
     unsigned int ndirs = Q_dirs.cols();
-    ad_model.resize_directions(ndirs);
 
     // temporary evaluation at current point
     CalcContactJacobian(model, Q, CS, G, update_kinematics);
@@ -41,6 +39,34 @@ void CalcContactJacobian(
         G_dirs[idir] = (G_temp - G) / h;
     }
 }
+
+RBDL_DLLAPI
+void ComputeContactImpulsesDirect (
+    Model & model,
+    const VectorNd & q,
+    const MatrixNd & q_dirs,
+    const VectorNd & qdot_minus,
+    const MatrixNd & qdot_minus_dirs,
+    ConstraintSet & CS,
+    VectorNd & qdot_plus,
+    MatrixNd & fd_qdot_plus
+) {
+  int ndirs = q_dirs.cols();
+  assert(ndirs == qdot_minus_dirs.cols());
+  assert(ndirs == ad_qdot_plus.cols());
+
+  double h = 1e-8;
+
+  ComputeContactImpulsesDirect(model, q, qdot_minus, CS, qdot_plus);
+  for (int i = 0; i < ndirs; i++) {
+    VectorNd qh  = q + h * q_dirs.col(i);
+    VectorNd qdh = qdot_minus + h * qdot_minus_dirs.col(i);
+    VectorNd qdot_plush(model.dof_count);
+    ComputeContactImpulsesDirect(model, qh, qdh, CS, qdot_plush);
+    fd_qdot_plus.col(i) = (qdot_plush - qdot_plus) / h;
+  }
+}
+
 
 // -----------------------------------------------------------------------------
 } // namespace FD
