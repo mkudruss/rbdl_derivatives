@@ -63,7 +63,6 @@ void ComputeContactImpulsesDirect (
   // assert(ndirs == ad_qdot_plus.cols());
 
   double h = 1e-8;
-
   ComputeContactImpulsesDirect(model, q, qdot_minus, CS, qdot_plus);
   for (int i = 0; i < ndirs; i++) {
     VectorNd qh  = q + h * q_dirs.col(i);
@@ -71,6 +70,38 @@ void ComputeContactImpulsesDirect (
     VectorNd qdot_plush(model.dof_count);
     ComputeContactImpulsesDirect(model, qh, qdh, CS, qdot_plush);
     fd_qdot_plus.col(i) = (qdot_plush - qdot_plus) / h;
+  }
+}
+
+RBDL_DLLAPI
+void ComputeContactImpulsesDirect (
+    Model & model,
+    const VectorNd & q,
+    const MatrixNd & q_dirs,
+    const VectorNd & qdot_minus,
+    const MatrixNd & qdot_minus_dirs,
+    ConstraintSet & CS,
+    MatrixNd & fd_b,
+    vector<MatrixNd> & fd_A,
+    VectorNd & qdot_plus,
+    MatrixNd & fd_qdot_plus
+) {
+  int ndirs = q_dirs.cols();
+  assert(ndirs == qdot_minus_dirs.cols());
+  // assert(ndirs == ad_qdot_plus.cols());
+
+  double h = 1e-8;
+  ComputeContactImpulsesDirect(model, q, qdot_minus, CS, qdot_plus);
+  VectorNd b_ref = CS.b;
+  MatrixNd A_ref = CS.A;
+  for (int i = 0; i < ndirs; i++) {
+    VectorNd qh  = q + h * q_dirs.col(i);
+    VectorNd qdh = qdot_minus + h * qdot_minus_dirs.col(i);
+    VectorNd qdot_plush(model.dof_count);
+    ComputeContactImpulsesDirect(model, qh, qdh, CS, qdot_plush);
+    fd_qdot_plus.col(i) = (qdot_plush - qdot_plus) / h;
+    fd_b.col(i) = (CS.b - b_ref) / h;
+    fd_A[i] = (CS.A - A_ref) / h;
   }
 }
 

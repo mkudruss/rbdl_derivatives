@@ -1,6 +1,8 @@
 #include "ContactsAD.h"
 #include "DynamicsAD.h"
 
+#include <iomanip>
+
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
@@ -63,7 +65,7 @@ void CalcContactJacobian(
     Math::Vector3d prev_body_point = Math::Vector3d::Zero();
     // derivative evaluation
     std::vector<Math::MatrixNd> Gi_dirs (
-        ndirs, Math::MatrixNd (3, model.dof_count)
+        ndirs, Math::MatrixNd::Zero (3, model.dof_count)
     );
     // nominal evaluation
     Math::MatrixNd Gi (3, model.dof_count);
@@ -258,7 +260,7 @@ void ComputeContactImpulsesDirect (
   CalcContactJacobian (model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
   /// TODO: Check if false makes sense as last argument here.
 
-  VectorNd c   = CS.H * qdot_minus;
+  VectorNd c = CS.H * qdot_minus;
   MatrixNd c_ad(CS.H.rows(), ndirs);
   for (int i = 0; i < ndirs; i++) {
     c_ad.block(0, i, CS.H.rows(), 1) = CS.H * qdot_minus_dirs.col(i) + H_ad[i] * qdot_minus;

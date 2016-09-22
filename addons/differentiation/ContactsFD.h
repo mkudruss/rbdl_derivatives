@@ -35,8 +35,23 @@ void ComputeContactImpulsesDirect(Model & model,
     const Math::MatrixNd & qdot_minus_dirs,
     ConstraintSet   & CS,
     Math::VectorNd  & qdot_plus,
-    Math::MatrixNd  & ad_qdot_plus
+    Math::MatrixNd  & fd_qdot_plus
         );
+
+
+RBDL_DLLAPI
+void ComputeContactImpulsesDirect (
+    Model & model,
+    const Math::VectorNd & q,
+    const Math::MatrixNd & q_dirs,
+    const Math::VectorNd & qdot_minus,
+    const Math::MatrixNd & qdot_minus_dirs,
+    ConstraintSet & CS,
+    Math::MatrixNd & fd_b,
+    std::vector<Math::MatrixNd> & fd_A,
+    Math::VectorNd & qdot_plus,
+    Math::MatrixNd & fd_qdot_plus
+    );
 
 RBDL_DLLAPI
 void SolveContactSystemDirect (const Math::MatrixNd &H,
