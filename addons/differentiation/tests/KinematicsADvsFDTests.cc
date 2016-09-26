@@ -20,6 +20,158 @@ const double TEST_PREC = 1.0e-8;
 // -----------------------------------------------------------------------------
 
 template <typename T>
+void CalcPointVelocityTemplate(T & obj) {
+    Model   & model = obj.model;
+    ADModel & ad_model = obj.ad_model;
+
+    // set up input quantities
+    int const nq = model.dof_count;
+    int const ndirs = 2 * nq;
+
+    Vector3d point_position = Vector3d::Random();
+
+    VectorNd q    = VectorNd::Random(nq);
+    VectorNd qdot = VectorNd::Random(nq);
+
+    MatrixNd q_dirs(nq, 2 * nq);
+    q_dirs.setZero();
+    q_dirs.block(0, 0, nq, nq) = MatrixNd::Identity(nq, nq);
+
+    MatrixNd qdot_dirs(nq, 2 * nq);
+    qdot_dirs.setZero();
+    qdot_dirs.block(0, nq, nq, nq) = MatrixNd::Identity(nq, nq);
+
+    // set up no output quantities
+    Vector3d G    = Vector3d::Zero ();
+    Vector3d G_ad = Vector3d::Zero ();
+    Vector3d G_fd = Vector3d::Zero ();
+
+    // set up derivative output quantities
+    MatrixNd derivative_ad (3, ndirs);
+    MatrixNd derivative_fd (3, ndirs);
+
+    for (unsigned i = 1; i < model.mBodies.size(); i++) {
+        unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
+        // call nominal version
+        G = CalcPointVelocity (
+            model, q, qdot, body_id, point_position, true);
+
+        // call FD version
+        G_fd = FD::CalcPointVelocity (model, q, q_dirs, qdot, qdot_dirs,
+            body_id, point_position, derivative_fd);
+
+        // call AD version
+        G_ad = AD::CalcPointVelocity (model, ad_model, q, q_dirs, qdot,
+            qdot_dirs, body_id, point_position, derivative_ad, true);
+
+        // compare nominal results
+        CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
+        CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
+        CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
+        CHECK_ARRAY_CLOSE(derivative_ad.data(), derivative_fd.data(),
+                          3 * ndirs, TEST_PREC * 1e1);
+    }
+}
+
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointVelocity) {
+    CalcPointVelocityTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointVelocity) {
+    CalcPointVelocityTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointVelocity) {
+    CalcPointVelocityTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointVelocity) {
+    CalcPointVelocityTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointVelocity) {
+    CalcPointVelocityTemplate(*this);
+}
+
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+
+template <typename T>
+void CalcBaseToBodyCoordinatesTemplate(T & obj) {
+    Model   & model = obj.model;
+    ADModel & ad_model = obj.ad_model;
+
+    // set up input quantities
+    int const nq = model.dof_count;
+    int const ndirs = nq;
+
+    bool update_kinematics = true;
+    Vector3d point_position = Vector3d::Zero();
+    MatrixNd point_position_dirs = MatrixNd::Random(3, ndirs);
+
+    VectorNd q = VectorNd::Zero(nq);
+    MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+
+
+    // set up no output quantities
+    Vector3d G    = Vector3d::Zero ();
+    Vector3d G_ad = Vector3d::Zero ();
+    Vector3d G_fd = Vector3d::Zero ();
+
+    // set up derivative output quantities
+    MatrixNd derivative_ad (3, ndirs);
+    MatrixNd derivative_fd (3, ndirs);
+
+    for (unsigned i = 1; i < model.mBodies.size(); i++) {
+        unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
+        // call nominal version
+        G = CalcBodyToBaseCoordinates (
+            model, q, body_id, point_position, update_kinematics
+        );
+
+        // call FD version
+        G_fd = FD::CalcBaseToBodyCoordinates (
+            model, q, q_dirs, body_id, point_position, point_position_dirs,
+            derivative_fd);
+
+        // call AD version
+        G_ad = AD::CalcBaseToBodyCoordinates (
+            model, ad_model, q, q_dirs, body_id, point_position,
+            point_position_dirs, derivative_ad, update_kinematics);
+
+        // compare nominal results
+        CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
+        CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
+        CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
+        CHECK_ARRAY_CLOSE(derivative_ad.data(), derivative_fd.data(),
+                          3 * ndirs, TEST_PREC);
+    }
+}
+
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcBaseToBodyCoordinates) {
+    CalcBaseToBodyCoordinatesTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcBaseToBodyCoordinates) {
+    CalcBaseToBodyCoordinatesTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcBaseToBodyCoordinates) {
+    CalcBaseToBodyCoordinatesTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBaseToBodyCoordinates) {
+    CalcBaseToBodyCoordinatesTemplate(*this);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBaseToBodyCoordinates) {
+    CalcBaseToBodyCoordinatesTemplate(*this);
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename T>
 void CalcBodyToBaseCoordinatesTemplate(T & obj) {
     Model &model = obj.model;
     ADModel &ad_model = obj.ad_model;
@@ -40,8 +192,8 @@ void CalcBodyToBaseCoordinatesTemplate(T & obj) {
     Vector3d G_fd = Vector3d::Zero ();
 
     // set up derivative output quantities
-    vector<Vector3d> derivative_ad (ndirs, G_ad);
-    vector<Vector3d> derivative_fd (ndirs, G_fd);
+    MatrixNd derivative_ad (3, ndirs);
+    MatrixNd derivative_fd (3, ndirs);
 
     for (unsigned i = 1; i < model.mBodies.size(); i++) {
         unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
@@ -56,8 +208,7 @@ void CalcBodyToBaseCoordinatesTemplate(T & obj) {
             q, q_dirs,
             body_id,
             point_position,
-            &derivative_fd,
-            update_kinematics
+            derivative_fd
         );
 
         // call AD version
@@ -66,7 +217,7 @@ void CalcBodyToBaseCoordinatesTemplate(T & obj) {
             q, q_dirs,
             body_id,
             point_position,
-            &derivative_ad,
+            derivative_ad,
             update_kinematics
         );
 
@@ -74,15 +225,8 @@ void CalcBodyToBaseCoordinatesTemplate(T & obj) {
         CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
         CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
         CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
-
-        for (int idir = 0; idir < ndirs; idir++) {
-            CHECK_ARRAY_CLOSE(
-                derivative_ad[idir].data(),
-                derivative_fd[idir].data(),
-                derivative_ad[idir].size(),
-                TEST_PREC
-            );
-        }
+        CHECK_ARRAY_CLOSE(derivative_ad.data(), derivative_fd.data(),
+                          3 * ndirs, TEST_PREC);
     }
 }
 

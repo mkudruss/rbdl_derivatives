@@ -49,12 +49,12 @@ inline Vector3d r_from_Matrix(const SpatialMatrix X) {
 }
 
 RBDL_DLLAPI
-inline Vector3d r_from_Matrix(const SpatialMatrix X, const SpatialMatrix X_dirs) {
-    Matrix3d E_dirs = E_from_Matrix(X_dirs);
+inline Vector3d r_from_Matrix(const SpatialMatrix X, const SpatialMatrix X_dir) {
+    Matrix3d E_dirs = E_from_Matrix(X_dir);
     Matrix3d E = E_from_Matrix(X);
 
     Matrix3d Erx = X.block<3,3>(3,0);
-    Matrix3d Erx_dirs = X_dirs.block<3,3>(3,0);
+    Matrix3d Erx_dirs = X_dir.block<3,3>(3,0);
 
     // derivative evaluation
     Matrix3d rx_dirs = E_dirs.transpose() * Erx + E.transpose() * Erx_dirs;

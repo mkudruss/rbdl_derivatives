@@ -1,6 +1,7 @@
 #include <UnitTest++.h>
 
 #include <iostream>
+#include <iomanip>
 
 #include "rbdl/Model.h"
 #include "rbdl/Kinematics.h"
@@ -30,7 +31,7 @@ void CalcContactJacobianTemplate(T & obj) {
 
     // set up input quantities
     int const nq = model.dof_count;
-    int const ndirs = nq;
+    unsigned const ndirs = nq;
 
     bool update_kinematics = true;
     VectorNd q = VectorNd::Zero(nq);
@@ -150,12 +151,15 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyWorldOrientation) {
 
 TEST (SolveContactSystemDirectTest) {
 
-  vector<LinearSolver> lss(3);
+  vector<LinearSolver> lss(6);
   lss[0] = LinearSolverPartialPivLU;
   lss[1] = LinearSolverColPivHouseholderQR;
   lss[2] = LinearSolverHouseholderQR;
+  lss[3] = LinearSolverPartialPivLU;
+  lss[4] = LinearSolverColPivHouseholderQR;
+  lss[5] = LinearSolverHouseholderQR;
 
-  for (int i = 0; i < lss.size() * 3; i++) {
+  for (unsigned i = 0; i < lss.size() * 3; i++) {
     int nc = 3;
     int nm = 11;
     int ndirs = 20;
@@ -163,6 +167,7 @@ TEST (SolveContactSystemDirectTest) {
 
     MatrixNd H      = MatrixNd::Identity(nm, nm);
     MatrixNd G      = MatrixNd::Random(nc, nm);
+    G.setRandom(nc, nm);
     VectorNd c      = VectorNd::Ones(nm, 1);
     VectorNd gamma  = VectorNd::Ones(nc, 1);
     vector<MatrixNd> H_dirs(ndirs, H);
@@ -229,7 +234,7 @@ TEST (SolveContactSystemDirectTest) {
                         (nm + nc) * (nm + nc), 1e-4);
     }
     CHECK_ARRAY_CLOSE(ad_x_dirs.data(), fd_x_dirs.data(), (nm + nc) * ndirs,
-                      1e-4);
+                      1e-3);
     CHECK_ARRAY_CLOSE(ad_b_dirs.data(), fd_b_dirs.data(), (nm + nc) * ndirs,
                       1e-4);
   }

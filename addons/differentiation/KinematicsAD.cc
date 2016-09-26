@@ -177,84 +177,136 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 
 RBDL_DLLAPI
 Vector3d CalcBodyToBaseCoordinates (
-        Model &model,
-        ADModel &ad_model,
-        const VectorNd &Q,
-        const MatrixNd &Q_dirs,
-        unsigned int body_id,
-        const Vector3d &point_body_coordinates,
-        std::vector<Math::Vector3d> *ad_body_to_base_coordinates,
-        bool update_kinematics
+    Model &model,
+    ADModel &ad_model,
+    const VectorNd &Q,
+    const MatrixNd &Q_dirs,
+    unsigned int body_id,
+    const Vector3d &point_body_coordinates,
+    Math::MatrixNd & ad_body_to_base_coordinates,
+    bool update_kinematics
 ) {
-    unsigned int ndirs = Q_dirs.cols();
+  unsigned int ndirs = Q_dirs.cols();
 
-    std::vector<Matrix3d> ad_body_rotation (ndirs, Matrix3d::Zero());
-    std::vector<Vector3d> ad_body_position (ndirs, Vector3d::Zero());
+  std::vector<Matrix3d> ad_body_rotation (ndirs, Matrix3d::Zero());
+  std::vector<Vector3d> ad_body_position (ndirs, Vector3d::Zero());
 
-    // update the Kinematics if necessary
-    if (update_kinematics) {
-        // derivative evaluation
-        AD::UpdateKinematicsCustom (
-            model, ad_model,
-            &Q, &Q_dirs,
-            NULL, NULL,
-            NULL, NULL
-        );
-        // nominal evaluation
-        // NOTE: nominal evaluation is already done in AD::UpdateKinematicsCustom
-        // UpdateKinematicsCustom (model, &Q, NULL, NULL);
-    }
+  // update the Kinematics if necessary
+  if (update_kinematics) {
+    // derivative evaluation
+    AD::UpdateKinematicsCustom (
+          model, ad_model,
+          &Q, &Q_dirs,
+          NULL, NULL,
+          NULL, NULL
+          );
+    // nominal evaluation
+    // NOTE: nominal evaluation is already done in AD::UpdateKinematicsCustom
+    // UpdateKinematicsCustom (model, &Q, NULL, NULL);
+  }
 
-    if (body_id >= model.fixed_body_discriminator) {
-        cerr << "fixed bodies not supported yet." << endl;
-        abort();
+  if (body_id >= model.fixed_body_discriminator) {
+    cerr << "fixed bodies not supported yet." << endl;
+    abort();
 
-        unsigned int fbody_id = body_id - model.fixed_body_discriminator;
-        unsigned int parent_id = model.mFixedBodies[fbody_id].mMovableParent;
-
-        // derivative evaluation
-        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-        // Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
-        // Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
-        }
-        // nominal evaluation
-        Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
-        Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
-
-        // derivative evaluation
-        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-        // Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
-        // Vector3d parent_body_position = model.X_base[parent_id].r;
-        }
-        // nominal evaluation
-        Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
-        Vector3d parent_body_position = model.X_base[parent_id].r;
-
-        // derivative evaluation
-        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-            // *(ad_body_to_base_coordinates)[idirs] =
-            // parent_body_position + parent_body_rotation * (fixed_position + fixed_rotation * (point_body_coordinates));
-        }
-        // nominal evaluation
-        return parent_body_position + parent_body_rotation * (fixed_position + fixed_rotation * (point_body_coordinates));
-    }
+    unsigned int fbody_id = body_id - model.fixed_body_discriminator;
+    unsigned int parent_id = model.mFixedBodies[fbody_id].mMovableParent;
 
     // derivative evaluation
     for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-        ad_body_rotation[idirs] = Math::AD::E_from_Matrix(ad_model.X_base[body_id][idirs]).transpose();
-        ad_body_position[idirs] = Math::AD::r_from_Matrix(
-            model.X_base[body_id].toMatrix(), ad_model.X_base[body_id][idirs]
-        );
-
-        // NOTE point_body_coordinates is a constant, no derivative needed!
-        (*ad_body_to_base_coordinates)[idirs] = ad_body_position[idirs]
-             + ad_body_rotation[idirs] * point_body_coordinates;
+      // Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
+      // Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
     }
-
     // nominal evaluation
-    Matrix3d body_rotation = model.X_base[body_id].E.transpose();
-    Vector3d body_position = model.X_base[body_id].r;
-    return body_position + body_rotation * point_body_coordinates;
+    Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
+    Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
+
+    // derivative evaluation
+    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+      // Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
+      // Vector3d parent_body_position = model.X_base[parent_id].r;
+    }
+    // nominal evaluation
+    Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
+    Vector3d parent_body_position = model.X_base[parent_id].r;
+
+    // derivative evaluation
+    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+      // *(ad_body_to_base_coordinates)[idirs] =
+      // parent_body_position + parent_body_rotation * (fixed_position + fixed_rotation * (point_body_coordinates));
+    }
+    // nominal evaluation
+    return parent_body_position + parent_body_rotation * (fixed_position + fixed_rotation * (point_body_coordinates));
+  }
+
+  // derivative evaluation
+  for (unsigned int idir = 0; idir < ndirs; ++idir) {
+    ad_body_rotation[idir] = Math::AD::E_from_Matrix(ad_model.X_base[body_id][idir]).transpose();
+    ad_body_position[idir] = Math::AD::r_from_Matrix(
+          model.X_base[body_id].toMatrix(), ad_model.X_base[body_id][idir]
+          );
+
+    // NOTE point_body_coordinates is a constant, no derivative needed!
+    ad_body_to_base_coordinates.col(idir) = ad_body_position[idir]
+        + ad_body_rotation[idir] * point_body_coordinates;
+  }
+
+  // nominal evaluation
+  Matrix3d body_rotation = model.X_base[body_id].E.transpose();
+  Vector3d body_position = model.X_base[body_id].r;
+  return body_position + body_rotation * point_body_coordinates;
+}
+
+
+RBDL_DLLAPI Vector3d CalcBaseToBodyCoordinates (
+    Model & model,
+    ADModel & ad_model,
+    VectorNd const & q,
+    MatrixNd const & q_dirs,
+    unsigned body_id,
+    Vector3d const & base_point_position,
+    MatrixNd const & base_point_position_dirs,
+    MatrixNd & ad_base_to_body_coordinates,
+    bool update_kinematics
+) {
+  unsigned ndirs = q_dirs.cols();
+  assert(ndirs == base_point_position_dirs.cols());
+  assert(ndirs == ad_base_to_body_coordinates.cols());
+  assert(3     == base_point_position_dirs.rows());
+  assert(3     == ad_base_to_body_coordinates.rows());
+
+  if (update_kinematics) {
+    UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
+  }
+
+  if (body_id >= model.fixed_body_discriminator) {
+    cerr << "Fixed bodies not yet supported!" << endl;
+    abort();
+  }
+
+  vector<Matrix3d> ad_body_rotation (ndirs, Matrix3d::Zero());
+  MatrixNd ad_body_position (3, ndirs);
+
+  // derivative code
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_body_rotation[idir] = Math::AD::E_from_Matrix(
+        ad_model.X_base[body_id][idir]);
+    ad_body_position.col(idir) = Math::AD::r_from_Matrix(
+        model.X_base[body_id].toMatrix(), ad_model.X_base[body_id][idir]);
+  }
+  // nominal code
+  Matrix3d body_rotation = model.X_base[body_id].E;
+  Vector3d body_position = model.X_base[body_id].r;
+
+  // derivative code
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_base_to_body_coordinates.col(idir) =
+        ad_body_rotation[idir] * (base_point_position - body_position)
+        + body_rotation * (base_point_position_dirs.col(idir)
+                           - ad_body_position.col(idir));
+  }
+  // nominal code
+  return body_rotation * (base_point_position - body_position);
 }
 
 
@@ -531,26 +583,131 @@ RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
         const unsigned int body_id,
         vector<Matrix3d> & ad_derivative,
         bool update_kinematics) {
-    unsigned int ndirs = q_dirs.cols();
-    assert(ad_derivative.size() == ndirs);
+  unsigned ndirs = q_dirs.cols();
+  assert(ad_derivative.size() == ndirs);
 
-    // update the Kinematics if necessary
-    if (update_kinematics) {
-        UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
-    }
+  // update the Kinematics if necessary
+  if (update_kinematics) {
+    UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
+  }
 
-    if (body_id >= model.fixed_body_discriminator) {
-        std::cerr << "Fixed bodies not yet supported!" << std::endl;
-        abort();
-    }
+  if (body_id >= model.fixed_body_discriminator) {
+    std::cerr << "Fixed bodies not yet supported!" << std::endl;
+    abort();
+  }
 
-    for (unsigned int idir = 0; idir < ndirs; idir++) {
-        ad_derivative[idir] = ad_model.X_base[body_id][idir].block<3,3>(0,0);
-    }
-    // nominal evaluation
-    return model.X_base[body_id].E;
+  for (unsigned int idir = 0; idir < ndirs; idir++) {
+    ad_derivative[idir] = ad_model.X_base[body_id][idir].block<3,3>(0,0);
+  }
+  // nominal evaluation
+  return model.X_base[body_id].E;
 }
 
+
+RBDL_DLLAPI Vector3d CalcPointVelocity (
+    Model & model,
+    ADModel & ad_model,
+    VectorNd const & q,
+    MatrixNd const & q_dirs,
+    VectorNd const & qdot,
+    MatrixNd const & qdot_dirs,
+    unsigned int body_id,
+    Vector3d const & point_position,
+    MatrixNd & ad_point_velocity,
+    bool update_kinematics) {
+  unsigned ndirs = q_dirs.cols();
+
+  assert(qdot_dirs.cols() == ndirs);
+  assert (model.IsBodyId(body_id));
+  assert (model.q_size == q.rows());
+  assert (model.qdot_size == qdot.rows());
+
+  // Reset the velocity of the root body
+  // derivative code
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_model.v[0][idir].setZero();
+  }
+  // nominal code
+  model.v[0].setZero();
+
+
+  // update the Kinematics with zero acceleration
+  if (update_kinematics) {
+    UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, &qdot, &qdot_dirs,
+                            0, 0);
+  }
+
+  unsigned int reference_body_id = body_id;
+  Vector3d reference_point = point_position;
+
+  MatrixNd ad_base_coords(3, ndirs);
+  MatrixNd ad_reference_point(3, ndirs);
+
+  if (model.IsFixedBodyId(body_id)) {
+    unsigned fbody_id = body_id - model.fixed_body_discriminator;
+    reference_body_id = model.mFixedBodies[fbody_id].mMovableParent;
+    // nominal and derivative code
+    Vector3d base_coords = CalcBodyToBaseCoordinates (model, ad_model, q, q_dirs,
+        body_id, point_position, ad_base_coords, false);
+
+    // nominal and derivative code
+    reference_point = CalcBaseToBodyCoordinates (model, ad_model, q, q_dirs,
+        reference_body_id, base_coords, ad_base_coords, ad_reference_point,
+        false);
+  }
+
+  // derivative and nominal code
+  vector<Matrix3d> ad_bwo(ndirs, Matrix3d::Zero());
+  Matrix3d bwo = CalcBodyWorldOrientation(model, ad_model, q, q_dirs,
+      reference_body_id, ad_bwo, false);
+
+  // derivative code
+  vector<SpatialMatrix> ad_st(ndirs);
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Matrix3d ad_Erx = ad_bwo[idir].transpose() * Matrix3d(
+                              0., -reference_point[2],  reference_point[1],
+              reference_point[2],                  0., -reference_point[0],
+             -reference_point[1],  reference_point[0],                  0.);
+    ad_st[idir].block<3,3>(0, 0) = ad_bwo[idir].transpose();
+    ad_st[idir].block<3,3>(0, 3) = Matrix3dZero;
+    ad_st[idir].block<3,3>(3, 0) = -ad_Erx;
+    ad_st[idir].block<3,3>(3, 3) = ad_bwo[idir].transpose();
+  }
+
+  // nominal code
+  SpatialTransform st(bwo.transpose(), reference_point);
+
+  vector<SpatialVector> ad_point_spatial_velocity(ndirs);
+  // derivative code
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_point_spatial_velocity[idir] = ad_st[idir] * model.v[reference_body_id]
+        + st.apply(ad_model.v[reference_body_id][idir]);
+  }
+  // nominal code
+  SpatialVector point_spatial_velocity =
+      st.apply(model.v[reference_body_id]);
+
+  // derivative code
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_point_velocity.col(idir) = ad_point_spatial_velocity[idir].segment(3, 3);
+  }
+  // nominal code
+  return Vector3d (
+      point_spatial_velocity[3],
+      point_spatial_velocity[4],
+      point_spatial_velocity[5]
+      );
+}
+
+/*
+ *     // derivative evaluation
+    vector<SpatialVector> ad_p_v_i(ndirs);
+    for (int idir = 0; idir < ndirs; idir++) {
+        ad_p_v_i[idir] = ad_p_X_i[idir] * model.v[reference_body_id]
+                        + p_X_i.apply(ad_model.v[reference_body_id][idir]);
+    }
+    // nominal evaluation
+    SpatialVector p_v_i = p_X_i.apply(model.v[reference_body_id]);*/
 
 RBDL_DLLAPI Vector3d CalcPointAcceleration (
         Model &model,
@@ -692,14 +849,14 @@ void CalcPointJacobian (
 
     // NOTE we split the evaluation of the derivatives. Therefore, we first
     //      derive CalcBodyToBaseCoordinates then the spatial transform!
-    std::vector<Vector3d> ad_r (ndirs);
+    MatrixNd ad_r(3, ndirs);
     Vector3d r = AD::CalcBodyToBaseCoordinates (
-        model, ad_model, Q, Q_dirs, body_id, point_position, &ad_r, false
+        model, ad_model, Q, Q_dirs, body_id, point_position, ad_r, false
     );
 
     // derivative evaluation
     std::vector<SpatialMatrix> ad_point_trans (ndirs, SpatialMatrix::Zero());
-    for (unsigned int idirs = 0; idirs < ndirs; idirs++) {
+    for (unsigned int idir = 0; idir < ndirs; idir++) {
         // NOTE point_trans is spatial transform from E, r, i.e,
         //
         //      X = [   E 0], E = I
@@ -714,10 +871,10 @@ void CalcPointJacobian (
         //           = [        0 0]
         //             [-E*rx_dot 0]
         //
-        SpatialMatrix& X = ad_point_trans[idirs];
+        SpatialMatrix& X = ad_point_trans[idir];
         Matrix3d Erx;
         Matrix3d E = Matrix3d::Identity();
-        Erx = -E * Math::AD::cross3d(ad_r[idirs]); // E is constant
+        Erx = -E * Math::AD::cross3d(ad_r.col(idir)); // E is constant
         X.block<3,3>(3,0) = Erx;
     }
     // nominal evaluation

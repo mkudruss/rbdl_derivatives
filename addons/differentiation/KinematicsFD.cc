@@ -47,87 +47,103 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 
 RBDL_DLLAPI
 Vector3d CalcBodyToBaseCoordinates (
-        Model &model,
-        ADModel &ad_model,
-        const VectorNd &Q,
-        const MatrixNd &Q_dirs,
-        unsigned int body_id,
-        const Vector3d &point_body_coordinates,
-        std::vector<Math::Vector3d> *fd_body_to_base_coordinates,
-        bool update_kinematics
+    Model & model,
+    ADModel & ad_model,
+    VectorNd const & q,
+    MatrixNd const & q_dirs,
+    unsigned int body_id,
+    Vector3d const & point_body_coordinates,
+    MatrixNd & fd_body_to_base_coordinates
 ) {
-    Math::Vector3d ret = Vector3d::Zero();
+  Vector3d ret = Vector3d::Zero();
+
+  // update the Kinematics if necessary
+  UpdateKinematicsCustom (model, &q, NULL, NULL);
+
+  if (body_id >= model.fixed_body_discriminator) {
+    unsigned int fbody_id = body_id - model.fixed_body_discriminator;
+    unsigned int parent_id = model.mFixedBodies[fbody_id].mMovableParent;
+
+    Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
+    Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
+
+    Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
+    Vector3d parent_body_position = model.X_base[parent_id].r;
+
+    ret = parent_body_position
+        + parent_body_rotation * (
+          fixed_position + fixed_rotation * (point_body_coordinates)
+          );
+  } else {
+    Matrix3d body_rotation = model.X_base[body_id].E.transpose();
+    Vector3d body_position = model.X_base[body_id].r;
+
+    ret = body_position + body_rotation * point_body_coordinates;
+  }
+
+  unsigned int ndirs =  q_dirs.cols();
+  Vector3d temp = Vector3d::Zero();
+
+  assert (fd_body_to_base_coordinates.cols() == ndirs);
+
+  double const h = 1e-8;
+
+  for (unsigned int idir = 0; idir < ndirs; ++idir) {
+    VectorNd Q_dir  =  q_dirs.col(idir);
 
     // update the Kinematics if necessary
-    if (update_kinematics) {
-        UpdateKinematicsCustom (model, &Q, NULL, NULL);
-    }
+    VectorNd Q_temp = q + h*Q_dir;
+    UpdateKinematicsCustom (model, &Q_temp, NULL, NULL);
 
     if (body_id >= model.fixed_body_discriminator) {
-        unsigned int fbody_id = body_id - model.fixed_body_discriminator;
-        unsigned int parent_id = model.mFixedBodies[fbody_id].mMovableParent;
+      std::cerr << "fixed bodies not supported yet." << std::endl;
+      abort();
+      unsigned int fbody_id = body_id - model.fixed_body_discriminator;
+      unsigned int parent_id = model.mFixedBodies[fbody_id].mMovableParent;
 
-        Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
-        Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
+      Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
+      Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
 
-        Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
-        Vector3d parent_body_position = model.X_base[parent_id].r;
+      Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
+      Vector3d parent_body_position = model.X_base[parent_id].r;
 
-        ret = parent_body_position
-            + parent_body_rotation * (
-                fixed_position + fixed_rotation * (point_body_coordinates)
-        );
+      temp = parent_body_position
+          + parent_body_rotation
+          * (fixed_position + fixed_rotation * (point_body_coordinates));
     } else {
-        Matrix3d body_rotation = model.X_base[body_id].E.transpose();
-        Vector3d body_position = model.X_base[body_id].r;
+      Matrix3d body_rotation = model.X_base[body_id].E.transpose();
+      Vector3d body_position = model.X_base[body_id].r;
 
-        ret = body_position + body_rotation * point_body_coordinates;
+      temp = body_position + body_rotation * point_body_coordinates;
     }
 
-    unsigned int ndirs = Q_dirs.cols();
-    Vector3d temp = Vector3d::Zero();
-    update_kinematics = true;
+    // derivative evaluation
+    fd_body_to_base_coordinates.col(idir) = (temp - ret) / h;
+  }
+  return ret;
+}
 
-    assert (fd_body_to_base_coordinates->size() == ndirs);
+RBDL_DLLAPI Vector3d CalcBaseToBodyCoordinates (
+    Model & model,
+    VectorNd const & q,
+    MatrixNd const & q_dirs,
+    unsigned body_id,
+    Vector3d const & base_point_position,
+    MatrixNd const & base_point_position_dirs,
+    MatrixNd & fd_base_to_body_coordinates
+) {
+  unsigned ndirs = q_dirs.cols();
+  assert(ndirs == base_point_position_dirs.cols());
 
-    double const h = 1e-8;
-
-    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-        VectorNd Q_dir  = Q_dirs.col(idirs);
-
-        // update the Kinematics if necessary
-        if (update_kinematics) {
-            VectorNd Q_temp = Q + h*Q_dir;
-            UpdateKinematicsCustom (model, &Q_temp, NULL, NULL);
-        }
-
-        if (body_id >= model.fixed_body_discriminator) {
-            std::cerr << "fixed bodies not supported yet." << std::endl;
-            abort();
-            unsigned int fbody_id = body_id - model.fixed_body_discriminator;
-            unsigned int parent_id = model.mFixedBodies[fbody_id].mMovableParent;
-
-            Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
-            Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
-
-            Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
-            Vector3d parent_body_position = model.X_base[parent_id].r;
-
-            temp = parent_body_position
-                + parent_body_rotation
-                * (fixed_position + fixed_rotation * (point_body_coordinates));
-        } else {
-            Matrix3d body_rotation = model.X_base[body_id].E.transpose();
-            Vector3d body_position = model.X_base[body_id].r;
-
-            temp = body_position + body_rotation * point_body_coordinates;
-        }
-
-        // derivative evaluation
-        (*fd_body_to_base_coordinates)[idirs] = (temp - ret) / h;
-    }
-
-    return ret;
+  Vector3d b2b = CalcBaseToBodyCoordinates (model, q, body_id,
+      base_point_position);
+  double h = 1e-8;
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Vector3d b2bh = CalcBaseToBodyCoordinates(model, q + h * q_dirs.col(idir),
+        body_id, base_point_position + h * base_point_position_dirs.col(idir));
+    fd_base_to_body_coordinates.col(idir) = (b2bh - b2b) / h;
+  }
+  return b2b;
 }
 
 RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
@@ -137,15 +153,41 @@ RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
         const unsigned int body_id,
         vector<Matrix3d> & fd_derivative
 ) {
+    unsigned ndirs = q_dirs.cols();
+    double h = 1e-8;
     Matrix3d ref = CalcBodyWorldOrientation(model, q, body_id, true);
-	unsigned int const ndirs = q_dirs.cols();
-	double const h = 1e-8;
     for (unsigned idir = 0; idir < ndirs; idir++) {
         VectorNd q_dir  = q_dirs.block(0, idir, model.q_size, 1);
         Matrix3d res_hd = CalcBodyWorldOrientation(model, q + h * q_dir, body_id, true);
         fd_derivative[idir] = (res_hd - ref) / h;
     }
     return ref;
+}
+
+RBDL_DLLAPI Vector3d CalcPointVelocity (
+    Model & model,
+    VectorNd const & q,
+    MatrixNd const & q_dirs,
+    VectorNd const & qdot,
+    MatrixNd const & qdot_dirs,
+    unsigned int body_id,
+    Vector3d const & point_position,
+    MatrixNd & fd_point_velocity
+) {
+  unsigned ndirs = q_dirs.cols();
+  assert(ndirs == qdot_dirs.cols());
+  assert(3     == fd_point_velocity.rows());
+  assert(ndirs == fd_point_velocity.cols());
+  double h = 1e-8;
+  Vector3d ref = CalcPointVelocity(model, q, qdot, body_id, point_position,
+      true);
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    VectorNd qh = q + h * q_dirs.col(idir);
+    VectorNd qdh = qdot + h * qdot_dirs.col(idir);
+    fd_point_velocity.col(idir) = (CalcPointVelocity(model, qh, qdh, body_id,
+        point_position, true) - ref) / h;
+  }
+  return ref;
 }
 
 RBDL_DLLAPI Vector3d CalcPointAcceleration (
