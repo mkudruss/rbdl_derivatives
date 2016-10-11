@@ -35,7 +35,6 @@ struct ADModel {
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > X_base;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > X_J;
 
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > S;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v_J;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > c_J;

@@ -448,7 +448,6 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 				// derivative evaluation
 				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
 					ad_model.a[i][idirs] = ad_model.a[i][idirs]
-							+ ad_model.S[i][idirs] * (*qddot)[q_index]
 							+ model.S[i] * (*qddot_dirs)(q_index, idirs);
 				}
 				// nominal evaluation
@@ -556,7 +555,6 @@ RBDL_DLLAPI void UpdateKinematics (
 			// derivative evaluation
 			for (unsigned int idir = 0; idir < ndirs; ++idir) {
 				ad_model.a[i][idir] = ad_model.a[i][idir]
-						+ ad_model.S[i][idir] * qddot[q_index]
 						+ model.S[i] * qddot_dirs(q_index, idir);
 			}
 			// nominal evaluation
@@ -918,8 +916,7 @@ void CalcPointJacobian (
 				SpatialVector v_dot =
 						RigidBodyDynamics::Math::AD::inverse(
 							model.X_base[j].toMatrix(), ad_model.X_base[j][idirs]
-							) * model.S[j]
-						+ model.X_base[j].inverse().apply(ad_model.S[j][idirs]);
+							) * model.S[j];
 				// NOTE G_i = [e_i1*S_1 ... e_iNB S_NB ]
 
 				// d (point_trans * (X_base)^-1 * S_j) =

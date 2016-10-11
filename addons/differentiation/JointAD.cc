@@ -55,11 +55,10 @@ RBDL_DLLAPI void jcalc (
 
     if (model.mJoints[joint_id].mJointType == JointTypeRevoluteX) {
         // derivative code
-        for (unsigned int idir = 0; idir < ndirs; ++idir) {
+				for (unsigned idir = 0; idir < ndirs; ++idir) {
             ad_model.X_J[joint_id][idir] = Math::AD::Xrotx(
 								q[model.mJoints[joint_id].q_index],
 								q_dirs(model.mJoints[joint_id].q_index, idir));
-            ad_model.S[joint_id][idir]  = SpatialVector::Zero(); // S = [1., 0., 0., 0., 0., 0.]
             ad_model.v_J[joint_id][idir][0] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
             ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
         }
@@ -68,10 +67,10 @@ RBDL_DLLAPI void jcalc (
         model.v_J[joint_id][0] = qdot[model.mJoints[joint_id].q_index];
     } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteY) {
         // derivative code
-        for (unsigned int idir = 0; idir < ndirs; ++idir) {
+				for (unsigned idir = 0; idir < ndirs; ++idir) {
             ad_model.X_J[joint_id][idir] = Math::AD::Xroty(
-                q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir));
-            ad_model.S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 1., 0., 0., 0., 0.]
+								q[model.mJoints[joint_id].q_index],
+								q_dirs(model.mJoints[joint_id].q_index, idir));
             ad_model.v_J[joint_id][idir][1] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
             ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
         }
@@ -82,8 +81,8 @@ RBDL_DLLAPI void jcalc (
         // derivative code
         for (unsigned int idir = 0; idir < ndirs; ++idir) {
             ad_model.X_J[joint_id][idir] = Math::AD::Xrotz(
-                q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir));
-            ad_model.S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 0., 1., 0., 0., 0.]
+								q[model.mJoints[joint_id].q_index],
+								q_dirs(model.mJoints[joint_id].q_index, idir));
             ad_model.v_J[joint_id][idir][2] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
             ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
         }
@@ -97,7 +96,6 @@ RBDL_DLLAPI void jcalc (
                         Vector3d (q(model.mJoints[joint_id].q_index), 0.0, 0.0),
                         Vector3d (q_dirs(model.mJoints[joint_id].q_index, idir), 0.0, 0.0)
                         );
-            ad_model.S[joint_id][idir]  = SpatialVector::Zero(); // S = [0., 0., 0., 1., 0., 0.]
             ad_model.v_J[joint_id][idir][3] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
             ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // v_J = Sdot*qdot
         }
@@ -116,8 +114,7 @@ RBDL_DLLAPI void jcalc (
         for (unsigned int idir = 0; idir < ndirs; ++idir) {
             // NOTE: X_T is a constant model dependent transformation
             ad_model.X_J[joint_id][idir] = jcalc_XJ (model, ad_model, joint_id, idir, q, q_dirs);
-            ad_model.S[joint_id][idir] = SpatialVector::Zero();
-            ad_model.v_J[joint_id][idir][vidx] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
+						ad_model.v_J[joint_id][idir][vidx] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
             ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // v_J = Sdot*qdot
         }
         // nominal code
@@ -204,10 +201,11 @@ RBDL_DLLAPI void jcalc_X_lambda_S (
     if (model.mJoints[joint_id].mJointType == JointTypeRevoluteX) {
         // derivative evaluation
         for (unsigned int idir = 0; idir < ndirs; ++idir) {
-            // NOTE: X_T is a constant model dependent transformation
-            ad_model.X_lambda[joint_id][idir] =
-                    Math::AD::Xrotx (q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir)) * model.X_T[joint_id].toMatrix();
-            ad_model.S[joint_id][idir] = SpatialVector::Zero();  // S = [1., 0., 0., 0., 0., 0.]
+					// NOTE: X_T is a constant model dependent transformation
+					ad_model.X_lambda[joint_id][idir] = Math::AD::Xrotx (
+								q[model.mJoints[joint_id].q_index],
+								q_dirs(model.mJoints[joint_id].q_index, idir))
+							* model.X_T[joint_id].toMatrix();
         }
         // nominal evaluation
         model.X_lambda[joint_id] = Xrotx (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
@@ -215,35 +213,37 @@ RBDL_DLLAPI void jcalc_X_lambda_S (
     } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteY) {
         // derivative evaluation
         for (unsigned int idir = 0; idir < ndirs; ++idir) {
-            // NOTE: X_T is a constant model dependent transformation
-            ad_model.X_lambda[joint_id][idir] =
-                    Math::AD::Xroty (q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir)) * model.X_T[joint_id].toMatrix();
-            ad_model.S[joint_id][idir] = SpatialVector::Zero();  // S = [0., 1., 0., 0., 0., 0.]
+					// NOTE: X_T is a constant model dependent transformation
+					ad_model.X_lambda[joint_id][idir] = Math::AD::Xroty (
+								q[model.mJoints[joint_id].q_index],
+								q_dirs(model.mJoints[joint_id].q_index, idir))
+							* model.X_T[joint_id].toMatrix();
         }
         // nominal evaluation
         model.X_lambda[joint_id] = Xroty (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
         model.S[joint_id] = model.mJoints[joint_id].mJointAxes[0];
     } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteZ) {
-        // derivative evaluation
-        for (unsigned int idir = 0; idir < ndirs; ++idir) {
-            // NOTE: X_T is a constant model dependent transformation
-            ad_model.X_lambda[joint_id][idir] =
-                    Math::AD::Xrotz (q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir)) * model.X_T[joint_id].toMatrix();
-            ad_model.S[joint_id][idir] = SpatialVector::Zero();  // S = [0., 0., 1., 0., 0., 0.]
-        }
-        // nominal evaluation
-        model.X_lambda[joint_id] = Xrotz (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
-        model.S[joint_id] = model.mJoints[joint_id].mJointAxes[0];
+			// derivative evaluation
+			for (unsigned idir = 0; idir < ndirs; ++idir) {
+				// NOTE: X_T is a constant model dependent transformation
+				ad_model.X_lambda[joint_id][idir] = Math::AD::Xrotz (
+							q[model.mJoints[joint_id].q_index],
+							q_dirs(model.mJoints[joint_id].q_index, idir))
+						* model.X_T[joint_id].toMatrix();
+			}
+			// nominal evaluation
+			model.X_lambda[joint_id] = Xrotz (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
+			model.S[joint_id] = model.mJoints[joint_id].mJointAxes[0];
     } else if (model.mJoints[joint_id].mDoFCount == 1) {
-        // derivative evaluation
-        for (unsigned int idir = 0; idir < ndirs; ++idir) {
-            // NOTE: X_T is a constant model dependent transformation
-            ad_model.X_lambda[joint_id][idir] = jcalc_XJ (model, ad_model, joint_id, idir, q, q_dirs) * model.X_T[joint_id].toMatrix();
-            ad_model.S[joint_id][idir] = SpatialVector::Zero();  // S = [0,. 1., 0., 0., 0., 0.]
-        }
-        // nominal evaluation
-        model.X_lambda[joint_id] = jcalc_XJ (model, joint_id, q) * model.X_T[joint_id];
-        model.S[joint_id] = model.mJoints[joint_id].mJointAxes[0];
+			// derivative evaluation
+			for (unsigned int idir = 0; idir < ndirs; ++idir) {
+				// NOTE: X_T is a constant model dependent transformation
+				ad_model.X_lambda[joint_id][idir] = jcalc_XJ (model, ad_model,
+						joint_id, idir, q, q_dirs) * model.X_T[joint_id].toMatrix();
+			}
+			// nominal evaluation
+			model.X_lambda[joint_id] = jcalc_XJ (model, joint_id, q) * model.X_T[joint_id];
+			model.S[joint_id] = model.mJoints[joint_id].mJointAxes[0];
     } else if (model.mJoints[joint_id].mJointType == JointTypeSpherical) {
         std::cerr << "In: " << __func__ << "this joint type is not supported." << std::endl;
         abort();
