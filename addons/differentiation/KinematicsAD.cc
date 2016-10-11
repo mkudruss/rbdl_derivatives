@@ -692,7 +692,7 @@ RBDL_DLLAPI Vector3d CalcPointVelocity (
 	}
 	// nominal code
 	return Vector3d (
-				point_spatial_velocity[3],
+			point_spatial_velocity[3],
 			point_spatial_velocity[4],
 			point_spatial_velocity[5]
 			);

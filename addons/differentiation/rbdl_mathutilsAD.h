@@ -130,10 +130,9 @@ inline SpatialMatrix Xroty (const double &yrot, const double &yrot_dirs) {
 	s = sin (yrot) * yrot_dirs;
 	c = cos (yrot) * yrot_dirs;
 
-	Matrix3d E(
-				-s, 0., -c,
+	Matrix3d E( -s, 0., -c,
 				0., 0., 0.,
-				c, 0., -s
+				 c, 0., -s
 				);
 
 	result.block<3,3>(0,0) = E;

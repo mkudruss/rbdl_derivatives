@@ -42,20 +42,20 @@ void ForwardDynamics (
 	unsigned int i = 0;
 
 	// Reset the velocity of the root body
-    model.v[0].setZero();
+	model.v[0].setZero();
 
 	for (i = 1; i < model.mBodies.size(); i++) {
 		unsigned int lambda = model.lambda[i];
 
-        jcalc(model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
+		jcalc(model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
 
 		if (lambda != 0) {
             // derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				ad_model.X_base[i][j] = ad_model.X_lambda[i][j] * model.X_base[lambda].toMatrix()
-                    + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][j];
+						+ model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][j];
 			}
-            // nominal evaluation
+			// nominal evaluation
 			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 		} else {
             // derivative evaluation
