@@ -474,8 +474,6 @@ RBDL_DLLAPI void UpdateKinematics (
 
 	ad_model.resize_directions(ndirs);
 
-	SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
-
 	// derivative evaluation
 	for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
 		ad_model.a[0][idirs].setZero();
@@ -547,19 +545,19 @@ RBDL_DLLAPI void UpdateKinematics (
 			cerr << "Multi-DoF not supported." << endl;
 			abort();
 			/*
-						// derivative evaluation
-						for (int idirs = 0; idirs < ndirs; ++idirs) {
-						}
-						// nominal evaluation
-						Vector3d omegadot_temp (qddot[q_index], qddot[q_index + 1], qddot[q_index + 2]);
-						model.a[i] = model.a[i] + model.multdof3_S[i] * omegadot_temp;
-						*/
+					// derivative evaluation
+					for (int idirs = 0; idirs < ndirs; ++idirs) {
+					}
+					// nominal evaluation
+					Vector3d omegadot_temp (qddot[q_index], qddot[q_index + 1], qddot[q_index + 2]);
+					model.a[i] = model.a[i] + model.multdof3_S[i] * omegadot_temp;
+			*/
 		} else {
 			// derivative evaluation
-			for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-				ad_model.a[i][idirs] = ad_model.a[i][idirs]
-						+ ad_model.S[i][idirs] * qddot[q_index]
-						+ model.S[i] * qddot_dirs(q_index, idirs);
+			for (unsigned int idir = 0; idir < ndirs; ++idir) {
+				ad_model.a[i][idir] = ad_model.a[i][idir]
+						+ ad_model.S[i][idir] * qddot[q_index]
+						+ model.S[i] * qddot_dirs(q_index, idir);
 			}
 			// nominal evaluation
 			model.a[i] = model.a[i] + model.S[i] * qddot[q_index];
@@ -569,7 +567,8 @@ RBDL_DLLAPI void UpdateKinematics (
 	for (i = 1; i < model.mBodies.size(); i++) {
 		// derivative evaluation
 		for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-			LOG << "ad_a[" << i << "][" << idirs << "] = " << ad_model.a[i][idirs].transpose() << std::endl;
+			LOG << "ad_a[" << i << "][" << idirs << "] = "
+					<< ad_model.a[i][idirs].transpose() << std::endl;
 		}
 		// nominal evaluation
 		LOG << "a[" << i << "] = " << model.a[i].transpose() << std::endl;

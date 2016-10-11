@@ -57,7 +57,8 @@ RBDL_DLLAPI void jcalc (
         // derivative code
         for (unsigned int idir = 0; idir < ndirs; ++idir) {
             ad_model.X_J[joint_id][idir] = Math::AD::Xrotx(
-                q[model.mJoints[joint_id].q_index], q_dirs(model.mJoints[joint_id].q_index, idir));
+								q[model.mJoints[joint_id].q_index],
+								q_dirs(model.mJoints[joint_id].q_index, idir));
             ad_model.S[joint_id][idir]  = SpatialVector::Zero(); // S = [1., 0., 0., 0., 0., 0.]
             ad_model.v_J[joint_id][idir][0] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
             ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
