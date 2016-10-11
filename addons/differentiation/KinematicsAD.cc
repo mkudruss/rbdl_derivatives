@@ -342,8 +342,10 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
         for (i = 1; i < model.mBodies.size(); i++) {
             unsigned int lambda = model.lambda[i];
 
-            VectorNd QDot_zero (VectorNd::Zero (model.q_size));
-            MatrixNd QDot_zero_dirs (MatrixNd::Zero (model.q_size, ndirs));
+            VectorNd QDot_zero (model.q_size);
+            QDot_zero.setZero();
+            MatrixNd QDot_zero_dirs (model.q_size, ndirs);
+            QDot_zero_dirs.setZero();
 
             // Derivative evaluation and nominal evaluation
             jcalc (model, ad_model, i, *q, *q_dirs, QDot_zero, QDot_zero_dirs);

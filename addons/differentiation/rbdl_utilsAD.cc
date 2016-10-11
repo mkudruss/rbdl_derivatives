@@ -168,11 +168,11 @@ RBDL_DLLAPI double CalcPotentialEnergy (
     assert(ad_pote.rows() == 1);
 
     double mass = 0;
-    Vector3d com = Vector3d::Zero(3);
-    MatrixNd ad_com = MatrixNd::Zero(3, ndirs); // 3-x-n matrix
+    Vector3d com;
+    MatrixNd ad_com(3, ndirs);
     CalcCenterOfMass (model, ad_model, q, q_dirs,
-            VectorNd::Zero (model.qdot_size),
-            MatrixNd::Zero (model.qdot_size, q_dirs.cols()),
+            VectorNd::Zero (model.qdot_size), /// TODO: Cache in model? (model.zeroVecNq
+            MatrixNd::Zero (model.qdot_size, q_dirs.cols()), /// TODO: Cache in model? (if q_dirs.size() == nq : use model.zeroMatNqNq)
             mass, com, ad_com, NULL, NULL, NULL, NULL, update_kinematics);
 
     Vector3d g = -Vector3d(model.gravity[0], model.gravity[1], model.gravity[2]);
@@ -204,17 +204,18 @@ RBDL_DLLAPI double CalcKineticEnergy (
                 &q, &q_dirs, &qdot, &qdot_dirs, 0, 0);
     }
 
-    fill_n(ad_kine.data(), ad_kine.rows() * ad_kine.cols(), 0.);
+    ad_kine.setZero();
     double kine = 0.;
     for (size_t i = 1; i < model.mBodies.size(); i++) {
+        SpatialVector Iv = model.I[i] * model.v[i];
         // derivative value
         for (int idir = 0; idir < ndirs; idir++) {
             ad_kine.block<1,1>(0, idir) += .5 * (
-                    ad_model.v[i][idir].transpose() * (model.I[i] * model.v[i])
-                    + model.v[i].transpose() * (model.I[i] * ad_model.v[i][idir]));
+                    ad_model.v[i][idir].transpose() * Iv
+                    + Iv.transpose() * ad_model.v[i][idir]);
         }
         // nominal value
-        kine += 0.5 * model.v[i].transpose() * (model.I[i] * model.v[i]);
+        kine += 0.5 * model.v[i].transpose() * Iv;
     }
     return kine;
 }
