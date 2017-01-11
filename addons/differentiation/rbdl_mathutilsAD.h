@@ -103,9 +103,27 @@ inline SpatialMatrix inverse(SpatialMatrix X, SpatialMatrix X_dirs) {
     return result;
 }
 
+RBDL_DLLAPI
+inline void Xrotx (double const & xrot,
+									 double const & xrot_dirs,
+									 SpatialMatrix & result) {
+	result.setZero();
+
+	double s, c;
+	s = sin (xrot) * xrot_dirs;
+	c = cos (xrot) * xrot_dirs;
+
+	Matrix3d E(0., 0.,  0.,
+				 0., -s,  c,
+				 0., -c, -s);
+
+	result.block<3,3>(0,0) = E;
+	result.block<3,3>(3,3) = E;
+}
 
 RBDL_DLLAPI
-inline SpatialMatrix Xrotx (double const & xrot, double const & xrot_dirs) {
+inline SpatialMatrix Xrotx_deprecated (double const & xrot,
+																			 double const & xrot_dirs) {
 	SpatialMatrix result (SpatialMatrix::Zero(6,6));
 
 	double s, c;
@@ -123,7 +141,27 @@ inline SpatialMatrix Xrotx (double const & xrot, double const & xrot_dirs) {
 }
 
 RBDL_DLLAPI
-inline SpatialMatrix Xroty (const double &yrot, const double &yrot_dirs) {
+inline void Xroty (const double & yrot,
+									 const double & yrot_dirs,
+									 SpatialMatrix & ad_result) {
+	ad_result.setZero();
+
+	double s, c;
+	s = sin (yrot) * yrot_dirs;
+	c = cos (yrot) * yrot_dirs;
+
+	Matrix3d E( -s, 0., -c,
+				0., 0., 0.,
+				 c, 0., -s
+				);
+
+	ad_result.block<3,3>(0,0) = E;
+	ad_result.block<3,3>(3,3) = E;
+}
+
+RBDL_DLLAPI
+inline SpatialMatrix Xroty_deprecated (const double &yrot,
+																			 const double &yrot_dirs) {
 	SpatialMatrix result (SpatialMatrix::Zero(6,6));
 
 	double s, c;
@@ -142,7 +180,26 @@ inline SpatialMatrix Xroty (const double &yrot, const double &yrot_dirs) {
 }
 
 RBDL_DLLAPI
-inline SpatialMatrix Xrotz (const double &zrot, const double &zrot_dirs) {
+inline void Xrotz (const double &zrot,
+									 const double &zrot_dirs,
+									 SpatialMatrix & ad_result) {
+	ad_result.setZero();
+
+	double s, c;
+
+	s = sin (zrot) * zrot_dirs;
+	c = cos (zrot) * zrot_dirs;
+	Matrix3d E(-s,  c, 0.,
+				 -c, -s, 0.,
+				 0., 0., 0.);
+
+	ad_result.block<3,3>(0,0) = E;
+	ad_result.block<3,3>(3,3) = E;
+}
+
+RBDL_DLLAPI
+inline SpatialMatrix Xrotz_deprecated (const double &zrot,
+																			 const double &zrot_dirs) {
 	SpatialMatrix result (SpatialMatrix::Zero(6,6));
 
 	double s, c;

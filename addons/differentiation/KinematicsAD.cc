@@ -117,17 +117,26 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 
 		if (model.mJoints[i].mJointType == JointTypeRevoluteX) {
 			for (unsigned int j = 0; j < ndirs; j++) {
-				ad_model.X_J[i][j] = Math::AD::Xrotx (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+				Math::AD::Xrotx (
+						q[model.mJoints[i].q_index],
+						q_dirs(i-1, j),
+						ad_model.X_J[i][j]);
+//				ad_model.X_J[i][j] = Math::AD::Xrotx (q[model.mJoints[i].q_index], q_dirs(i-1,j));
 			}
 			model.X_J[i] = Xrotx (q[model.mJoints[i].q_index]);
 		} else if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
 			for (unsigned int j = 0; j < ndirs; j++) {
-				ad_model.X_J[i][j] = Math::AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+				Math::AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j), ad_model.X_J[i][j]);
+				// ad_model.X_J[i][j] = Math::AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
 			}
 			model.X_J[i] = Xroty (q[model.mJoints[i].q_index]);
 		} else if (model.mJoints[i].mJointType == JointTypeRevoluteZ) {
 			for (unsigned int j = 0; j < ndirs; j++) {
-				ad_model.X_J[i][j] = Math::AD::Xrotz (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+				Math::AD::Xrotz (
+						q[model.mJoints[i].q_index],
+						q_dirs(i-1,j),
+						ad_model.X_J[i][j]);
+				// ad_model.X_J[i][j] = Math::AD::Xrotz (q[model.mJoints[i].q_index], q_dirs(i-1,j));
 			}
 			model.X_J[i] = Xrotz (q[model.mJoints[i].q_index]);
 		} else if (model.mJoints[i].mDoFCount == 1) {

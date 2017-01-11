@@ -49,22 +49,22 @@ RBDL_DLLAPI void CalcCenterOfMass (
     for (size_t i = 1; i < model.mBodies.size(); i++) {
         // derivative evaluation
         for(int idir = 0; idir < ndirs; idir++) {
-            ad_model.Ic[i][idir] = SpatialMatrix::Zero();
+						ad_model.Ic[i][idir].setZero();
         }
         // nominal evaluation
         model.Ic[i] = model.I[i];
 
         // derivative evaluation
-        /// TODO: Can be shortened, as 2nd summand is currently always zero.
         for(int idir = 0; idir < ndirs; idir++) {
-            ad_model.hc[i][idir] = model.Ic[i].toMatrix() * ad_model.v[i][idir]
-                    + ad_model.Ic[i][idir] * model.v[i];
+						ad_model.hc[i][idir] = model.Ic[i].toMatrix() * ad_model.v[i][idir];
+						// + ad_model.Ic[i][idir] * model.v[i];
+						// summand is skipped because it is always zero
         }
         // nominal evaluation
         model.hc[i] = model.Ic[i].toMatrix() * model.v[i];
     }
 
-    SpatialRigidBodyInertia Itot (0., Vector3d (0., 0., 0.), Matrix3d::Zero(3,3));
+		SpatialRigidBodyInertia Itot (0., Vector3dZero, Matrix3dZero);
     /// TODO: Consider replacing ad_Itot by vector<SpatialMatrix>
     vector<SpatialRigidBodyInertia> ad_Itot(ndirs, Itot);
 
@@ -129,10 +129,16 @@ RBDL_DLLAPI void CalcCenterOfMass (
     if (com_velocity) {
         // derivative evaluation
         for (int idir = 0; idir < ndirs; idir++) {
-            ad_com_velocity->block<3, 1>(0, idir) = Vector3d(ad_htot[idir][3] / mass, ad_htot[idir][4] / mass, ad_htot[idir][5] / mass);
+						ad_com_velocity->block<3, 1>(0, idir) = Vector3d(
+									ad_htot[idir][3] / mass,
+									ad_htot[idir][4] / mass,
+									ad_htot[idir][5] / mass);
         }
         // nominal evaluation
-        *com_velocity = Vector3d (htot[3] / mass, htot[4] / mass, htot[5] / mass);
+				*com_velocity = Vector3d (
+							htot[3] / mass,
+							htot[4] / mass,
+							htot[5] / mass);
     }
 
     if (angular_momentum) {
@@ -147,8 +153,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
         // derivative evaluation
         for (int idir = 0; idir < ndirs; idir++) {
             ad_angular_momentum->block<3,1>(0, idir) = ad_htot[idir].block<3, 1>(0, 0);
-
-                    // Vector3d(ad_htot[idir][0], ad_htot[idir][1], ad_htot[idir][2]);
+						// Vector3d(ad_htot[idir][0], ad_htot[idir][1], ad_htot[idir][2]);
         }
         // nominal evaluation
         angular_momentum->set (htot[0], htot[1], htot[2]);

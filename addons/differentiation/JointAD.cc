@@ -42,13 +42,7 @@ RBDL_DLLAPI void jcalc (
     unsigned int ndirs = q_dirs.cols();
     ad_model.resize_directions(ndirs);
 
-    // check input dimensions
-    if (q_dirs.cols() != qdot_dirs.cols()) {
-        cerr << "directions have different dimensions: ";
-        cerr << "#q_dirs = " << q_dirs.cols() << " != " << qdot_dirs.cols() << " = #qdot_dirs." << std::endl;
-        cerr << "In: " << __func__ << endl;
-        abort();
-    }
+		assert(ndirs == qdot_dirs.cols());
 
     // exception if we calculate it for the root body
     assert (joint_id > 0);
@@ -56,11 +50,17 @@ RBDL_DLLAPI void jcalc (
     if (model.mJoints[joint_id].mJointType == JointTypeRevoluteX) {
         // derivative code
 				for (unsigned idir = 0; idir < ndirs; ++idir) {
-            ad_model.X_J[joint_id][idir] = Math::AD::Xrotx(
-								q[model.mJoints[joint_id].q_index],
-								q_dirs(model.mJoints[joint_id].q_index, idir));
-            ad_model.v_J[joint_id][idir][0] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
-            ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
+					/// TODO: Most entries of q_dirs are ZERO !!!
+					/// => shorten that!
+					Math::AD::Xrotx (
+							q[model.mJoints[joint_id].q_index],
+							q_dirs(model.mJoints[joint_id].q_index, idir),
+							ad_model.X_J[joint_id][idir]);
+//            ad_model.X_J[joint_id][idir] = Math::AD::Xrotx(
+//								q[model.mJoints[joint_id].q_index],
+//								q_dirs(model.mJoints[joint_id].q_index, idir));
+					ad_model.v_J[joint_id][idir][0] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
+					ad_model.c_J[joint_id][idir].setZero(); // c_J = Sdot*qdot
         }
         // nominal code
         model.X_J[joint_id] = Xrotx (q[model.mJoints[joint_id].q_index]);
@@ -68,11 +68,17 @@ RBDL_DLLAPI void jcalc (
     } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteY) {
         // derivative code
 				for (unsigned idir = 0; idir < ndirs; ++idir) {
-            ad_model.X_J[joint_id][idir] = Math::AD::Xroty(
-								q[model.mJoints[joint_id].q_index],
-								q_dirs(model.mJoints[joint_id].q_index, idir));
-            ad_model.v_J[joint_id][idir][1] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
-            ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
+					/// TODO: Most entries of q_dirs are ZERO !!!
+					/// => shorten that!
+					Math::AD::Xroty(
+							q[model.mJoints[joint_id].q_index],
+							q_dirs(model.mJoints[joint_id].q_index, idir),
+							ad_model.X_J[joint_id][idir]);
+//            ad_model.X_J[joint_id][idir] = Math::AD::Xroty(
+//								q[model.mJoints[joint_id].q_index],
+//								q_dirs(model.mJoints[joint_id].q_index, idir));
+					ad_model.v_J[joint_id][idir][1] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
+					ad_model.c_J[joint_id][idir].setZero(); // c_J = Sdot*qdot
         }
         // nominal code
         model.X_J[joint_id] = Xroty (q[model.mJoints[joint_id].q_index]);
@@ -80,11 +86,17 @@ RBDL_DLLAPI void jcalc (
     } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteZ) {
         // derivative code
         for (unsigned int idir = 0; idir < ndirs; ++idir) {
-            ad_model.X_J[joint_id][idir] = Math::AD::Xrotz(
-								q[model.mJoints[joint_id].q_index],
-								q_dirs(model.mJoints[joint_id].q_index, idir));
-            ad_model.v_J[joint_id][idir][2] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
-            ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // c_J = Sdot*qdot
+					/// TODO: Most entries of q_dirs are ZERO !!!
+					/// => shorten that!
+					Math::AD::Xrotz (
+							q[model.mJoints[joint_id].q_index],
+							q_dirs(model.mJoints[joint_id].q_index, idir),
+							ad_model.X_J[joint_id][idir]);
+//            ad_model.X_J[joint_id][idir] = Math::AD::Xrotz(
+//								q[model.mJoints[joint_id].q_index],
+//								q_dirs(model.mJoints[joint_id].q_index, idir));
+					ad_model.v_J[joint_id][idir][2] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
+					ad_model.c_J[joint_id][idir].setZero(); // c_J = Sdot*qdot
         }
         // nominal code
         model.X_J[joint_id] = Xrotz (q[model.mJoints[joint_id].q_index]);
@@ -115,7 +127,7 @@ RBDL_DLLAPI void jcalc (
             // NOTE: X_T is a constant model dependent transformation
             ad_model.X_J[joint_id][idir] = jcalc_XJ (model, ad_model, joint_id, idir, q, q_dirs);
 						ad_model.v_J[joint_id][idir][vidx] = qdot_dirs(model.mJoints[joint_id].q_index, idir); // v_J = S*qdot
-            ad_model.c_J[joint_id][idir] = SpatialVector::Zero(); // v_J = Sdot*qdot
+						ad_model.c_J[joint_id][idir].setZero(); // v_J = Sdot*qdot
         }
         // nominal code
         model.X_J[joint_id] = jcalc_XJ (model, joint_id, q);
@@ -202,10 +214,14 @@ RBDL_DLLAPI void jcalc_X_lambda_S (
         // derivative evaluation
         for (unsigned int idir = 0; idir < ndirs; ++idir) {
 					// NOTE: X_T is a constant model dependent transformation
-					ad_model.X_lambda[joint_id][idir] = Math::AD::Xrotx (
+					ad_model.X_lambda[joint_id][idir] = Math::AD::Xrotx_deprecated (
 								q[model.mJoints[joint_id].q_index],
 								q_dirs(model.mJoints[joint_id].q_index, idir))
 							* model.X_T[joint_id].toMatrix();
+//					ad_model.X_lambda[joint_id][idir] = Math::AD::Xrotx (
+//								q[model.mJoints[joint_id].q_index],
+//								q_dirs(model.mJoints[joint_id].q_index, idir))
+//							* model.X_T[joint_id].toMatrix();
         }
         // nominal evaluation
         model.X_lambda[joint_id] = Xrotx (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
@@ -214,7 +230,7 @@ RBDL_DLLAPI void jcalc_X_lambda_S (
         // derivative evaluation
         for (unsigned int idir = 0; idir < ndirs; ++idir) {
 					// NOTE: X_T is a constant model dependent transformation
-					ad_model.X_lambda[joint_id][idir] = Math::AD::Xroty (
+					ad_model.X_lambda[joint_id][idir] = Math::AD::Xroty_deprecated (
 								q[model.mJoints[joint_id].q_index],
 								q_dirs(model.mJoints[joint_id].q_index, idir))
 							* model.X_T[joint_id].toMatrix();
@@ -226,7 +242,7 @@ RBDL_DLLAPI void jcalc_X_lambda_S (
 			// derivative evaluation
 			for (unsigned idir = 0; idir < ndirs; ++idir) {
 				// NOTE: X_T is a constant model dependent transformation
-				ad_model.X_lambda[joint_id][idir] = Math::AD::Xrotz (
+				ad_model.X_lambda[joint_id][idir] = Math::AD::Xrotz_deprecated (
 							q[model.mJoints[joint_id].q_index],
 							q_dirs(model.mJoints[joint_id].q_index, idir))
 						* model.X_T[joint_id].toMatrix();
