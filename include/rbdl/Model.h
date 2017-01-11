@@ -34,7 +34,7 @@ EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(RigidBodyDynamics::FixedBody);
 */
 namespace RigidBodyDynamics {
 
-/** \page modeling_page Model 
+/** \page modeling_page Model
  *
  * \section model_structure Model Structure
  *
@@ -44,7 +44,7 @@ namespace RigidBodyDynamics {
  * variables that describe the state of the rigid body system. Furthermore
  * it contains variables that are used as temporary variables in the
  * algorithms.
- * 
+ *
  * There are multiple ways of creating \link RigidBodyDynamics::Model Models\endlink for RBDL:
  *
  *   \li Loading models from Lua files using the \ref luamodel_introduction 
@@ -109,7 +109,7 @@ namespace RigidBodyDynamics {
  * storage of temporary values. It is designed for use of the Articulated
  * Rigid Body Algorithm (which is implemented in ForwardDynamics()) and
  * follows the numbering as described in Featherstones book.
- * 
+ *
  * Please note that body 0 is the root body and the moving bodies start at
  * index 1. This numbering scheme is very beneficial in terms of
  * readability of the code as the resulting code is very similar to the
