@@ -99,7 +99,7 @@ void ForwardDynamics (
 		// nominal evaluation
 		model.pA[i] = crossf(model.v[i],model.I[i] * model.v[i]);
 
-		if (f_ext != NULL && (*f_ext)[i] != SpatialVectorZero) {
+    if (f_ext != NULL && (*f_ext)[i] != SpatialVector::Zero()) {
 			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				SpatialMatrix ad_X_base_force(ad_model.X_base[i][j]);
@@ -167,7 +167,7 @@ void ForwardDynamics (
 
 			unsigned int lambda = model.lambda[i];
 			if (lambda != 0) {
-				vector<SpatialMatrix> ad_Ia(ndirs, SpatialMatrix::Zero());
+        vector<SpatialMatrix> ad_Ia(ndirs, SpatialMatrix::Zero());
 				// derivative evaluation
 				for(unsigned int j = 0; j < ndirs; j++) {
 					ad_Ia[j] = ad_model.IA[i][j]
@@ -377,7 +377,7 @@ void InverseDynamics(
 			model.f[i].setZero();
 		}
 
-		if (f_ext != NULL && (*f_ext)[i] != SpatialVectorZero) {
+    if (f_ext != NULL && (*f_ext)[i] != SpatialVector::Zero()) {
 			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
 				SpatialMatrix ad_X_base_force(ad_model.X_base[i][j]);

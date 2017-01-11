@@ -10,13 +10,13 @@ using namespace RigidBodyDynamics::Math;
 using namespace std;
 
 RBDL_DLLAPI
-void CalcContactJacobian(
+void CalcConstraintsJacobian(
         Model &model,
         ADModel &ad_model,
         const Math::VectorNd &Q,
         const Math::MatrixNd &Q_dirs,
-        const ConstraintSet &CS,
-        ADConstraintSet &ad_CS,
+        ConstraintSet & CS,
+        ADConstraintSet & ad_CS,
         Math::MatrixNd &G,
         std::vector<Math::MatrixNd> &G_dirs
 ) {
@@ -26,7 +26,8 @@ void CalcContactJacobian(
     unsigned int ndirs = Q_dirs.cols();
 
     // temporary evaluation at current point
-    CalcContactJacobian(model, Q, CS, G, update_kinematics);
+
+    CalcConstraintsJacobian(model, Q, CS, G, update_kinematics);
     // std::cout << "In function '" << __func__ << "'!" << std::endl;
     // std::cout << "G = \n" << G << std::endl;
     // std::cout << "Leaving function '" << __func__ << "'!" << std::endl;
@@ -38,7 +39,7 @@ void CalcContactJacobian(
         VectorNd Q_dir = Q_dirs.block(0, idir, model.q_size, 1);
 
         // temporary evaluation at perturbed point
-        CalcContactJacobian(
+        CalcConstraintsJacobian(
             model, Q + h * Q_dir, CS, G_temp, update_kinematics
         );
 
@@ -48,7 +49,7 @@ void CalcContactJacobian(
 }
 
 RBDL_DLLAPI
-void ComputeContactImpulsesDirect (
+void ComputeConstraintImpulsesDirect (
     Model & model,
     const VectorNd & q,
     const MatrixNd & q_dirs,
@@ -63,18 +64,18 @@ void ComputeContactImpulsesDirect (
   // assert(ndirs == ad_qdot_plus.cols());
 
   double h = 1e-8;
-  ComputeContactImpulsesDirect(model, q, qdot_minus, CS, qdot_plus);
+  ComputeConstraintImpulsesDirect(model, q, qdot_minus, CS, qdot_plus);
   for (int i = 0; i < ndirs; i++) {
     VectorNd qh  = q + h * q_dirs.col(i);
     VectorNd qdh = qdot_minus + h * qdot_minus_dirs.col(i);
     VectorNd qdot_plush(model.dof_count);
-    ComputeContactImpulsesDirect(model, qh, qdh, CS, qdot_plush);
+    ComputeConstraintImpulsesDirect(model, qh, qdh, CS, qdot_plush);
     fd_qdot_plus.col(i) = (qdot_plush - qdot_plus) / h;
   }
 }
 
 RBDL_DLLAPI
-void ComputeContactImpulsesDirect (
+void ComputeConstraintImpulsesDirect (
     Model & model,
     const VectorNd & q,
     const MatrixNd & q_dirs,
@@ -91,14 +92,24 @@ void ComputeContactImpulsesDirect (
   // assert(ndirs == ad_qdot_plus.cols());
 
   double h = 1e-8;
-  ComputeContactImpulsesDirect(model, q, qdot_minus, CS, qdot_plus);
+
+//  RBDL_DLLAPI
+//  void ComputeConstraintImpulsesDirect (
+//    Model &model,
+//    const Math::VectorNd &Q,
+//    const Math::VectorNd &QDotMinus,
+//    ConstraintSet &CS,
+//    Math::VectorNd &QDotPlus
+//    );
+
+  ComputeConstraintImpulsesDirect(model, q, qdot_minus, CS, qdot_plus);
   VectorNd b_ref = CS.b;
   MatrixNd A_ref = CS.A;
   for (int i = 0; i < ndirs; i++) {
     VectorNd qh  = q + h * q_dirs.col(i);
     VectorNd qdh = qdot_minus + h * qdot_minus_dirs.col(i);
     VectorNd qdot_plush(model.dof_count);
-    ComputeContactImpulsesDirect(model, qh, qdh, CS, qdot_plush);
+    ComputeConstraintImpulsesDirect(model, qh, qdh, CS, qdot_plush);
     fd_qdot_plus.col(i) = (qdot_plush - qdot_plus) / h;
     fd_b.col(i) = (CS.b - b_ref) / h;
     fd_A[i] = (CS.A - A_ref) / h;
@@ -129,13 +140,14 @@ void SolveContactSystemDirect (
   VectorNd qddot(H.rows());
   VectorNd lambda(H.rows());
 
-  RigidBodyDynamics::SolveContactSystemDirect (H, G, c, gamma, qddot, lambda,
+  RigidBodyDynamics::SolveConstrainedSystemDirect(
+      H, G, c, gamma, qddot, lambda,
       A, b, x, linear_solver);
   for (int i = 0; i < ndirs; i++) {
     MatrixNd Ah(A);
     VectorNd bh(b);
     VectorNd xh(x);
-    RigidBodyDynamics::SolveContactSystemDirect (H + h * H_dirs[i],
+    RigidBodyDynamics::SolveConstrainedSystemDirect (H + h * H_dirs[i],
         G + h * G_dirs[i], c + h * c_dirs.col(i), gamma + h * gamma_dirs.col(i),
         qddot, lambda, Ah, bh, xh, linear_solver);
     A_dirs[i] = (Ah - A) / h;

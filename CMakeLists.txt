@@ -61,6 +61,7 @@ OPTION (RBDL_STORE_VERSION "Enable storing of version information in the library
 OPTION (RBDL_BUILD_ADDON_URDFREADER "Build the (experimental) urdf reader" OFF)
 OPTION (RBDL_BUILD_ADDON_BENCHMARK "Build the benchmarking tool" OFF)
 OPTION (RBDL_BUILD_ADDON_LUAMODEL "Build the lua model reader" OFF)
+OPTION (RBDL_BUILD_ADDON_DIFFERENTIATION "Build the automatic differentiation addon" OFF)
 OPTION (RBDL_BUILD_PYTHON_WRAPPER "Build experimental python wrapper" OFF)
 OPTION (RBDL_BUILD_ADDON_GEOMETRY "Build the geometry library" ON)
 OPTION (RBDL_BUILD_ADDON_MUSCLE "Build the muscle library" ON)

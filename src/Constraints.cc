@@ -251,7 +251,7 @@ void ConstraintSet::clear() {
 
 RBDL_DLLAPI
 void SolveConstrainedSystemDirect (
-  Math::MatrixNd &H, 
+  const Math::MatrixNd &H,
   const Math::MatrixNd &G, 
   const Math::VectorNd &c, 
   const Math::VectorNd &gamma, 

@@ -4,7 +4,7 @@
 #include <rbdl/rbdl_math.h>
 #include <rbdl/rbdl_mathutils.h>
 
-#include "rbdl/Contacts.h"
+#include "rbdl/Constraints.h"
 
 #include "ModelAD.h"
 #include "KinematicsAD.h"

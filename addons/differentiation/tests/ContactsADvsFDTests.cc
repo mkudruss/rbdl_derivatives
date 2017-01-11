@@ -47,7 +47,7 @@ void CalcContactJacobianTemplate(T & obj) {
     vector<MatrixNd> derivative_fd (ndirs, G_fd);
 
     // call nominal version
-    RigidBodyDynamics::CalcContactJacobian(model, q, cs, G, update_kinematics);
+    RigidBodyDynamics::CalcConstraintsJacobian(model, q, cs, G, update_kinematics);
 
     // call AD version
     RigidBodyDynamics::AD::CalcContactJacobian(
@@ -59,7 +59,7 @@ void CalcContactJacobianTemplate(T & obj) {
     );
 
     // call FD version
-    RigidBodyDynamics::FD::CalcContactJacobian(
+    RigidBodyDynamics::FD::CalcConstraintsJacobian(
         model, ad_model,
         q, q_dirs,
         cs, ad_cs,
@@ -90,8 +90,8 @@ void CalcContactJacobianTemplate(T & obj) {
 TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobian) {
 
     // add contacts and bind them to constraint set
-    constraint_set.AddConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
-    constraint_set.AddConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+    constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+    constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
     constraint_set.Bind (*model);
 
     ad_constraint_set = ADConstraintSet(constraint_set, model->dof_count);
@@ -193,7 +193,7 @@ TEST (SolveContactSystemDirectTest) {
     VectorNd lambda(nm);
     A.setZero();
     b.setZero();
-    SolveContactSystemDirect(H, G, c, gamma, qddot, lambda, A, b, x, ls);
+    SolveConstrainedSystemDirect(H, G, c, gamma, qddot, lambda, A, b, x, ls);
 
     MatrixNd ad_A(nm + nc, nm + nc);
     VectorNd ad_b(nm + nc);
@@ -270,11 +270,11 @@ void ComputeContactImpulsesDirectTestTemplate(T & obj,
     VectorNd fd_qd_plus(nq);
     MatrixNd fd_qd_plus_dirs(nq, ndirs);
 
-    ComputeContactImpulsesDirect(model, q, qd, cs, qd_plus);
+    ComputeConstraintImpulsesDirect (model, q, qd, cs, qd_plus);
     AD::ComputeContactImpulsesDirect(model, ad_model, q, q_dirs, qd, qd_dirs,
                                      cs, ad_cs, ad_qd_plus, ad_qd_plus_dirs);
-    FD::ComputeContactImpulsesDirect(model, q, q_dirs, qd, qd_dirs, cs,
-                                     fd_qd_plus, fd_qd_plus_dirs);
+    FD::ComputeConstraintImpulsesDirect (model, q, q_dirs, qd, qd_dirs, cs,
+                                         fd_qd_plus, fd_qd_plus_dirs);
 
     CHECK_ARRAY_CLOSE(qd_plus.data(), ad_qd_plus.data(), nq, TEST_PREC);
     CHECK_ARRAY_CLOSE(qd_plus.data(), fd_qd_plus.data(), nq, TEST_PREC);
@@ -284,10 +284,10 @@ void ComputeContactImpulsesDirectTestTemplate(T & obj,
 }
 
 TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFComputeContactImpulsesDirectTest) {
-    constraint_set.AddConstraint (contact_body_id, Vector3d (1., 0., 0.),
-                                  contact_normal);
-    constraint_set.AddConstraint (contact_body_id, Vector3d (0., 1., 0.),
-                                  contact_normal);
+    constraint_set.AddContactConstraint (
+          contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+    constraint_set.AddContactConstraint (
+          contact_body_id, Vector3d (0., 1., 0.), contact_normal);
     constraint_set.Bind (*model);
     ad_constraint_set = ADConstraintSet(constraint_set, model->dof_count);
     ComputeContactImpulsesDirectTestTemplate(*this);

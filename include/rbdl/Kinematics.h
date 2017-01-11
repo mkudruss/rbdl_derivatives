@@ -262,26 +262,54 @@ RBDL_DLLAPI
  * UpdateKinematics() or setting the last parameter update_kinematics to
  * true (default).
  *
- * \note During the execution of ForwardDynamics() the acceleration
- * is only applied on the root body and propagated form there. Therefore
- * in the internal state the accelerations of the bodies only represent
- * the relative accelerations without any gravitational effects.
+ * \warning  If this function is called after ForwardDynamics() without
+ * an update of the kinematic state one has to add the gravity
+ * acceleration has to be added to the result.
+ */
+RBDL_DLLAPI
+  Math::Vector3d CalcPointAcceleration (
+      Model &model,
+      const Math::VectorNd &Q,
+      const Math::VectorNd &QDot,
+      const Math::VectorNd &QDDot,
+      unsigned int body_id,
+      const Math::Vector3d &point_position,
+      bool update_kinematics = true
+      );
+
+/** \brief Computes linear and angular acceleration of a point on a body 
+ *
+ * \param model   rigid body model
+ * \param Q       state vector of the internal joints
+ * \param QDot    velocity vector of the internal joints
+ * \param QDDot    velocity vector of the internal joints
+ * \param body_id the id of the body
+ * \param point_position the position of the point in body-local data
+ * \param update_kinematics whether UpdateKinematics() should be called or not (default: true)
+ *
+ * \returns A 6-D vector where the first three elements are the angular
+ * acceleration and the last three elements the linear accelerations of
+ * the point.
+ *
+ * The kinematic state of the model has to be updated before valid
+ * values can be obtained. This can either be done by calling
+ * UpdateKinematics() or setting the last parameter update_kinematics to
+ * true (default).
  *
  * \warning  If this function is called after ForwardDynamics() without
  * an update of the kinematic state one has to add the gravity
  * acceleration has to be added to the result.
  */
-
 RBDL_DLLAPI
-Math::Vector3d CalcPointAcceleration (
-		Model &model,
-		const Math::VectorNd &Q,
-		const Math::VectorNd &QDot,
-		const Math::VectorNd &QDDot,
-		unsigned int body_id,
-		const Math::Vector3d &point_position,
-		bool update_kinematics = true
-	);
+  Math::SpatialVector CalcPointAcceleration6D (
+      Model &model,
+      const Math::VectorNd &Q,
+      const Math::VectorNd &QDot,
+      const Math::VectorNd &QDDot,
+      unsigned int body_id,
+      const Math::Vector3d &point_position,
+      bool update_kinematics = true
+      );
 
 /** \brief Computes the inverse kinematics iteratively using a damped Levenberg-Marquardt method (also known as Damped Least Squares method)
  *
