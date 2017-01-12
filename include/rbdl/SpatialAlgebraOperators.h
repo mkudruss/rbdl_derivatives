@@ -327,6 +327,27 @@ inline std::ostream& operator<<(std::ostream& output, const SpatialTransform &X)
   return output;
 }
 
+
+//inline void operator *= (SpatialMatrix & l, SpatialTransform const & r) {
+//  // modify l
+
+
+//  SpatialTransform (E * XT.E, XT.r + XT.E.transpose() * r);
+
+//  l.block<3,3>(0, 0) *= r.E;
+//  l.block<3,3>(3, 0)
+//  l.block<3,3>(0, 3)
+//  l.block<3,3>(3, 3) *= r.E;
+
+
+//}
+
+//inline SpatialMatrix operator * (SpatialMatrix const & l, SpatialTransform const & r) {
+//  SpatialMatrix temp = l;
+//  temp *= r;
+//  return temp;
+//}
+
 inline SpatialTransform Xrot (double angle_rad, const Vector3d &axis) {
   double s, c;
   s = sin(angle_rad);

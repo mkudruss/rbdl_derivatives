@@ -220,14 +220,19 @@ RBDL_DLLAPI
 inline SpatialMatrix Xtrans (const Vector3d &trans, const Vector3d &trans_dirs) {
     SpatialMatrix result (SpatialMatrix::Zero(6,6));
 
-    result(3,1) =  trans_dirs[2];
-    result(3,2) = -trans_dirs[1];
+    result.block<3,3>(3,0) =
+        -Matrix3d( 0.0,           -trans_dirs[2],  trans_dirs[1],
+                   trans_dirs[2],  0.0,           -trans_dirs[0],
+                  -trans_dirs[1],  trans_dirs[0],  0.0);
 
-    result(4,0) = -trans_dirs[2];
-    result(4,2) =  trans_dirs[0];
+//    result(3,1) =  trans_dirs[2];
+//    result(3,2) = -trans_dirs[1];
 
-    result(5,0) =  trans_dirs[1];
-    result(5,1) = -trans_dirs[0];
+//    result(4,0) = -trans_dirs[2];
+//    result(4,2) =  trans_dirs[0];
+
+//    result(5,0) =  trans_dirs[1];
+//    result(5,1) = -trans_dirs[0];
 
     return result;
 }

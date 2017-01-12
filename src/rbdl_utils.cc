@@ -150,6 +150,10 @@ RBDL_DLLAPI std::string GetNamedBodyOriginsOverview (Model &model) {
   return result.str();
 }
 
+#warning "Change code"
+RBDL_DLLAPI int fd_index = 0;
+RBDL_DLLAPI vector<SpatialVector> fd_htot_h (100);
+
 RBDL_DLLAPI void CalcCenterOfMass (
     Model &model, 
     const Math::VectorNd &q, 
@@ -182,6 +186,8 @@ RBDL_DLLAPI void CalcCenterOfMass (
     }
   }
 
+  fd_htot_h[fd_index] = htot;
+
   mass = Itot.m;
   com = Itot.h / mass;
   LOG << "mass = " << mass << " com = " << com.transpose() << " htot = " << htot.transpose() << std::endl;
@@ -191,6 +197,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
 
   if (angular_momentum) {
     htot = Xtrans (com).applyAdjoint (htot);
+
     angular_momentum->set (htot[0], htot[1], htot[2]);
   }
 }

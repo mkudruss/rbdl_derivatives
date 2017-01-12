@@ -7,11 +7,16 @@
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
 namespace Utils {
+
+extern RBDL_DLLAPI int fd_index ;
+extern RBDL_DLLAPI std::vector<Math::SpatialVector> fd_htot_h;
 // -----------------------------------------------------------------------------
 namespace FD {
 // -----------------------------------------------------------------------------
 
 using namespace Math;
+
+
 
 RBDL_DLLAPI void CalcCenterOfMass (
         Model & model,
@@ -38,6 +43,8 @@ RBDL_DLLAPI void CalcCenterOfMass (
     double h = sqrt(1e-16);
     size_t ndirs = q_dirs.cols();
 
+    fd_index = 0;
+
     RigidBodyDynamics::Utils::CalcCenterOfMass(model, q, qdot, mass, com,
             com_velocity, angular_momentum, true);
 
@@ -45,6 +52,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
     VectorNd qdot_dir(qdot);
 
     for (size_t i = 0; i < ndirs; i++ ) {
+        fd_index++;
         q_dir = q_dirs.block(0, i, model.q_size, 1);
         qdot_dir = qdot_dirs.block(0, i, model.qdot_size, 1);
 
@@ -79,6 +87,15 @@ RBDL_DLLAPI void CalcCenterOfMass (
             delete hd_angular_momentum;
         }
     }
+
+    std::cout << "FD HTOT = " << std::endl;
+    std::vector<SpatialVector> fd_htot(ndirs);
+    for (int i =0; i < ndirs; i++) {
+      fd_htot[i] = (fd_htot_h[i + 1] - fd_htot_h[i]) / h;
+      std::cout << fd_htot[i].transpose() << std::endl;
+    }
+
+
 }
 
 RBDL_DLLAPI double CalcPotentialEnergy (
