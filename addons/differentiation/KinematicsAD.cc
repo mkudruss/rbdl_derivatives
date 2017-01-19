@@ -899,86 +899,84 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
 
 RBDL_DLLAPI
 void CalcPointJacobian (
-		Model &model,
-		ADModel &ad_model,
-		Math::VectorNd const &Q,
-		Math::MatrixNd const &Q_dirs,
-		unsigned int body_id,
-		Math::Vector3d const &point_position,
-		Math::MatrixNd &G,
-		std::vector<Math::MatrixNd> &G_dirs,
-		bool update_kinematics
-		) {
-	LOG << "-------- " << __func__ << " --------" << std::endl;
+    Model &model,
+    ADModel &ad_model,
+    Math::VectorNd const &Q,
+    Math::MatrixNd const &Q_dirs,
+    unsigned int body_id,
+    Math::Vector3d const &point_position,
+    Math::MatrixNd &G,
+    std::vector<Math::MatrixNd> &G_dirs,
+    bool update_kinematics
+    ) {
+  LOG << "-------- " << __func__ << " --------" << std::endl;
 
-	unsigned int ndirs = Q_dirs.cols();
-	ad_model.resize_directions(ndirs);
+  unsigned int ndirs = Q_dirs.cols();
+  ad_model.resize_directions(ndirs);
 
-	// update the Kinematics if necessary
-	if (update_kinematics) {
-		// derivative evaluation
-		UpdateKinematicsCustom (
-					model, ad_model,
-					&Q, &Q_dirs,
-					NULL, NULL,
-					NULL, NULL
-					);
-		// nominal evaluation
-		// NOTE kinematics are already updated in the AD version
-		// UpdateKinematicsCustom (model, &Q, NULL, NULL);
-	}
+  // update the Kinematics if necessary
+  if (update_kinematics) {
+    // derivative evaluation
+    UpdateKinematicsCustom (
+          model, ad_model,
+          &Q, &Q_dirs,
+          NULL, NULL,
+          NULL, NULL
+          );
+    // NOTE nominal evaluatioN: nominal kinematics are already updated in the
+    // AD version of UpdateKinematicsCustom
+  }
 
-	// NOTE we split the evaluation of the derivatives. Therefore, we first
-	//      derive CalcBodyToBaseCoordinates then the spatial transform!
-	MatrixNd ad_r(3, ndirs);
-	Vector3d r = AD::CalcBodyToBaseCoordinates (
-				model, ad_model, Q, Q_dirs, body_id, point_position, ad_r, false
-				);
+  // NOTE we split the evaluation of the derivatives. Therefore, we first
+  //      derive CalcBodyToBaseCoordinates then the spatial transform!
+  MatrixNd ad_r(3, ndirs);
+  Vector3d r = AD::CalcBodyToBaseCoordinates (
+        model, ad_model, Q, Q_dirs, body_id, point_position, ad_r, false
+        );
 
-	// derivative evaluation
+  // derivative evaluation
   vector<SpatialTransform> ad_point_trans (ndirs, SpatialTransform::Zero());
   for (unsigned idir = 0; idir < ndirs; idir++) {
     ad_point_trans[idir].r = ad_r.col(idir);
   }
-	// nominal evaluation
-	// NOTE vector r is already evaluated in derivative evaluation
-	SpatialTransform point_trans = SpatialTransform (Matrix3d::Identity(), r);
+  // nominal evaluation
+  // NOTE vector r is already evaluated in derivative evaluation
+  SpatialTransform point_trans = SpatialTransform (Matrix3d::Identity(), r);
 
-	// derivative evaluation
-	for (unsigned int idirs = 0; idirs < ndirs; idirs++) {
-		assert (G_dirs[idirs].rows() == 3);
-		assert (G_dirs[idirs].cols() == model.qdot_size );
-	}
-	// nominal evaluation
-	assert (G.rows() == 3 && G.cols() == model.qdot_size );
+  // derivative evaluation
+  for (unsigned int idirs = 0; idirs < ndirs; idirs++) {
+    assert (G_dirs[idirs].rows() == 3);
+    assert (G_dirs[idirs].cols() == model.qdot_size );
+  }
+  // nominal evaluation
+  assert (G.rows() == 3 && G.cols() == model.qdot_size );
 
-	unsigned int reference_body_id = body_id;
+  unsigned int reference_body_id = body_id;
 
-	if (model.IsFixedBodyId(body_id)) {
-		unsigned int fbody_id = body_id - model.fixed_body_discriminator;
-		reference_body_id = model.mFixedBodies[fbody_id].mMovableParent;
-	}
+  if (model.IsFixedBodyId(body_id)) {
+    unsigned int fbody_id = body_id - model.fixed_body_discriminator;
+    reference_body_id = model.mFixedBodies[fbody_id].mMovableParent;
+  }
 
-	unsigned int j = reference_body_id;
+  unsigned int j = reference_body_id;
 
-	// e[j] is set to 1 if joint j contributes to the Jacobian that we are
-	// computing. For all other joints the column will be zero.
-	while (j != 0) {
-		unsigned int q_index = model.mJoints[j].q_index;
+  // e[j] is set to 1 if joint j contributes to the Jacobian that we are
+  // computing. For all other joints the column will be zero.
+  while (j != 0) {
+    unsigned int q_index = model.mJoints[j].q_index;
 
-		if (model.mJoints[j].mDoFCount == 3) {
-			std::cout << "3DoF joints are not yet supported!" << std::endl;
-			std::cout << "bailing out ..." << std::endl;
-			abort();
-			G.block(0, q_index, 3, 3) = ((point_trans * model.X_base[j].inverse()).toMatrix() * model.multdof3_S[j]).block(3,0,3,3);
-		} else {
-
+    if (model.mJoints[j].mDoFCount == 3) {
+      std::cout << "3DoF joints are not yet supported!" << std::endl;
+      std::cout << "bailing out ..." << std::endl;
+      abort();
+      G.block(0, q_index, 3, 3) = ((point_trans * model.X_base[j].inverse()).toMatrix() * model.multdof3_S[j]).block(3,0,3,3);
+    } else {
       SpatialTransform inv_X_base_j;
       vector<SpatialTransform> ad_inv_X_base_j(ndirs);
 
-      AD::inverse(ndirs,
-                  model.X_base[j], ad_model.X_base[j],
-                  inv_X_base_j, ad_inv_X_base_j);
+      inverse(ndirs,
+              model.X_base[j], ad_model.X_base[j],
+              inv_X_base_j, ad_inv_X_base_j);
 
       SpatialVector v;
       vector<SpatialVector> ad_v(ndirs);
@@ -996,45 +994,13 @@ void CalcPointJacobian (
                 ptv, ad_ptv);
 
       for (unsigned idir = 0; idir < ndirs; idir++) {
-        MatrixNd & G_dir = G_dirs[idir];
-        G_dir.block<3,1>(0, q_index) = ad_ptv[idir].segment<3>(3);
+        G_dirs[idir].block<3,1>(0, q_index) = ad_ptv[idir].segment<3>(3);
       }
       G.block<3,1>(0, q_index) = point_trans.apply(v).segment<3>(3);
 
-
-      /* old
-			// nominal evaluation
-			SpatialVector v = model.X_base[j].inverse().apply(model.S[j]);
-			// derivative evaluation
-      for (unsigned int idir = 0; idir < ndirs; idir++) {
-				// v_dot = d (X_base)^-1 * S_j + (X_base)^-1 * d S_j
-				SpatialVector v_dot =
-            AD::inverse(
-              model.X_base[j].toMatrix(), ad_model.X_base[j][idir].toMatrix()
-							) * model.S[j];
-				// NOTE G_i = [e_i1*S_1 ... e_iNB S_NB ]
-
-				// d (point_trans * (X_base)^-1 * S_j) =
-				// d point_trans * ((X_base)^-1 * S_j)
-				//   + point_trans * d ((X_base)^-1 * S_j) =
-				// d point_trans * ((X_base)^-1 * S_j)
-				//   + point_trans * (
-				//     d (X_base)^-1 * S_j + (X_base)^-1 * d S_j
-				//   )
-        MatrixNd& G_dir = G_dirs[idir];
-				G_dir.block(0, q_index, 3, 1) = (
-              ad_point_trans[idir]*v + point_trans.apply(v_dot)
-							).block(3,0,3,1);
-			}
-			// nominal evaluation
-			// NOTE v = model.X_base[j].inverse().apply(model.S[j]) is computed before
-			G.block(0, q_index, 3, 1) = point_trans.apply(v).block(3,0,3,1);
-      */
-
-		}
-
-		j = model.lambda[j];
-	}
+    }
+    j = model.lambda[j];
+  }
 }
 
 // -----------------------------------------------------------------------------

@@ -17,6 +17,7 @@ SET ( TESTS_SRCS
     KinematicsADvsFDTests.cc
     MinimalADvsFDTests.cc
     ContactsADvsFDTests.cc
+    ModelCheckADvsFD.cc
 )
 
 INCLUDE_DIRECTORIES ( ../src/ )

@@ -18,6 +18,7 @@
 #include "rbdl/Body.h"
 #include "rbdl/Dynamics.h"
 #include "rbdl/Kinematics.h"
+#include "ModelAD.h"
 
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
@@ -28,6 +29,7 @@ namespace FD {
 RBDL_DLLAPI
 void ForwardDynamics(
     Model& model,
+    ADModel & fd_model,
     const Math::VectorNd& q,
     const Math::MatrixNd& q_dirs,
     const Math::VectorNd& qdot,

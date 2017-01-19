@@ -6,12 +6,13 @@
 #include "rbdl/Dynamics.h"
 #include "rbdl/rbdl_mathutils.h"
 
-
 #include "Fixtures.h"
 #include "ModelAD.h"
 #include "DynamicsAD.h"
 #include "DynamicsFD.h"
 #include "rbdl_mathutilsAD.h"
+
+#include "ModelCheckADvsFD.h"
 
 using namespace std;
 using namespace RigidBodyDynamics;
@@ -23,36 +24,38 @@ const double TEST_PREC = 1.0e-8;
 
 template <typename T>
 void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials,
-        double CHECK_ARRAY_PREC = 1e-6) {
-    Model & model = obj.model;
-    ADModel & ad_model = obj.ad_model;
+        double CHECK_ARRAY_PREC = 1e-7) {
+    Model ad_model = obj.model;
+    Model fd_model = obj.model;
+    ADModel & ad_d_model = obj.ad_model;
+    ADModel & fd_d_model = obj.ad_model;
     //srand((unsigned int) time(0));
     srand(666);
 
     for(unsigned int trial = 0; trial < numTrials; trial++) {
-        VectorNd q = VectorNd::Random(model.q_size);
-        VectorNd qdot = VectorNd::Random(model.q_size);
-        VectorNd tau = VectorNd::Random(model.q_size);
+        VectorNd q = VectorNd::Random(obj.model.q_size);
+        VectorNd qdot = VectorNd::Random(obj.model.q_size);
+        VectorNd tau = VectorNd::Random(obj.model.q_size);
 
-        unsigned int ndirs = 3 * model.q_size;
+        unsigned int ndirs = 3 * obj.model.q_size;
         MatrixNd x = MatrixNd::Identity(ndirs, ndirs);
-        MatrixNd q_dirs = x.block(0, 0, model.q_size, ndirs);
-        MatrixNd qdot_dirs = x.block(model.q_size, 0, model.q_size, ndirs);
-        MatrixNd tau_dirs = x.block(2*model.q_size, 0, model.q_size, ndirs);
+        MatrixNd q_dirs = x.block(0, 0, obj.model.q_size, ndirs);
+        MatrixNd qdot_dirs = x.block(obj.model.q_size, 0, obj.model.q_size, ndirs);
+        MatrixNd tau_dirs = x.block(2 * obj.model.q_size, 0, obj.model.q_size, ndirs);
 
-        std::vector<SpatialVector> f_ext (
-            model.mBodies.size(),
+        vector<SpatialVector> f_ext (
+            obj.model.mBodies.size(),
             SpatialVector::Zero()
         );
 
-        VectorNd ad_qddot (VectorNd::Zero(model.q_size));
-        VectorNd fd_qddot (VectorNd::Zero(model.q_size));
-        MatrixNd ad_dqddot  = MatrixNd::Zero(model.qdot_size, ndirs);
-        MatrixNd fd_dqddot  = MatrixNd::Zero(model.qdot_size, ndirs);
+        VectorNd ad_qddot (VectorNd::Zero(obj.model.q_size));
+        VectorNd fd_qddot (VectorNd::Zero(obj.model.q_size));
+        MatrixNd ad_dqddot  = MatrixNd::Zero(obj.model.qdot_size, ndirs);
+        MatrixNd fd_dqddot  = MatrixNd::Zero(obj.model.qdot_size, ndirs);
 
-        RigidBodyDynamics::AD::ForwardDynamics(
-            model,
+        AD::ForwardDynamics(
             ad_model,
+            ad_d_model,
             q, q_dirs,
             qdot, qdot_dirs,
             tau, tau_dirs,
@@ -60,8 +63,9 @@ void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials,
             &f_ext
         );
 
-        RigidBodyDynamics::FD::ForwardDynamics(
-            model,
+        FD::ForwardDynamics(
+            fd_model,
+            fd_d_model,
             q, q_dirs,
             qdot, qdot_dirs,
             tau, tau_dirs,
@@ -69,7 +73,12 @@ void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials,
             &f_ext
         );
 
-        CHECK_ARRAY_CLOSE(ad_qddot.data(), fd_qddot.data(), model.q_size,
+        checkModelsADvsFD(
+              ndirs,
+              ad_model, ad_d_model,
+              fd_model, fd_d_model);
+
+        CHECK_ARRAY_CLOSE(ad_qddot.data(), fd_qddot.data(), obj.model.q_size,
                 CHECK_ARRAY_PREC);
 
         CHECK_ARRAY_CLOSE(fd_dqddot.data(), ad_dqddot.data(),
@@ -77,22 +86,21 @@ void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials,
     }
 }
 
-
 //TEST_FIXTURE(CartPendulum, CartPendulumForwardDynamicsADTest){
-//    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
+//  ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
 //}
 
 //TEST_FIXTURE(Arm2DofX, Arm2DofXForwardDynamicsADTest){
-//    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
+//  ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
 //}
 
 //TEST_FIXTURE(Arm2DofZ, Arm2DofZForwardDynamicsADTest){
-//    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
+//  ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
 //}
 
-//TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpForwardDynamicsADTest){
-//    ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
-//}
+TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpForwardDynamicsADTest){
+  ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
+}
 
 //TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpForwardDynamicsADTest){
 //    ForwardDynamicsADTestTemplate(*this, 10, 1e-5);

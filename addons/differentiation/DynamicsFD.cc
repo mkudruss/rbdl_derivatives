@@ -6,6 +6,7 @@
  */
 
 #include "DynamicsFD.h"
+#include "FdModelEntry.h"
 
 using namespace RigidBodyDynamics::Math;
 
@@ -19,7 +20,8 @@ namespace FD {
 
 RBDL_DLLAPI
 void ForwardDynamics(
-	Model& model,
+  Model & model,
+  ADModel & fd_model,
 	const VectorNd& q,
 	const MatrixNd& q_dirs,
 	const VectorNd& qdot,
@@ -45,13 +47,15 @@ void ForwardDynamics(
 	VectorNd qdot_dir(qdot);
 	VectorNd tau_dir(tau);
 
-	for(unsigned int i = 0; i < ndirs; ++i) {
-		q_dir = q_dirs.col(i);
-		qdot_dir = qdot_dirs.col(i);
-		tau_dir = tau_dirs.col(i);
-		ForwardDynamics(model, q + h*q_dir, qdot + h*qdot_dir, tau + h*tau_dir, hd_qddot,f_ext);
-		fd_qddot.col(i) = (hd_qddot - qddot) / h;
-	}
+  for(unsigned idir = 0; idir < ndirs; ++idir) {
+    q_dir = q_dirs.col(idir);
+    qdot_dir = qdot_dirs.col(idir);
+    tau_dir = tau_dirs.col(idir);
+    Model modelh = model;
+    ForwardDynamics(model, q + h*q_dir, qdot + h*qdot_dir, tau + h*tau_dir, hd_qddot,f_ext);
+    fd_qddot.col(idir) = (hd_qddot - qddot) / h;
+    computeFDEntry(model, modelh, h, idir, fd_model);
+  }
 }
 
 RBDL_DLLAPI
