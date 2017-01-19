@@ -936,28 +936,10 @@ void CalcPointJacobian (
 				);
 
 	// derivative evaluation
-  vector<SpatialMatrix> ad_point_trans (ndirs, SpatialMatrix::Zero());
-	for (unsigned int idir = 0; idir < ndirs; idir++) {
-		// NOTE point_trans is spatial transform from E, r, i.e,
-		//
-		//      X = [   E 0], E = I
-		//          [-Erx E]
-		//
-		//      for the derivative the blocks E vanish as they are constant
-		//      and for the dot product the product rule applies, i.e.,
-		//
-		//      X_ad = [                   0 0], -E_dot*rx = 0, E is constant
-		//             [-E_dot*rx - E*rx_dot 0]
-		//
-		//           = [        0 0]
-		//             [-E*rx_dot 0]
-		//
-		SpatialMatrix& X = ad_point_trans[idir];
-		Matrix3d Erx;
-		Matrix3d E = Matrix3d::Identity();
-    Erx = -E * AD::cross3d(ad_r.col(idir)); // E is constant
-		X.block<3,3>(3,0) = Erx;
-	}
+  vector<SpatialTransform> ad_point_trans (ndirs, SpatialTransform::Zero());
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_point_trans[idir].r = ad_r.col(idir);
+  }
 	// nominal evaluation
 	// NOTE vector r is already evaluated in derivative evaluation
 	SpatialTransform point_trans = SpatialTransform (Matrix3d::Identity(), r);
@@ -1006,24 +988,18 @@ void CalcPointJacobian (
                 model.S[j],
                 v, ad_v);
 
-//      SpatialVector ptv;
-//      vector<SpatialVector> ad_ptv(ndirs);
-//      applySTSV(ndirs,
-//                point_trans, ad_point_trans,
-//                v, ad_v,
-//                ptv, ad_ptv);
+      SpatialVector ptv;
+      vector<SpatialVector> ad_ptv(ndirs);
+      applySTSV(ndirs,
+                point_trans, ad_point_trans,
+                v, ad_v,
+                ptv, ad_ptv);
 
       for (unsigned idir = 0; idir < ndirs; idir++) {
         MatrixNd & G_dir = G_dirs[idir];
-
-
-
-        G_dir.block(0, q_index, 3, 1) = (
-              ad_point_trans[idir]*v + point_trans.apply(ad_v[idir])
-              ).block(3,0,3,1);
+        G_dir.block<3,1>(0, q_index) = ad_ptv[idir].segment<3>(3);
       }
-
-      G.block(0, q_index, 3, 1) = point_trans.apply(v).block(3,0,3,1);
+      G.block<3,1>(0, q_index) = point_trans.apply(v).segment<3>(3);
 
 
       /* old

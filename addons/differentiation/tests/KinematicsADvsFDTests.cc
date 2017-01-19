@@ -574,10 +574,6 @@ void CalcPointJacobianTemplate(T & obj) {
     CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
 
     for (int idir = 0; idir < ndirs; idir++) {
-//       std::cout << "derivative_ad["<< idir << "] =" << std::endl;
-//       std::cout << derivative_ad[idir] << std::endl;
-//       std::cout << "derivative_fd["<< idir << "] =" << std::endl;
-//       std::cout << derivative_fd[idir] << std::endl;
       CHECK_ARRAY_CLOSE(
             derivative_ad[idir].data(),
             derivative_fd[idir].data(),
@@ -589,23 +585,23 @@ void CalcPointJacobianTemplate(T & obj) {
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointJacobian) {
-    CalcPointJacobianTemplate(*this);
+  CalcPointJacobianTemplate(*this);
 }
 
-//TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointJacobian) {
-//    CalcPointJacobianTemplate(*this);
-//}
+TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointJacobian) {
+  CalcPointJacobianTemplate(*this);
+}
 
-//TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointJacobian) {
-//    CalcPointJacobianTemplate(*this);
-//}
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointJacobian) {
+  CalcPointJacobianTemplate(*this);
+}
 
-//TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointJacobian) {
-//    CalcPointJacobianTemplate(*this);
-//}
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointJacobian) {
+  CalcPointJacobianTemplate(*this);
+}
 
-//TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian) {
-//    CalcPointJacobianTemplate(*this);
-//}
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian) {
+  CalcPointJacobianTemplate(*this);
+}
 
 // -----------------------------------------------------------------------------
