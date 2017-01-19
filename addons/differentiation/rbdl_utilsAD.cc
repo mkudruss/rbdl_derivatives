@@ -1,14 +1,13 @@
 #include "rbdl_utilsAD.h"
 #include "rbdl_mathutilsAD.h"
 #include "KinematicsAD.h"
+#include "SpatialAlgebraOperatorsAD.h"
 
 using std::fill_n;
 using std::vector;
 
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
-// -----------------------------------------------------------------------------
-namespace Utils {
 // -----------------------------------------------------------------------------
 namespace AD {
 // -----------------------------------------------------------------------------
@@ -42,8 +41,9 @@ RBDL_DLLAPI void CalcCenterOfMass (
   }
 
   if (update_kinematics) {
-    RigidBodyDynamics::AD::UpdateKinematicsCustom (model, ad_model, &q,
-                                                   &q_dirs, &qdot, &qdot_dirs, NULL, NULL);
+    RigidBodyDynamics::AD::UpdateKinematicsCustom (
+          model,
+          ad_model, &q, &q_dirs, &qdot, &qdot_dirs, NULL, NULL);
   }
 
   for (size_t i = 1; i < model.mBodies.size(); i++) {
@@ -65,7 +65,6 @@ RBDL_DLLAPI void CalcCenterOfMass (
   }
 
   SpatialRigidBodyInertia Itot (0., Vector3dZero, Matrix3dZero);
-  /// TODO: Consider replacing ad_Itot by vector<SpatialMatrix>
   vector<SpatialRigidBodyInertia> ad_Itot(ndirs, Itot);
 
   SpatialVector htot (SpatialVector::Zero(6));
@@ -75,50 +74,83 @@ RBDL_DLLAPI void CalcCenterOfMass (
     unsigned int lambda = model.lambda[i];
     if (lambda != 0) {
       // derivative evaluation
+//      for (int idir = 0; idir < ndirs; idir++) {
+//        ad_model.Ic[lambda][idir] = ad_model.Ic[lambda][idir]
+//            + model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix()
+//            + model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix() * ad_model.X_lambda[i][idir]
+//            + ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix() * model.X_lambda[i].toMatrix();
+//      }
+      SpatialRigidBodyInertia         summand;
+      vector<SpatialRigidBodyInertia> summand_res(ndirs);
+      applyTransposeAD(
+            ndirs,
+            model.X_lambda[i],
+            ad_model.X_lambda[i],
+            model.Ic[i],
+            ad_model.Ic[i],
+            summand,
+            summand_res
+            );
+
       for (int idir = 0; idir < ndirs; idir++) {
-        ad_model.Ic[lambda][idir] = ad_model.Ic[lambda][idir]
-            + model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix()
-            + model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix() * ad_model.X_lambda[i][idir]
-            + ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix() * model.X_lambda[i].toMatrix();
+        ad_model.Ic[lambda][idir] = ad_model.Ic[lambda][idir] + summand_res[idir];
       }
+
       // nominal evaluation
       model.Ic[lambda] = model.Ic[lambda] + model.X_lambda[i].applyTranspose (model.Ic[i]);
 
       // derivative evaluation
       for (int idir = 0; idir < ndirs; idir++) {
-        ad_model.hc[lambda][idir] = ad_model.hc[lambda][idir]
-            + model.X_lambda[i].toMatrixTranspose() * ad_model.hc[i][idir]
-            + ad_model.X_lambda[i][idir].transpose() * model.hc[i];
+        ad_model.hc[lambda][idir] =
+            ad_model.hc[lambda][idir]
+            + model.X_lambda[i].applyTranspose (ad_model.hc[i][idir])
+            + ad_model.X_lambda[i][idir].applyTranspose (model.hc[i]);
       }
       // nominal evaluation
       model.hc[lambda] = model.hc[lambda] + model.X_lambda[i].applyTranspose (model.hc[i]);
     } else {
       // derivative evaluation
-      for (int idir = 0; idir < ndirs; idir++) {
-        SpatialMatrix m =
-            model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix()
-            + model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix() * ad_model.X_lambda[i][idir]
-            + ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix() * model.X_lambda[i].toMatrix();
+//      for (int idir = 0; idir < ndirs; idir++) {
+//        SpatialMatrix m =
+//            model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix()
+//            + model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix() * ad_model.X_lambda[i][idir]
+//            + ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix() * model.X_lambda[i].toMatrix();
 
-        SpatialRigidBodyInertia m2i;
-        m2i.createFromMatrix(m);
-        ad_Itot[idir] = ad_Itot[idir] + m2i;
+//        SpatialRigidBodyInertia m2i;
+//        m2i.createFromMatrix(m);
+//        ad_Itot[idir] = ad_Itot[idir] + m2i;
+//      }
+
+      SpatialRigidBodyInertia         summand;
+      vector<SpatialRigidBodyInertia> summand_res(ndirs);
+      applyTransposeAD(
+            ndirs,
+            model.X_lambda[i],
+            ad_model.X_lambda[i],
+            model.Ic[i],
+            ad_model.Ic[i],
+            summand,
+            summand_res
+            );
+      for (int idir = 0; idir < ndirs; idir++) {
+        ad_Itot[idir] = ad_Itot[idir] + summand_res[idir];
       }
+
       // nominal evaluation
       Itot = Itot + model.X_lambda[i].applyTranspose (model.Ic[i]);
 
       // derivative evaluation
       for (int idir = 0; idir < ndirs; idir++) {
         ad_htot[idir] +=
-            model.X_lambda[i].toMatrixTranspose() * ad_model.hc[i][idir]
-            + ad_model.X_lambda[i][idir].transpose() * model.hc[i];
+            model.X_lambda[i].applyTranspose (ad_model.hc[i][idir])
+            + ad_model.X_lambda[i][idir].applyTranspose (model.hc[i]);
       }
       // nominal evaluation
       htot = htot + model.X_lambda[i].applyTranspose (model.hc[i]);
     }
   }
 
-  std::cout << "AD HTOT 1 = " << std::endl;
+  std::cout << "AD HTOT = " << std::endl;
   for (int i = 0; i < ndirs; i++) {
     std::cout << ad_htot[i].transpose() << std::endl;
   }
@@ -150,11 +182,12 @@ RBDL_DLLAPI void CalcCenterOfMass (
   if (angular_momentum) {
     // derivative evaluation
     for (int idir = 0; idir < ndirs; idir++) {
-      ad_htot[idir] = Xtrans(com).toMatrixAdjoint() * ad_htot[idir]
-          + Math::AD::Xtrans(com, ad_com.block<3,1>(0, idir)).adjoint() * htot;
+      ad_htot[idir] =
+          Math::Xtrans(com).applyAdjoint(ad_htot[idir])
+          + AD::Xtrans(com, ad_com.block<3,1>(0, idir)).applyAdjoint(htot);
     }
     // nominal evaluation
-    htot = Xtrans (com).applyAdjoint (htot);
+    htot = Math::Xtrans (com).applyAdjoint (htot);
 
     // derivative evaluation
     for (int idir = 0; idir < ndirs; idir++) {
@@ -164,11 +197,6 @@ RBDL_DLLAPI void CalcCenterOfMass (
     // nominal evaluation
     angular_momentum->set (htot[0], htot[1], htot[2]);
   }
-
-//  std::cout << "AD HTOT 2 = " << std::endl;
-//  for (int i = 0; i < ndirs; i++) {
-//    std::cout << ad_htot[i].transpose() << std::endl;
-//  }
 }
 
 RBDL_DLLAPI double CalcPotentialEnergy (
@@ -238,8 +266,6 @@ RBDL_DLLAPI double CalcKineticEnergy (
 
 // -----------------------------------------------------------------------------
 } // namespace RigidBodyDynamics
-// -----------------------------------------------------------------------------
-} // namespace Utils
 // -----------------------------------------------------------------------------
 } // namespace AD
 // -----------------------------------------------------------------------------

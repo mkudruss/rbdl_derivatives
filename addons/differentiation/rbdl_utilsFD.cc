@@ -20,6 +20,7 @@ using namespace Math;
 
 RBDL_DLLAPI void CalcCenterOfMass (
         Model & model,
+        ADModel & fd_model,
         VectorNd const & q,
         MatrixNd const & q_dirs,
         VectorNd const & qdot,
@@ -31,8 +32,11 @@ RBDL_DLLAPI void CalcCenterOfMass (
         MatrixNd * fd_com_velocity,
         Vector3d * angular_momentum,
         MatrixNd * fd_angular_momentum) {
-    assert(q_dirs.cols() == qdot_dirs.cols());
-    assert(q_dirs.cols() == fd_com.cols());
+
+    size_t ndirs = q_dirs.cols();
+    assert(ndirs == qdot_dirs.cols());
+    assert(ndirs == fd_com.cols());
+
     if (com_velocity) {
         assert(q_dirs.cols() == fd_com_velocity->cols());
     }
@@ -41,7 +45,6 @@ RBDL_DLLAPI void CalcCenterOfMass (
     }
 
     double h = sqrt(1e-16);
-    size_t ndirs = q_dirs.cols();
 
     fd_index = 0;
 
@@ -94,8 +97,6 @@ RBDL_DLLAPI void CalcCenterOfMass (
       fd_htot[i] = (fd_htot_h[i + 1] - fd_htot_h[i]) / h;
       std::cout << fd_htot[i].transpose() << std::endl;
     }
-
-
 }
 
 RBDL_DLLAPI double CalcPotentialEnergy (

@@ -82,6 +82,25 @@ struct RBDL_DLLAPI SpatialRigidBodyInertia {
     Izx = Ic(2,0); Izy = Ic(2,1); Izz = Ic(2,2);
   }
 
+  void setZero() {
+    m = 0.0;
+    h.setZero();
+    Ixx = 0.0;
+    Iyx = 0.0;
+    Iyy = 0.0;
+    Izx = 0.0;
+    Izy = 0.0;
+    Izz = 0.0;
+  }
+
+  Matrix3d getInertia() const {
+    Matrix3d result;
+    result(0,0) = Ixx; result(0,1) = Iyx; result(0,2) = Izx;
+    result(1,0) = Iyx; result(1,1) = Iyy; result(1,2) = Izy;
+    result(2,0) = Izx; result(2,1) = Izy; result(2,2) = Izz;
+    return result;
+  }
+
   SpatialMatrix toMatrix() const {
     SpatialMatrix result;
     result(0,0) = Ixx; result(0,1) = Iyx; result(0,2) = Izx;
@@ -156,7 +175,7 @@ struct RBDL_DLLAPI SpatialTransform {
    *
    * \returns (E * w, - E * rxw + E * v)
    */
-  SpatialVector apply (const SpatialVector &v_sp) {
+  SpatialVector apply (const SpatialVector &v_sp) const {
     Vector3d v_rxw (
         v_sp[3] - r[1]*v_sp[2] + r[2]*v_sp[1],
         v_sp[4] - r[2]*v_sp[0] + r[0]*v_sp[2],
@@ -215,7 +234,7 @@ struct RBDL_DLLAPI SpatialTransform {
 
   /** Same as X^T I X
   */
-  SpatialRigidBodyInertia applyTranspose (const SpatialRigidBodyInertia &rbi) {
+  SpatialRigidBodyInertia applyTranspose (const SpatialRigidBodyInertia &rbi) const {
     Vector3d E_T_mr = E.transpose() * rbi.h + rbi.m * r;
     return SpatialRigidBodyInertia (
         rbi.m,
@@ -306,6 +325,17 @@ struct RBDL_DLLAPI SpatialTransform {
   void operator*= (const SpatialTransform &XT) {
     r = XT.r + XT.E.transpose() * r;
     E *= XT.E;
+  }
+
+  void setZero() {
+    E.setZero();
+    r.setZero();
+  }
+
+  static SpatialTransform Zero() {
+    SpatialTransform res;
+    res.setZero();
+    return res;
   }
 
   Matrix3d E;

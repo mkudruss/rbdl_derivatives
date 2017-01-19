@@ -1,5 +1,6 @@
 #include "ContactsAD.h"
 #include "DynamicsAD.h"
+#include "SpatialAlgebraOperatorsAD.h"
 
 #include <iomanip>
 
@@ -139,11 +140,16 @@ void CalcContactSystemVariables (
   for (unsigned int i = 1; i < model.mBodies.size(); i++) {
     unsigned int lambda = model.lambda[i];
     // derivative evaluation
-    for (int idir = 0; idir < ndirs; idir++) {
-      ad_model.X_base[i][idir] =
-          ad_model.X_lambda[i][idir] * model.X_base[lambda].toMatrix()
-          + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idir];
-    }
+//    for (int idir = 0; idir < ndirs; idir++) {
+//      ad_model.X_base[i][idir] =
+//          ad_model.X_lambda[i][idir] * model.X_base[lambda] //.toMatrix()
+//          + model.X_lambda[i] /*.toMatrix()*/ * ad_model.X_base[lambda][idir];
+//    }
+
+    mulSTST (model.X_lambda[i], ad_model.X_lambda[i],
+            model.X_base[lambda], ad_model.X_base[lambda],
+            model.X_base[i], ad_model.X_base[i]);
+
     // nominal evaluation
     model.X_base[i] = model.X_lambda[i] * model.X_base[model.lambda[i]];
   }

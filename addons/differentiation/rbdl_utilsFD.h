@@ -2,6 +2,7 @@
 #define RBDL_UTILS_FD_h
 
 #include <rbdl/rbdl_mathutils.h>
+#include "ModelAD.h"
 
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
@@ -13,6 +14,7 @@ namespace FD {
 
 RBDL_DLLAPI void CalcCenterOfMass (
         Model & model,
+        ADModel & fd_model,
         Math::VectorNd const & q,
         Math::MatrixNd const & q_dirs,
         Math::VectorNd const & qdot,

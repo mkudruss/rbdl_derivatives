@@ -78,25 +78,25 @@ void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials,
 }
 
 
-TEST_FIXTURE(CartPendulum, CartPendulumForwardDynamicsADTest){
-    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
-}
+//TEST_FIXTURE(CartPendulum, CartPendulumForwardDynamicsADTest){
+//    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
+//}
 
-TEST_FIXTURE(Arm2DofX, Arm2DofXForwardDynamicsADTest){
-    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
-}
+//TEST_FIXTURE(Arm2DofX, Arm2DofXForwardDynamicsADTest){
+//    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
+//}
 
-TEST_FIXTURE(Arm2DofZ, Arm2DofZForwardDynamicsADTest){
-    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
-}
+//TEST_FIXTURE(Arm2DofZ, Arm2DofZForwardDynamicsADTest){
+//    ForwardDynamicsADTestTemplate(*this, 10, 1e-6);
+//}
 
-TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpForwardDynamicsADTest){
-    ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
-}
+//TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpForwardDynamicsADTest){
+//    ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
+//}
 
-TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpForwardDynamicsADTest){
-    ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
-}
+//TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpForwardDynamicsADTest){
+//    ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
+//}
 
 // -----------------------------------------------------------------------------
 
@@ -152,25 +152,25 @@ void InverseDynamicsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-7) {
     CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), CHECK_ARRAY_PREC);
 }
 
-TEST_FIXTURE(CartPendulum, CartPendulumInverseDynamicsADTest){
-    InverseDynamicsADTestTemplate<CartPendulum>(*this);
-}
+//TEST_FIXTURE(CartPendulum, CartPendulumInverseDynamicsADTest){
+//    InverseDynamicsADTestTemplate<CartPendulum>(*this);
+//}
 
-TEST_FIXTURE(Arm2DofX, Arm2DofXInverseDynamicsADTest) {
-    InverseDynamicsADTestTemplate(*this, 1e-6);
-}
+//TEST_FIXTURE(Arm2DofX, Arm2DofXInverseDynamicsADTest) {
+//    InverseDynamicsADTestTemplate(*this, 1e-6);
+//}
 
-TEST_FIXTURE(Arm2DofZ, Arm2DofZInverseDynamicsADTest) {
-    InverseDynamicsADTestTemplate(*this, 1e-6);
-}
+//TEST_FIXTURE(Arm2DofZ, Arm2DofZInverseDynamicsADTest) {
+//    InverseDynamicsADTestTemplate(*this, 1e-6);
+//}
 
-TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpInverseDynamicsADTest) {
-    InverseDynamicsADTestTemplate(*this, 1e-5);
-}
+//TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpInverseDynamicsADTest) {
+//    InverseDynamicsADTestTemplate(*this, 1e-5);
+//}
 
-TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZYpInverseDynamicsADTest) {
-    InverseDynamicsADTestTemplate(*this, 1e-6);
-}
+//TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZYpInverseDynamicsADTest) {
+//    InverseDynamicsADTestTemplate(*this, 1e-6);
+//}
 
 // -----------------------------------------------------------------------------
 
@@ -210,25 +210,25 @@ void NonlinearEffectsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-7) {
                      fd_tau_der.cols() * fd_tau_der.rows(), CHECK_ARRAY_PREC);
 }
 
-TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsADTest) {
-    NonlinearEffectsADTestTemplate(*this);
-}
+//TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsADTest) {
+//    NonlinearEffectsADTestTemplate(*this);
+//}
 
-TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsADTest) {
-    NonlinearEffectsADTestTemplate(*this, 1e-6);
-}
+//TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsADTest) {
+//    NonlinearEffectsADTestTemplate(*this, 1e-6);
+//}
 
-TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsADTest) {
-    NonlinearEffectsADTestTemplate(*this, 1e-6);
-}
+//TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsADTest) {
+//    NonlinearEffectsADTestTemplate(*this, 1e-6);
+//}
 
-TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsADTest) {
-    NonlinearEffectsADTestTemplate(*this, 1e-5);
-}
+//TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsADTest) {
+//    NonlinearEffectsADTestTemplate(*this, 1e-5);
+//}
 
-TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsADTest) {
-    NonlinearEffectsADTestTemplate(*this, 1e-5);
-}
+//TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsADTest) {
+//    NonlinearEffectsADTestTemplate(*this, 1e-5);
+//}
 
 // -----------------------------------------------------------------------------
 
@@ -259,24 +259,24 @@ void CompositeRigidBodyAlgorithmADTestTemplate(T & obj) {
     }
 }
 
-TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmADTest) {
-    CompositeRigidBodyAlgorithmADTestTemplate(*this);
-}
+//TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmADTest) {
+//    CompositeRigidBodyAlgorithmADTestTemplate(*this);
+//}
 
-TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmADTest) {
-    CompositeRigidBodyAlgorithmADTestTemplate(*this);
-}
+//TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmADTest) {
+//    CompositeRigidBodyAlgorithmADTestTemplate(*this);
+//}
 
-TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmADTest) {
-    CompositeRigidBodyAlgorithmADTestTemplate(*this);
-}
+//TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmADTest) {
+//    CompositeRigidBodyAlgorithmADTestTemplate(*this);
+//}
 
-TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmADTest) {
-    CompositeRigidBodyAlgorithmADTestTemplate(*this);
-}
+//TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmADTest) {
+//    CompositeRigidBodyAlgorithmADTestTemplate(*this);
+//}
 
-TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmADTest) {
-    CompositeRigidBodyAlgorithmADTestTemplate(*this);
-}
+//TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmADTest) {
+//    CompositeRigidBodyAlgorithmADTestTemplate(*this);
+//}
 
 // -----------------------------------------------------------------------------

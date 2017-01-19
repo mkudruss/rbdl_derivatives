@@ -297,7 +297,7 @@ struct RBDL_DLLAPI Joint {
      if (type == JointTypeCustom) {        
         mDoFCount   = degreesOfFreedom;
         mJointAxes  = new Math::SpatialVector[mDoFCount];
-        for(int i=0; i<mDoFCount;++i){
+        for(unsigned int i = 0; i < mDoFCount; ++i){
           mJointAxes[i] = Math::SpatialVector (0., 0., 0., 0., 0., 0.);
         }        
       } else {

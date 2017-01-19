@@ -31,9 +31,10 @@ struct ADModel {
     unsigned int ndirs;
 
     // derivative values
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > X_lambda;
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > X_base;
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > X_J;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_lambda;
+
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_base;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_J;
 
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v_J;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v;
@@ -43,7 +44,10 @@ struct ADModel {
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > c;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > f;
 
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > Ic;
+//    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > Ic;
+
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialRigidBodyInertia> > Ic;
+
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > hc;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > F;
 

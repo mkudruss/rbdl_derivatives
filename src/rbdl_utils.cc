@@ -150,7 +150,7 @@ RBDL_DLLAPI std::string GetNamedBodyOriginsOverview (Model &model) {
   return result.str();
 }
 
-#warning "Change code"
+#warning "Below is debug code which has to be removed"
 RBDL_DLLAPI int fd_index = 0;
 RBDL_DLLAPI vector<SpatialVector> fd_htot_h (100);
 

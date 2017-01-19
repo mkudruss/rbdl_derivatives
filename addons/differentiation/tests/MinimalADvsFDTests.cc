@@ -83,26 +83,31 @@ void JacobianADSimpleTemplate(T & obj, unsigned int id_ee) {
     } while (nTrials++ < 10);
 }
 
-TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
-    JacobianADSimpleTemplate(*this, id_pendulum);
-}
+//TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
+//    JacobianADSimpleTemplate(*this, id_pendulum);
+//}
 
-TEST_FIXTURE ( Arm2DofX, Arm2DofXJacobianADSimple) {
-    JacobianADSimpleTemplate(*this, id_proximal);
-}
+//TEST_FIXTURE ( Arm2DofX, Arm2DofXJacobianADSimple) {
+//    JacobianADSimpleTemplate(*this, id_proximal);
+//}
 
-TEST_FIXTURE ( Arm2DofZ, Arm2DofZJacobianADSimple) {
-    JacobianADSimpleTemplate(*this, id_proximal);
-}
+//TEST_FIXTURE ( Arm2DofZ, Arm2DofZJacobianADSimple) {
+//    JacobianADSimpleTemplate(*this, id_proximal);
+//}
 
-TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpJacobianADSimple) {
-    JacobianADSimpleTemplate(*this, id_slider);
-}
+//TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpJacobianADSimple) {
+//    JacobianADSimpleTemplate(*this, id_slider);
+//}
 
-TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpJacobianADSimple) {
-    JacobianADSimpleTemplate(*this, id_slider);
-}
+//TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpJacobianADSimple) {
+//    JacobianADSimpleTemplate(*this, id_slider);
+//}
 
+// -----------------------------------------------------------------------------
+
+
+// -----------------------------------------------------------------------------
+// begin deprecated
 // -----------------------------------------------------------------------------
 
 // TEST_FIXTURE (CartPendulum, jcalcNominalSolutionTest) {

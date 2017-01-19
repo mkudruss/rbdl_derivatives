@@ -13,6 +13,7 @@
 
 #include "KinematicsAD.h"
 #include "KinematicsFD.h"
+#include "FdModelEntry.h"
 
 using std::vector;
 
@@ -252,6 +253,33 @@ void CalcPointJacobian (
         G_dirs[idir] = (G_temp - G) / h;
     }
 }
+
+RBDL_DLLAPI
+void UpdateKinematicsCustom (
+    Model & model,
+    ADModel & fd_model,
+    VectorNd const & q,
+    MatrixNd const & q_dirs,
+    VectorNd const & qd,
+    MatrixNd const & qd_dirs,
+    VectorNd const & qdd,
+    MatrixNd const & qdd_dirs) {
+  unsigned const ndirs = q_dirs.cols();
+  double const h = 1e-8;
+
+  UpdateKinematicsCustom(model, &q, &qd, &qdd);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model modelh = model;
+    VectorNd qh   = q + h * q_dirs.col(idir);
+    VectorNd qdh  = qd + h * qd_dirs.col(idir);
+    VectorNd qddh = qdd + h * qdd_dirs.col(idir);
+
+    UpdateKinematicsCustom(modelh, &qh, &qdh, &qddh);
+    computeFDEntry(model, modelh, h, idir, fd_model);
+  }
+}
+
 
 // -----------------------------------------------------------------------------
 } // Namespace FD

@@ -19,6 +19,7 @@
 #include "JointAD.h"
 #include "ModelAD.h"
 #include "KinematicsAD.h"
+#include "SpatialAlgebraOperatorsAD.h"
 
 #include "rbdl_mathutilsAD.h"
 #include "rbdl_mathutilsFD.h"
@@ -67,8 +68,8 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 	}
 
-	Matrix3d body_rotation = Math::AD::E_from_Matrix(model.X_base[body_id].toMatrix());
-	Vector3d body_position = Math::AD::r_from_Matrix(model.X_base[body_id].toMatrix());
+  Matrix3d body_rotation = AD::E_from_Matrix(model.X_base[body_id].toMatrix());
+  Vector3d body_position = AD::r_from_Matrix(model.X_base[body_id].toMatrix());
 
 	return body_position + body_rotation.transpose() * point_body_coordinates;
 }
@@ -117,35 +118,35 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 
 		if (model.mJoints[i].mJointType == JointTypeRevoluteX) {
 			for (unsigned int j = 0; j < ndirs; j++) {
-				Math::AD::Xrotx (
+        AD::Xrotx (
 						q[model.mJoints[i].q_index],
 						q_dirs(i-1, j),
 						ad_model.X_J[i][j]);
 //				ad_model.X_J[i][j] = Math::AD::Xrotx (q[model.mJoints[i].q_index], q_dirs(i-1,j));
 			}
-			model.X_J[i] = Xrotx (q[model.mJoints[i].q_index]);
+      model.X_J[i] = Math::Xrotx (q[model.mJoints[i].q_index]);
 		} else if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
 			for (unsigned int j = 0; j < ndirs; j++) {
-				Math::AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j), ad_model.X_J[i][j]);
+        AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j), ad_model.X_J[i][j]);
 				// ad_model.X_J[i][j] = Math::AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
 			}
-			model.X_J[i] = Xroty (q[model.mJoints[i].q_index]);
+      model.X_J[i] = Math::Xroty (q[model.mJoints[i].q_index]);
 		} else if (model.mJoints[i].mJointType == JointTypeRevoluteZ) {
 			for (unsigned int j = 0; j < ndirs; j++) {
-				Math::AD::Xrotz (
+        AD::Xrotz (
 						q[model.mJoints[i].q_index],
 						q_dirs(i-1,j),
 						ad_model.X_J[i][j]);
 				// ad_model.X_J[i][j] = Math::AD::Xrotz (q[model.mJoints[i].q_index], q_dirs(i-1,j));
 			}
-			model.X_J[i] = Xrotz (q[model.mJoints[i].q_index]);
+      model.X_J[i] = Math::Xrotz (q[model.mJoints[i].q_index]);
 		} else if (model.mJoints[i].mDoFCount == 1) {
 			for (unsigned int j = 0; j < ndirs; j++) {
-				ad_model.X_J[i][j] = Math::AD::Xtrans (
-							model.S[i].block<3,1>(3,0) * q[model.mJoints[i].q_index],
-						model.S[i].block<3,1>(3,0) * q_dirs(i-1, j));
+        ad_model.X_J[i][j] = AD::Xtrans (
+              model.S[i].block<3,1>(3,0) * q[model.mJoints[i].q_index],
+              model.S[i].block<3,1>(3,0) * q_dirs(i-1, j));
 			}
-			model.X_J[i] = Xtrans (model.S[i].block<3,1>(3,0) * q[model.mJoints[i].q_index]);
+      model.X_J[i] = Math::Xtrans (model.S[i].block<3,1>(3,0) * q[model.mJoints[i].q_index]);
 			//            } else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
 			//            for (unsigned int j = 0; j < ndirs; j++) {
 			//                ad_model.X_J[i][j] = Math::AD::Xtrans (
@@ -159,27 +160,39 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 			abort();
 		}
 
-		for (unsigned int j = 0; j < ndirs; j++) {
-			ad_model.X_lambda[i][j] = ad_model.X_J[i][j] * model.X_T[i].toMatrix();
-		}
-		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
 
-		for (unsigned int j = 0; j < ndirs; j++) {
-			ad_model.X_base[i][j] = ad_model.X_lambda[i][j] * model.X_base[lambda].toMatrix() + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][j];
-		}
-		model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+//    // derivative
+//    for (unsigned int idir = 0; idir < ndirs; idir++) {
+//      ad_model.X_lambda[i][idir] = ad_model.X_J[i][idir] * model.X_T[i].toMatrix();
+//    }
+//    // nominal
+//    model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+
+    mulSTST(model.X_J[i], ad_model.X_J[i],
+            model.X_T[i], // model.X_T is constant
+            model.X_lambda[i], ad_model.X_lambda[i]);
+
+//    for (unsigned int idir = 0; idir < ndirs; idir++) {
+//      ad_model.X_base[i][idir] = ad_model.X_lambda[i][idir] * model.X_base[lambda].toMatrix() + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idir];
+//    }
+//    model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+
+    mulSTST(model.X_lambda[i], ad_model.X_lambda[i],
+            model.X_base[lambda], ad_model.X_base[lambda],
+            model.X_base[i], ad_model.X_base[lambda]);
 	}
 
 	for (unsigned int j = 0; j < ndirs; j++) {
-		SpatialMatrix X_base_ib = model.X_base[body_id].toMatrix();
-		Matrix3d ad_E = Math::AD::E_from_Matrix(ad_model.X_base[body_id][j]);
-		Vector3d ad_r = Math::AD::r_from_Matrix(X_base_ib, ad_model.X_base[body_id][j]);
+//		SpatialMatrix X_base_ib = model.X_base[body_id].toMatrix();
+    Matrix3d ad_E = ad_model.X_base[body_id][j].E;
+    Vector3d ad_r = ad_model.X_base[body_id][j].r;
+//        AD::r_from_Matrix(X_base_ib, ad_model.X_base[body_id][j]);
 
 		out.block<3,1>(0,j) = ad_r + ad_E.transpose() * point_body_coordinates;
 	}
 
-	Matrix3d body_rotation = Math::AD::E_from_Matrix(model.X_base[body_id].toMatrix());
-	Vector3d body_position = Math::AD::r_from_Matrix(model.X_base[body_id].toMatrix());
+  Matrix3d body_rotation = AD::E_from_Matrix(model.X_base[body_id].toMatrix());
+  Vector3d body_position = AD::r_from_Matrix(model.X_base[body_id].toMatrix());
 
 	return body_position + body_rotation.transpose() * point_body_coordinates;
 }
@@ -249,11 +262,13 @@ Vector3d CalcBodyToBaseCoordinates (
 	}
 
 	// derivative evaluation
-	for (unsigned int idir = 0; idir < ndirs; ++idir) {
-		ad_body_rotation[idir] = Math::AD::E_from_Matrix(ad_model.X_base[body_id][idir]).transpose();
-		ad_body_position[idir] = Math::AD::r_from_Matrix(
-					model.X_base[body_id].toMatrix(), ad_model.X_base[body_id][idir]
-					);
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_body_rotation[idir] = ad_model.X_base[body_id][idir].E;
+//        AD::E_from_Matrix(ad_model.X_base[body_id][idir]).transpose();
+    ad_body_position[idir] = ad_model.X_base[body_id][idir].r;
+//        AD::r_from_Matrix(
+//					model.X_base[body_id].toMatrix(), ad_model.X_base[body_id][idir]
+//					);
 
 		// NOTE point_body_coordinates is a constant, no derivative needed!
 		ad_body_to_base_coordinates.col(idir) = ad_body_position[idir]
@@ -298,10 +313,12 @@ RBDL_DLLAPI Vector3d CalcBaseToBodyCoordinates (
 
 	// derivative code
 	for (unsigned idir = 0; idir < ndirs; idir++) {
-		ad_body_rotation[idir] = Math::AD::E_from_Matrix(
-					ad_model.X_base[body_id][idir]);
-		ad_body_position.col(idir) = Math::AD::r_from_Matrix(
-					model.X_base[body_id].toMatrix(), ad_model.X_base[body_id][idir]);
+    ad_body_rotation[idir] = ad_model.X_base[body_id][idir].E;
+//        AD::E_from_Matrix(
+//					ad_model.X_base[body_id][idir]);
+    ad_body_position.col(idir) = ad_model.X_base[body_id][idir].r;
+//        AD::r_from_Matrix(
+//					model.X_base[body_id].toMatrix(), ad_model.X_base[body_id][idir]);
 	}
 	// nominal code
 	Matrix3d body_rotation = model.X_base[body_id].E;
@@ -341,8 +358,8 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 	SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
 
 	// derivative evaluation
-	for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-		ad_model.a[0][idirs].setZero();
+  for (unsigned idir = 0; idir < ndirs; ++idir) {
+    ad_model.a[0][idir].setZero();
 	}
 	// nominal evaluation
 	model.a[0].setZero();
@@ -358,24 +375,33 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 
 			// Derivative evaluation and nominal evaluation
 			jcalc (model, ad_model, i, *q, *q_dirs, QDot_zero, QDot_zero_dirs);
-			// derivative evaluation
-			for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-				// NOTE: X_T is a constant model dependent transformation
-				ad_model.X_lambda[i][idirs] = ad_model.X_J[i][idirs] * model.X_T[i].toMatrix();
-			}
-			// nominal evaluation
-			model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+
+//			// derivative evaluation
+//			for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+//				// NOTE: X_T is a constant model dependent transformation
+//        ad_model.X_lambda[i][idirs] = ad_model.X_J[i][idirs] * model.X_T[i].toMatrix();
+//			}
+//			// nominal evaluation
+//			model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+      mulSTST(model.X_J[i], ad_model.X_J[i],
+              model.X_T[i],
+              model.X_lambda[i], ad_model.X_lambda[i]);
 
 			if (lambda != 0) {
-				// derivative evaluation
-				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-					ad_model.X_base[i][idirs] =
-							ad_model.X_lambda[i][idirs] * model.X_base[lambda].toMatrix()
-							+ model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idirs];
-				}
-				// nominal evaluation
-				model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-			} else {
+//				// derivative evaluation
+//				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+//					ad_model.X_base[i][idirs] =
+//							ad_model.X_lambda[i][idirs] * model.X_base[lambda].toMatrix()
+//							+ model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idirs];
+//				}
+//				// nominal evaluation
+//				model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+
+        mulSTST (model.X_lambda[i], ad_model.X_lambda[i],
+                 model.X_base[lambda], ad_model.X_base[lambda],
+                 model.X_base[i], ad_model.X_base[i]);
+
+      } else {
 				// derivative evaluation
 				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
 					ad_model.X_base[i][idirs] = ad_model.X_lambda[i][idirs];
@@ -386,42 +412,42 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 		}
 	}
 
-	if (qdot) {
-		for (i = 1; i < model.mBodies.size(); i++) {
-			unsigned int lambda = model.lambda[i];
+  if (qdot) {
+    for (i = 1; i < model.mBodies.size(); i++) {
+      unsigned int lambda = model.lambda[i];
 
-			// Derivative evaluation and nominal evaluation
-			jcalc (model, ad_model, i, *q, *q_dirs, *qdot, *qdot_dirs);
+      // Derivative evaluation and nominal evaluation
+      jcalc (model, ad_model, i, *q, *q_dirs, *qdot, *qdot_dirs);
 
-			if (lambda != 0) {
-				// derivative evaluation
-				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-					ad_model.v[i][idirs] =
-							ad_model.X_lambda[i][idirs] * model.v[lambda]
-							+ model.X_lambda[i].apply(ad_model.v[lambda][idirs])
-							+ ad_model.v_J[i][idirs];
-				}
-				// nominal evaluation
-				model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
-			} else {
-				// derivative evaluation
-				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-					ad_model.v[i][idirs] = ad_model.v_J[i][idirs];
-				}
-				// nominal evaluation
-				model.v[i] = model.v_J[i];
-			}
-			// derivative evaluation
-			for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-				ad_model.c[i][idirs] = ad_model.c_J[i][idirs]
-						+ Math::AD::crossm(
-							model.v[i], ad_model.v[i][idirs],
-							model.v_J[i], ad_model.v_J[i][idirs]);
-			}
-			// nominal evaluation
-			model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
-		}
-	}
+      if (lambda != 0) {
+        applySTSV(ndirs,
+                  model.X_lambda[i], ad_model.X_lambda[i],
+                  model.v[lambda], ad_model.v[lambda],
+                  model.v[i], ad_model.v[i]);
+
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          ad_model.v[i][idir] += ad_model.v_J[i][idir];
+        }
+        model.v[i] += model.v_J[i];
+      } else {
+        // derivative evaluation
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          ad_model.v[i][idir] = ad_model.v_J[i][idir];
+        }
+        // nominal evaluation
+        model.v[i] = model.v_J[i];
+      }
+      // derivative evaluation
+      for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+        ad_model.c[i][idirs] = ad_model.c_J[i][idirs]
+            + AD::crossm(
+              model.v[i], ad_model.v[i][idirs],
+              model.v_J[i], ad_model.v_J[i][idirs]);
+      }
+      // nominal evaluation
+      model.c[i] = model.c_J[i] + Math::crossm(model.v[i],model.v_J[i]);
+    }
+  }
 
 	if (qddot) {
 		for (i = 1; i < model.mBodies.size(); i++) {
@@ -429,13 +455,26 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 			unsigned int lambda = model.lambda[i];
 
 			if (lambda != 0) {
-				// derivative evaluation
-				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-					ad_model.a[i][idirs] = ad_model.X_lambda[i][idirs] * model.a[lambda]
-							+ model.X_lambda[i].apply(ad_model.a[lambda][idirs]) + ad_model.c[i][idirs];
-				}
-				// nominal evaluation
-				model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
+//				// derivative evaluation
+//				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+//          ad_model.a[i][idirs] =
+//              ad_model.X_lambda[i][idirs].apply (model.a[lambda])
+//              + model.X_lambda[i].apply (ad_model.a[lambda][idirs])
+//              + ad_model.c[i][idirs];
+//				}
+//				// nominal evaluation
+//				model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
+
+
+        applySTSV(ndirs,
+                  model.X_lambda[i], ad_model.X_lambda[i],
+                  model.a[lambda], ad_model.a[lambda],
+                  model.a[i], ad_model.a[i]);
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          ad_model.a[i][idir] += ad_model.c[i][idir];
+        }
+        model.a[i] += model.c[i];
+
 			} else {
 				// derivative evaluation
 				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
@@ -502,28 +541,47 @@ RBDL_DLLAPI void UpdateKinematics (
 		// NOTE: nominal evaluation is not needed, because already done in ad_jcalc
 		//jcalc (model, i, q, qdot);
 
-		// derivative evaluation
-		for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-			// NOTE: X_T is a constant model dependent transformation
-			ad_model.X_lambda[i][idirs] = ad_model.X_J[i][idirs] * model.X_T[i].toMatrix();
-		}
-		// nominal evaluation
-		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+//		// derivative evaluation
+//		for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+//			// NOTE: X_T is a constant model dependent transformation
+//			ad_model.X_lambda[i][idirs] = ad_model.X_J[i][idirs] * model.X_T[i].toMatrix();
+//		}
+//		// nominal evaluation
+//		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+
+    mulSTST(model.X_J[i], ad_model.X_J[i],
+            model.X_T[i],
+            model.X_lambda[i], ad_model.X_lambda[i]);
 
 		if (lambda != 0) {
-			// derivative evaluation
-			for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-				ad_model.X_base[i][idirs] =
-						ad_model.X_lambda[i][idirs] * model.X_base[lambda].toMatrix()
-						+ model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idirs];
-				ad_model.v[i][idirs] =
-						ad_model.X_lambda[i][idirs] * model.v[lambda]
-						+ model.X_lambda[i].apply(ad_model.v[lambda][idirs])
-						+ ad_model.v_J[i][idirs];
-			}
-			// nominal evaluation
-			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-			model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
+
+      mulSTST (model.X_lambda[i], ad_model.X_lambda[i],
+               model.X_base[lambda], ad_model.X_base[lambda],
+               model.X_base[i], ad_model.X_base[i]);
+
+//			// derivative evaluation
+//			for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+////				ad_model.X_base[i][idirs] =
+////						ad_model.X_lambda[i][idirs] * model.X_base[lambda].toMatrix()
+////						+ model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idirs];
+//        ad_model.v[i][idirs] =
+//            ad_model.X_lambda[i][idirs].apply(model.v[lambda])
+//            + model.X_lambda[i].apply(ad_model.v[lambda][idirs])
+//            + ad_model.v_J[i][idirs];
+//      }
+//      // nominal evaluation
+////			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+//      model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
+
+      applySTSV(ndirs,
+                model.X_lambda[i], ad_model.X_lambda[i],
+                model.v[lambda], ad_model.v[lambda],
+                model.v[i], ad_model.v[i]);
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.v[i][idir] += ad_model.v_J[i][idir];
+      }
+      model.v[i] += model.v_J[i];
+
 		} else {
 			// derivative evaluation
 			for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
@@ -536,18 +594,33 @@ RBDL_DLLAPI void UpdateKinematics (
 		}
 
 		// derivative evaluation
-		for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-			ad_model.c[i][idirs] = ad_model.c_J[i][idirs]
-					+ Math::AD::crossm(
-						model.v[i], ad_model.v[i][idirs],
-						model.v_J[i], ad_model.v_J[i][idirs]
+    for (unsigned idir = 0; idir < ndirs; ++idir) {
+      ad_model.c[i][idir] = ad_model.c_J[i][idir]
+          + AD::crossm(
+            model.v[i], ad_model.v[i][idir],
+            model.v_J[i], ad_model.v_J[i][idir]
 						);
-			ad_model.a[i][idirs] = ad_model.X_lambda[i][idirs] * model.a[lambda]
-					+ model.X_lambda[i].apply(ad_model.a[lambda][idirs]) + ad_model.c[i][idirs];
 		}
 		// nominal evaluation
-		model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
-		model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
+    model.c[i] = model.c_J[i] + Math::crossm(model.v[i],model.v_J[i]);
+
+//    for (unsigned idir = 0; idir < ndirs; idir++) {
+//      ad_model.a[i][idir] =
+//          ad_model.X_lambda[i][idir].apply(model.a[lambda])
+//          + model.X_lambda[i].apply(ad_model.a[lambda][idir])
+//          + ad_model.c[i][idir];
+//    }
+//		model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
+
+    applySTSV(ndirs,
+              model.X_lambda[i], ad_model.X_lambda[i],
+              model.a[lambda], ad_model.a[lambda],
+              model.a[i], ad_model.a[i]);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_model.a[i][idir] += ad_model.c[i][idir];
+    }
+    model.a[i] += model.c[i];
+
 
 		if (model.mJoints[i].mDoFCount == 3) {
 			cerr << "Multi-DoF not supported." << endl;
@@ -605,7 +678,7 @@ RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
 	}
 
 	for (unsigned int idir = 0; idir < ndirs; idir++) {
-		ad_derivative[idir] = ad_model.X_base[body_id][idir].block<3,3>(0,0);
+    ad_derivative[idir] = ad_model.X_base[body_id][idir].E;
 	}
 	// nominal evaluation
 	return model.X_base[body_id].E;
@@ -863,7 +936,7 @@ void CalcPointJacobian (
 				);
 
 	// derivative evaluation
-	std::vector<SpatialMatrix> ad_point_trans (ndirs, SpatialMatrix::Zero());
+  vector<SpatialMatrix> ad_point_trans (ndirs, SpatialMatrix::Zero());
 	for (unsigned int idir = 0; idir < ndirs; idir++) {
 		// NOTE point_trans is spatial transform from E, r, i.e,
 		//
@@ -882,7 +955,7 @@ void CalcPointJacobian (
 		SpatialMatrix& X = ad_point_trans[idir];
 		Matrix3d Erx;
 		Matrix3d E = Matrix3d::Identity();
-		Erx = -E * Math::AD::cross3d(ad_r.col(idir)); // E is constant
+    Erx = -E * AD::cross3d(ad_r.col(idir)); // E is constant
 		X.block<3,3>(3,0) = Erx;
 	}
 	// nominal evaluation
@@ -917,14 +990,51 @@ void CalcPointJacobian (
 			abort();
 			G.block(0, q_index, 3, 3) = ((point_trans * model.X_base[j].inverse()).toMatrix() * model.multdof3_S[j]).block(3,0,3,3);
 		} else {
+
+      SpatialTransform inv_X_base_j;
+      vector<SpatialTransform> ad_inv_X_base_j(ndirs);
+
+      AD::inverse(ndirs,
+                  model.X_base[j], ad_model.X_base[j],
+                  inv_X_base_j, ad_inv_X_base_j);
+
+      SpatialVector v;
+      vector<SpatialVector> ad_v(ndirs);
+
+      applySTSV(ndirs,
+                inv_X_base_j, ad_inv_X_base_j,
+                model.S[j],
+                v, ad_v);
+
+//      SpatialVector ptv;
+//      vector<SpatialVector> ad_ptv(ndirs);
+//      applySTSV(ndirs,
+//                point_trans, ad_point_trans,
+//                v, ad_v,
+//                ptv, ad_ptv);
+
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        MatrixNd & G_dir = G_dirs[idir];
+
+
+
+        G_dir.block(0, q_index, 3, 1) = (
+              ad_point_trans[idir]*v + point_trans.apply(ad_v[idir])
+              ).block(3,0,3,1);
+      }
+
+      G.block(0, q_index, 3, 1) = point_trans.apply(v).block(3,0,3,1);
+
+
+      /* old
 			// nominal evaluation
 			SpatialVector v = model.X_base[j].inverse().apply(model.S[j]);
 			// derivative evaluation
-			for (unsigned int idirs = 0; idirs < ndirs; idirs++) {
+      for (unsigned int idir = 0; idir < ndirs; idir++) {
 				// v_dot = d (X_base)^-1 * S_j + (X_base)^-1 * d S_j
 				SpatialVector v_dot =
-						RigidBodyDynamics::Math::AD::inverse(
-							model.X_base[j].toMatrix(), ad_model.X_base[j][idirs]
+            AD::inverse(
+              model.X_base[j].toMatrix(), ad_model.X_base[j][idir].toMatrix()
 							) * model.S[j];
 				// NOTE G_i = [e_i1*S_1 ... e_iNB S_NB ]
 
@@ -935,14 +1045,16 @@ void CalcPointJacobian (
 				//   + point_trans * (
 				//     d (X_base)^-1 * S_j + (X_base)^-1 * d S_j
 				//   )
-				MatrixNd& G_dir = G_dirs[idirs];
+        MatrixNd& G_dir = G_dirs[idir];
 				G_dir.block(0, q_index, 3, 1) = (
-							ad_point_trans[idirs]*v + point_trans.apply(v_dot)
+              ad_point_trans[idir]*v + point_trans.apply(v_dot)
 							).block(3,0,3,1);
 			}
 			// nominal evaluation
 			// NOTE v = model.X_base[j].inverse().apply(model.S[j]) is computed before
 			G.block(0, q_index, 3, 1) = point_trans.apply(v).block(3,0,3,1);
+      */
+
 		}
 
 		j = model.lambda[j];

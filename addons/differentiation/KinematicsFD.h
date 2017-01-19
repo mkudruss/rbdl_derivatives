@@ -77,6 +77,17 @@ void CalcPointJacobian (
         bool update_kinematics = true
         );
 
+RBDL_DLLAPI
+void UpdateKinematicsCustom (
+    Model & model,
+    ADModel & fd_model,
+    Math::VectorNd const & q,
+    Math::MatrixNd const &q_dirs,
+    Math::VectorNd const & qd,
+    Math::MatrixNd const & qd_dirs,
+    Math::VectorNd const & qdd,
+    Math::MatrixNd const & qdd_dirs);
+
 // -----------------------------------------------------------------------------
 } // namespace FD
 // -----------------------------------------------------------------------------

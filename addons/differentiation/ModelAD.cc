@@ -17,19 +17,21 @@ ADModel::ADModel () {
     // TODO: should not be called, I think!
     //std::cerr << "Data structure can only be initialized with argument RigidBodyDynamics::Model!" << std::endl;
     //throw std::exception;
-};
+}
 
 ADModel::ADModel (RigidBodyDynamics::Model& model) {
     ndirs = 4 * model.dof_count;
 
     // NOTE: old initialization values
+    std::vector<SpatialRigidBodyInertia> SRBI(ndirs);
+    std::vector<SpatialTransform> T(ndirs, SpatialTransform::Zero());
     std::vector<SpatialMatrix> X(ndirs, SpatialMatrix::Zero());
     std::vector<SpatialVector> vec(ndirs, SpatialVector::Zero());
     //std::vector<double> double(ndirs, 0.0);
 
-    X_lambda.resize(model.mBodies.size(), X);
-    X_base.resize(model.mBodies.size(), X);
-    X_J.resize(model.mBodies.size(), X);
+    X_lambda.resize(model.mBodies.size(), T);
+    X_base.resize(model.mBodies.size(), T);
+    X_J.resize(model.mBodies.size(), T);
 
     v_J.resize(model.mBodies.size(), vec);
     v.resize(model.mBodies.size(), vec);
@@ -37,7 +39,7 @@ ADModel::ADModel (RigidBodyDynamics::Model& model) {
     a_J.resize(model.mBodies.size(), vec);
     a.resize(model.mBodies.size(), vec);
 
-    Ic.resize(model.mBodies.size(), X);
+    Ic.resize(model.mBodies.size(), SRBI);
     hc.resize(model.mBodies.size(), vec);
     F.resize(model.mBodies.size(), vec);
     c.resize(model.mBodies.size(), vec);
@@ -50,22 +52,22 @@ ADModel::ADModel (RigidBodyDynamics::Model& model) {
     //d.resize(model.mBodies.size(), double);
     u.resize(model.u.rows(), ndirs);
     d.resize(model.d.rows(), ndirs);
-};
+}
 
 void ADModel::resize_directions (unsigned requested_ndirs){
     if (ndirs < requested_ndirs) {
         ndirs = requested_ndirs;
 
         for (unsigned int i = 0; i < X_lambda.size(); ++i) {
-            X_lambda[i].resize(ndirs, SpatialMatrix::Zero());
+            X_lambda[i].resize(ndirs, SpatialTransform::Zero());
         }
 
         for (unsigned int i = 0; i < X_base.size(); ++i) {
-            X_base[i].resize(ndirs, SpatialMatrix::Zero());
+            X_base[i].resize(ndirs, SpatialTransform::Zero());
         }
 
         for (unsigned int i = 0; i < X_J.size(); ++i) {
-            X_J[i].resize(ndirs, SpatialMatrix::Zero());
+            X_J[i].resize(ndirs, SpatialTransform::Zero());
         }
 
         for (unsigned int i = 0; i < v_J.size(); ++i) {
@@ -97,7 +99,7 @@ void ADModel::resize_directions (unsigned requested_ndirs){
         }
 
         for (unsigned int i = 0; i < Ic.size(); ++i) {
-            Ic[i].resize(ndirs, SpatialMatrix::Zero());
+            Ic[i].resize(ndirs);
         }
 
         for (unsigned int i = 0; i < F.size(); ++i) {

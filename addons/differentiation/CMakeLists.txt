@@ -23,6 +23,7 @@ SET (CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # define add-on sources
 SET ( DIFFERENTIATION_SOURCES
 	ModelAD.cc
+  FdModelEntry.cc
 	ContactsAD.cc
 	KinematicsAD.cc
 	KinematicsFD.cc

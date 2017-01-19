@@ -6,6 +6,7 @@
  */
 
 #include "DynamicsAD.h"
+#include "SpatialAlgebraOperatorsAD.h"
 
 #include <iostream>
 
@@ -51,10 +52,14 @@ void ForwardDynamics (
 
 		if (lambda != 0) {
 			// derivative evaluation
-			for(unsigned int j = 0; j < ndirs; j++) {
-				ad_model.X_base[i][j] = ad_model.X_lambda[i][j] * model.X_base[lambda].toMatrix()
-						+ model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][j];
-			}
+//      for(unsigned idir = 0; idir < ndirs; idir++) {
+//        ad_model.X_base[i][idir] =
+//            ad_model.X_lambda[i][idir] * model.X_base[lambda]
+//            + model.X_lambda[i]/* .toMatrix()*/ * ad_model.X_base[lambda][idir];
+//			}
+      mulSTST(model.X_lambda[i], ad_model.X_lambda[i],
+              model.X_base[lambda], ad_model.X_base[lambda],
+              model.X_base[i], ad_model.X_base[i]);
 			// nominal evaluation
 			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 		} else {
@@ -67,10 +72,10 @@ void ForwardDynamics (
 		}
 
 		// derivative evaluation
-		for(unsigned int j = 0; j < ndirs; j++) {
-			ad_model.v[i][j] = ad_model.X_lambda[i][j] * model.v[lambda]
-				+ model.X_lambda[i].apply(ad_model.v[lambda][j])
-				+ ad_model.v_J[i][j];
+    for(unsigned idir = 0; idir < ndirs; idir++) {
+      ad_model.v[i][idir] = ad_model.X_lambda[i][idir].apply(model.v[lambda])
+        + model.X_lambda[i].apply(ad_model.v[lambda][idir])
+        + ad_model.v_J[i][idir];
 		}
 		// nominal evaluation
 		model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
@@ -101,11 +106,11 @@ void ForwardDynamics (
 
     if (f_ext != NULL && (*f_ext)[i] != SpatialVector::Zero()) {
 			// derivative evaluation
-			for(unsigned int j = 0; j < ndirs; j++) {
-				SpatialMatrix ad_X_base_force(ad_model.X_base[i][j]);
+      for(unsigned int idir = 0; idir < ndirs; idir++) {
+        SpatialMatrix ad_X_base_force(ad_model.X_base[i][idir].toMatrix());
 				ad_X_base_force.block<3,3>(3,0) = Matrix3d::Zero();
-				ad_X_base_force.block<3,3>(0,3) = ad_model.X_base[i][j].block<3,3>(3,0);
-				ad_model.pA[i][j] -= ad_X_base_force * (*f_ext)[i];
+        ad_X_base_force.block<3,3>(0,3) = ad_model.X_base[i][idir].toMatrix().block<3,3>(3,0);
+        ad_model.pA[i][idir] -= ad_X_base_force * (*f_ext)[i];
 			}
 			// nominal evaluation
 			model.pA[i] -= model.X_base[i].toMatrixAdjoint() * (*f_ext)[i];
@@ -194,16 +199,16 @@ void ForwardDynamics (
                 // derivative evaluation
 				for(unsigned int j = 0; j < ndirs; j++) {
 					ad_model.IA[lambda][j].noalias() +=
-						ad_model.X_lambda[i][j].transpose() * Ia * model.X_lambda[i].toMatrix()
+            ad_model.X_lambda[i][j].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix()
 						+ model.X_lambda[i].toMatrixTranspose() * ad_Ia[j] * model.X_lambda[i].toMatrix()
-						+ model.X_lambda[i].toMatrixTranspose() * Ia * ad_model.X_lambda[i][j];
+            + model.X_lambda[i].toMatrixTranspose() * Ia * ad_model.X_lambda[i][j].toMatrix();
 				}
 				// nominal evaluation
 				model.IA[lambda].noalias() += model.X_lambda[i].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix();
 
 				// derivative evaluation
 				for(unsigned int j = 0; j < ndirs; j++) {
-					ad_model.pA[lambda][j].noalias() += ad_model.X_lambda[i][j].transpose() * pa
+          ad_model.pA[lambda][j].noalias() += ad_model.X_lambda[i][j].applyTranspose(pa)
 						+ model.X_lambda[i].applyTranspose(ad_pa[j]);
 				}
 				// nominal evaluation
@@ -227,7 +232,7 @@ void ForwardDynamics (
 
 		// derivative evaluation
 		for(unsigned int j = 0; j < ndirs; j++) {
-			ad_model.a[i][j] = ad_model.X_lambda[i][j] * model.a[lambda]
+      ad_model.a[i][j] = ad_model.X_lambda[i][j].apply(model.a[lambda])
 				+ X_lambda.apply(ad_model.a[lambda][j])
 				+ ad_model.c[i][j];
 		}
@@ -306,10 +311,14 @@ void InverseDynamics(
 
 		if (lambda != 0) {
 			// derivative evaluation
-			for(unsigned int j = 0; j < ndirs; j++) {
-				ad_model.X_base[i][j] = ad_model.X_lambda[i][j] * model.X_base[lambda].toMatrix()
-					+ model.X_lambda[i].toMatrix() * ad_model.X_base[i][j];
-			}
+//			for(unsigned int j = 0; j < ndirs; j++) {
+//				ad_model.X_base[i][j] = ad_model.X_lambda[i][j] * model.X_base[lambda].toMatrix()
+//					+ model.X_lambda[i].toMatrix() * ad_model.X_base[i][j];
+//			}
+
+      mulSTST(model.X_lambda[i], ad_model.X_lambda[i],
+              model.X_base[lambda], ad_model.X_base[lambda],
+              model.X_base[i], ad_model.X_base[i]);
 			// nominal evaluation
 			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 		} else {
@@ -322,11 +331,11 @@ void InverseDynamics(
 		}
 
 		// derivative evaluation
-		for(unsigned int j = 0; j < ndirs; j++) {
-			ad_model.v[i][j] = ad_model.X_lambda[i][j] * model.v[lambda]
-				+ model.X_lambda[i].apply (ad_model.v[lambda][j])
-				+ ad_model.v_J[i][j];
-		}
+    for(unsigned int j = 0; j < ndirs; j++) {
+      ad_model.v[i][j] = ad_model.X_lambda[i][j].apply(model.v[lambda])
+        + model.X_lambda[i].apply (ad_model.v[lambda][j])
+        + ad_model.v_J[i][j];
+    }
 		// nominal evaluation
 		model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
 
@@ -349,7 +358,8 @@ void InverseDynamics(
 		} else {
 			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
-				ad_model.a[i][j] = ad_model.X_lambda[i][j] * model.a[lambda]
+        ad_model.a[i][j] =
+            ad_model.X_lambda[i][j].apply(model.a[lambda])
 						+ model.X_lambda[i].apply(ad_model.a[lambda][j])
 						+ ad_model.c[i][j]
 						+ model.S[i] * qddot_dirs(q_index,j);
@@ -380,9 +390,9 @@ void InverseDynamics(
     if (f_ext != NULL && (*f_ext)[i] != SpatialVector::Zero()) {
 			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
-				SpatialMatrix ad_X_base_force(ad_model.X_base[i][j]);
+        SpatialMatrix ad_X_base_force(ad_model.X_base[i][j].toMatrix());
 				ad_X_base_force.block<3,3>(3,0) = Matrix3d::Zero();
-				ad_X_base_force.block<3,3>(0,3) = ad_model.X_base[i][j].block<3,3>(3,0);
+        ad_X_base_force.block<3,3>(0,3) = ad_model.X_base[i][j].toMatrix().block<3,3>(3,0);
 				ad_model.f[i][j] -= ad_X_base_force * (*f_ext)[i];
 			}
 			// nominal evaluation
@@ -408,9 +418,10 @@ void InverseDynamics(
 		if (model.lambda[i] != 0) {
 			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
-				ad_model.f[model.lambda[i]][j] = ad_model.f[model.lambda[i]][j]
-					+ ad_model.X_lambda[i][j].transpose() * model.f[i]
-					+ model.X_lambda[i].applyTranspose(ad_model.f[i][j]);
+        ad_model.f[model.lambda[i]][j] =
+            ad_model.f[model.lambda[i]][j]
+            + ad_model.X_lambda[i][j].applyTranspose (model.f[i])
+            + model.X_lambda[i].applyTranspose(ad_model.f[i][j]);
 			}
 			// nominal evaluation
 			model.f[model.lambda[i]] = model.f[model.lambda[i]]
@@ -464,15 +475,16 @@ void NonlinearEffects (
       model.v[i] = model.v_J[i];
 
       // derivative code
-			for (unsigned idir = 0; idir < ndirs; idir++) {
-        ad_model.a[i][idir] = ad_model.X_lambda[i][idir] * spatial_gravity;
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.a[i][idir] = ad_model.X_lambda[i][idir].apply (spatial_gravity);
       }
       // nominal code
       model.a[i] = model.X_lambda[i].apply(spatial_gravity);
     }	else {
       // derivative code
-			for (unsigned idir = 0; idir < ndirs; idir++) {
-        ad_model.v[i][idir] = ad_model.X_lambda[i][idir] * model.v[lambda]
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.v[i][idir] =
+            ad_model.X_lambda[i][idir].apply (model.v[lambda])
             + model.X_lambda[i].apply(ad_model.v[lambda][idir])
             + ad_model.v_J[i][idir];
       }
@@ -490,7 +502,8 @@ void NonlinearEffects (
 
       // derivative code
 			for (unsigned idir = 0; idir < ndirs; idir++) {
-        ad_model.a[i][idir] = ad_model.X_lambda[i][idir] * model.a[lambda]
+        ad_model.a[i][idir] =
+            ad_model.X_lambda[i][idir].apply(model.a[lambda])
             + model.X_lambda[i].apply(ad_model.a[lambda][idir])
             + ad_model.c[i][idir];
       }
@@ -538,7 +551,7 @@ void NonlinearEffects (
       // derivative code
 			for (unsigned idir = 0; idir < ndirs; idir++) {
         ad_model.f[lambda][idir] +=
-            ad_model.X_lambda[i][idir].transpose() * model.f[i]
+            ad_model.X_lambda[i][idir].applyTranspose (model.f[i])
             + model.X_lambda[i].applyTranspose(ad_model.f[i][idir]);
       }
       // nominal code
@@ -566,22 +579,22 @@ void CompositeRigidBodyAlgorithm (
 
 	assert (H.rows() == model.dof_count && H.cols() == model.dof_count);
 
-	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
-		if (update_kinematics) {
-			// derivative evaluation
+  for (unsigned int i = 1; i < model.mBodies.size(); i++) {
+    if (update_kinematics) {
+      // derivative evaluation
       jcalc_X_lambda_S (model, ad_model, i, q, q_dirs);
-			// nominal evaluation
-			// NOTE nominal evaluation is part of ad_jcalc_X_lambda_S
-			// jcalc_X_lambda_S (model, i, q);
-		}
-		// derivative evaluation
-		for (size_t idir = 0; idir < ndirs; idir++) {
-			// NOTE Ic is a constant transformation wrt. q
-			ad_model.Ic[i][idir] = SpatialMatrix::Zero();
-		}
-		// nominal evaluation
-		model.Ic[i] = model.I[i];
-	}
+      // nominal evaluation
+      // NOTE nominal evaluation is part of ad_jcalc_X_lambda_S
+      // jcalc_X_lambda_S (model, i, q);
+    }
+    // derivative evaluation
+    for (size_t idir = 0; idir < ndirs; idir++) {
+      // NOTE Ic is a constant transformation wrt. q
+      ad_model.Ic[i][idir].setZero();
+    }
+    // nominal evaluation
+    model.Ic[i] = model.I[i];
+  }
 
 	for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
 		/// TODO: Try to speed up by using the following code
@@ -606,12 +619,31 @@ void CompositeRigidBodyAlgorithm (
 
 		if (model.lambda[i] != 0) {
 			// derivative evaluation
-			for(size_t idir = 0; idir < ndirs; idir++) {
-				ad_model.Ic[model.lambda[i]][idir] = ad_model.Ic[model.lambda[i]][idir]
-					+ model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir]*model.X_lambda[i].toMatrix()
-					+ ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix()*model.X_lambda[i].toMatrix()
-					+ model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix()*ad_model.X_lambda[i][idir];
-			}
+//			for(size_t idir = 0; idir < ndirs; idir++) {
+//				ad_model.Ic[model.lambda[i]][idir] = ad_model.Ic[model.lambda[i]][idir]
+//          + model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir].toMatrix() * model.X_lambda[i].toMatrix()
+//					+ ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix()*model.X_lambda[i].toMatrix()
+//					+ model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix()*ad_model.X_lambda[i][idir];
+//			}
+
+      // derivative evaluation
+      SpatialRigidBodyInertia         summand;
+      vector<SpatialRigidBodyInertia> summand_res(ndirs);
+      applyTransposeAD(
+            ndirs,
+            model.X_lambda[i],
+            ad_model.X_lambda[i],
+            model.Ic[i],
+            ad_model.Ic[i],
+            summand,
+            summand_res
+            );
+
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.Ic[model.lambda[i]][idir] = ad_model.Ic[model.lambda[i]][idir] + summand_res[idir];
+      }
+
+
 			// nominal evaluation
 			model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + model.X_lambda[i].applyTranspose(model.Ic[i]);
 		}
@@ -664,9 +696,10 @@ void CompositeRigidBodyAlgorithm (
 
 		while (model.lambda[j] != 0) {
 			// derivative evaluation
-			for (size_t ndir = 0; ndir < ndirs; ndir++) {
-				ad_model.F[i][ndir] = ad_model.X_lambda[j][ndir].transpose()*F
-					+ model.X_lambda[j].toMatrixTranspose() * ad_model.F[i][ndir];
+      for (size_t idir = 0; idir < ndirs; idir++) {
+        ad_model.F[i][idir] =
+            ad_model.X_lambda[j][idir].applyTranspose (F)
+            + model.X_lambda[j].applyTranspose (ad_model.F[i][idir]);
 			}
 			// nominal evaluation
 			F = model.X_lambda[j].applyTranspose(F);

@@ -20,7 +20,7 @@ RBDL_DLLAPI void jcalc (
         const Math::VectorNd &qdot,
         const Math::MatrixNd &qdot_dirs);
 
-RBDL_DLLAPI Math::SpatialMatrix jcalc_XJ (
+RBDL_DLLAPI Math::SpatialTransform jcalc_XJ (
         Model &model,
         ADModel &ad_model,
         unsigned int joint_id,
