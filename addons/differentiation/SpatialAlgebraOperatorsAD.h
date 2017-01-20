@@ -85,7 +85,7 @@ inline void mulSTST(
  * @param res C += A^T * B * A
  * @param res_dirs dC += d(A^T * B * A)
  */
-inline void add_sqrFormSTSM_noalias (
+inline void addSqrFormSTSM_noalias (
     unsigned ndirs,
     SpatialTransform const & st,
     std::vector<SpatialTransform> const & st_dirs,

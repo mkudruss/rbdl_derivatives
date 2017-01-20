@@ -411,7 +411,7 @@ TEST(CheckAdd_sqrFormSTSM_noalias) {
       sm_dirs[idir]((idir - 12u) / 6, (idir - 12u) % 6) = 1.0;
     }
 
-    AD::add_sqrFormSTSM_noalias(
+    AD::addSqrFormSTSM_noalias(
           ndirs,
           st, st_dirs,
           sm, sm_dirs,

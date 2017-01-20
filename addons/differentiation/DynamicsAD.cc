@@ -81,15 +81,6 @@ void ForwardDynamics (
     }
     model.v[i] += model.v_J[i];
 
-//		// derivative evaluation
-//    for(unsigned idir = 0; idir < ndirs; idir++) {
-//      ad_model.v[i][idir] = ad_model.X_lambda[i][idir].apply(model.v[lambda])
-//        + model.X_lambda[i].apply(ad_model.v[lambda][idir])
-//        + ad_model.v_J[i][idir];
-//		}
-//		// nominal evaluation
-//		model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
-
 		// derivative evaluation
 		for(unsigned int j = 0; j < ndirs; j++) {
 			ad_model.c[i][j] = ad_model.c_J[i][j]
@@ -208,31 +199,11 @@ void ForwardDynamics (
 				SpatialVector pa = model.pA[i] + Ia * model.c[i] + model.U[i] * model.u[i] / model.d[i];
 
 #ifdef EIGEN_CORE_H
-//        // derivative evaluation
-//        for(unsigned int j = 0; j < ndirs; j++) {
-//          ad_model.IA[lambda][j].noalias() +=
-//              ad_model.X_lambda[i][j].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix()
-//              + model.X_lambda[i].toMatrixTranspose() * ad_Ia[j] * model.X_lambda[i].toMatrix()
-//              + model.X_lambda[i].toMatrixTranspose() * Ia * ad_model.X_lambda[i][j].toMatrix();
-//        }
-//        // nominal evaluation
-//        model.IA[lambda].noalias() += model.X_lambda[i].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix();
-
-        add_sqrFormSTSM_noalias(
+        addSqrFormSTSM_noalias(
               ndirs,
               model.X_lambda[i], ad_model.X_lambda[i],
               Ia, ad_Ia,
               model.IA[lambda], ad_model.IA[lambda]);
-
-#warning "Code below contains probably a bug (AD variant of applyTranspose is necessary!)"
-//				// derivative evaluation
-//        for(unsigned idir = 0; idir < ndirs; idir++) {
-//          ad_model.pA[lambda][idir].noalias() +=
-//              ad_model.X_lambda[i][idir].applyTranspose(pa)
-//            + model.X_lambda[i].applyTranspose(ad_pa[idir]);
-//        }
-//        // nominal evaluation
-//        model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
 
         SpatialVector summand;
         vector<SpatialVector> ad_summand(ndirs);
