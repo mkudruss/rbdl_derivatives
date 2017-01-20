@@ -112,7 +112,7 @@ RBDL_DLLAPI void ForwardDynamics (
     const Math::VectorNd &QDot,
     const Math::VectorNd &Tau,
     Math::VectorNd &QDDot,
-    std::vector<Math::SpatialVector> *f_ext = NULL
+    std::vector<Math::SpatialVector> const *f_ext = NULL
     );
 
 /** \brief Computes forward dynamics by building and solving the full Lagrangian equation

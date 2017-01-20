@@ -23,8 +23,7 @@ namespace AD {
 // -----------------------------------------------------------------------------
 
 RBDL_DLLAPI
-void ForwardDynamics (
-    Model& model,
+void ForwardDynamics (Model& model,
     ADModel& ad_model,
     const VectorNd& q,
     const MatrixNd& q_dirs,
@@ -34,7 +33,10 @@ void ForwardDynamics (
     const MatrixNd& tau_dirs,
     VectorNd& qddot,
     MatrixNd& ad_qddot,
-    vector<SpatialVector>* f_ext) {
+    vector<SpatialVector> const * f_ext,
+    vector<vector<SpatialVector> > const * f_ext_dirs) {
+  assert((f_ext == NULL) == (f_ext_dirs == NULL));
+
 	SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
 
 	unsigned int ndirs = q_dirs.cols();
@@ -106,16 +108,12 @@ void ForwardDynamics (
 		model.pA[i] = crossf(model.v[i],model.I[i] * model.v[i]);
 
     if (f_ext != NULL && (*f_ext)[i] != SpatialVector::Zero()) {
-#warning potential bug here
-			// derivative evaluation
-      for(unsigned int idir = 0; idir < ndirs; idir++) {
-        SpatialMatrix ad_X_base_force(ad_model.X_base[i][idir].toMatrix());
-				ad_X_base_force.block<3,3>(3,0) = Matrix3d::Zero();
-        ad_X_base_force.block<3,3>(0,3) = ad_model.X_base[i][idir].toMatrix().block<3,3>(3,0);
-        ad_model.pA[i][idir] -= ad_X_base_force * (*f_ext)[i];
-			}
-			// nominal evaluation
-			model.pA[i] -= model.X_base[i].toMatrixAdjoint() * (*f_ext)[i];
+      addApplyAdjointSTSV(
+            ndirs,
+            -1.0,
+            model.X_base[i], ad_model.X_base[i],
+            (*f_ext)[i], (*f_ext_dirs)[i],
+            model.pA[i], ad_model.pA[i]);
 		}
 	}
 

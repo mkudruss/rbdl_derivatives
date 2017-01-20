@@ -222,74 +222,124 @@ inline void applyTransposeSTSV (
   res.segment<3>(3) = E_T_f;
 }
 
+inline void addApplyTransposeSTSV (
+    unsigned ndirs,
+    double dscal,
+    SpatialTransform const & st,
+    std::vector<SpatialTransform> const & st_dirs,
+    SpatialVector const & sv,
+    std::vector<SpatialVector> const & sv_dirs,
+    SpatialVector & res,
+    std::vector<SpatialVector> & res_dirs) {
+  assert(ndirs <= st_dirs.size());
+  assert(ndirs <= sv_dirs.size());
+  assert(ndirs <= res_dirs.size());
+
+  Vector3d E_T_f = st.E.transpose() * sv.segment<3>(3);
+  Vector3d E_T_n = st.E.transpose() * sv.segment<3>(0);
+  Vector3d top = E_T_n + st.r.cross(E_T_f);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    res_dirs[idir].segment<3>(3) += dscal * (
+        st.E.transpose() * sv_dirs[idir].segment<3>(3)
+        + st_dirs[idir].E.transpose() * sv.segment<3>(3));
+
+    res_dirs[idir].segment<3>(0) += dscal * (
+        st.E.transpose() * sv_dirs[idir].segment<3>(0)
+        + st_dirs[idir].E.transpose() * sv.segment<3>(0)
+        + st_dirs[idir].r.cross(E_T_f)
+        + st.r.cross(res_dirs[idir].segment<3>(3)));
+  }
+
+  res.segment<3>(0) += dscal * top;
+  res.segment<3>(3) += dscal * E_T_f;
+}
+
+inline void addApplyAdjointSTSV (
+    unsigned ndirs,
+    double dscal,
+    SpatialTransform const & st,
+    std::vector<SpatialTransform> const & st_dirs,
+    SpatialVector const & sv,
+    std::vector<SpatialVector> const & sv_dirs,
+    SpatialVector & res,
+    std::vector<SpatialVector> & res_dirs) {
+  assert(ndirs <= st_dirs.size());
+  assert(ndirs <= sv_dirs.size());
+  assert(ndirs <= res_dirs.size());
+
+  Vector3d n_rxf = sv.segment<3>(0) - st.r.cross(sv.segment<3>(3));
+  Vector3d En_rxf = st.E * n_rxf;
+  Vector3d Ef = st.E * sv.segment<3>(3);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    res_dirs[idir].segment<3>(0) += dscal * (
+          st_dirs[idir].E * n_rxf
+          + st.E * (
+            sv_dirs[idir].segment<3>(0)
+            - st.r.cross(sv_dirs[idir].segment<3>(3))
+            - st_dirs[idir].r.cross(sv.segment<3>(3))
+            )
+          );
+    res_dirs[idir].segment<3>(3) += dscal * (
+          st_dirs[idir].E * sv.segment<3>(3)
+          + st.E * sv_dirs[idir].segment<3>(3));
+  }
+
+  res.segment<3>(0) += dscal * En_rxf;
+  res.segment<3>(3) += dscal * Ef;
+}
 
 inline void applyTransposeAD (
     unsigned ndirs,
     SpatialTransform const & st,
     std::vector<SpatialTransform> const & st_dirs,
-    SpatialRigidBodyInertia const & srbi,
-    std::vector<SpatialRigidBodyInertia> const & srbi_dirs,
+    SpatialRigidBodyInertia const & si,
+    std::vector<SpatialRigidBodyInertia> const & si_dirs,
     SpatialRigidBodyInertia & res,
     std::vector<SpatialRigidBodyInertia> & res_dirs) {
 
-  Math::MatrixNd E_T_mr_dirs(3, ndirs);
-  Math::Vector3d E_T_mr;
+  MatrixNd E_T_mr_dirs(3, ndirs);
+  Vector3d E_T_mr;
 
   // derivative code
   for (unsigned i = 0; i < ndirs; i++) {
     E_T_mr_dirs.col(i) =
-        st_dirs[i].E.transpose() * srbi.h + st.E.transpose() * srbi_dirs[i].h
-        + srbi.m * st_dirs[i].r + srbi_dirs[i].m * st.r;
+        st_dirs[i].E.transpose() * si.h + st.E.transpose() * si_dirs[i].h
+        + si.m * st_dirs[i].r + si_dirs[i].m * st.r;
   }
   // nominal code
-  E_T_mr = st.E.transpose() * srbi.h + srbi.m * st.r;
+  E_T_mr = st.E.transpose() * si.h + si.m * st.r;
 
-  Math::Matrix3d Ixyz = srbi.getInertia();
-  Math::Matrix3d res_Ixyz_1 = st.E.transpose() * Ixyz * st.E;
-
-  //  // fd derivative code
-  //  for (unsigned i = 0; i < ndirs; i++) {
-  //    Matrix3d res_Ixyz_1_i_ad =
-  //        st.E.transpose() * Ixyz * st_dirs[i].E
-  //        + st.E.transpose() * srbi_dirs[i].getInertia() * st.E
-  //        + st_dirs[i].E.transpose() * Ixyz * st.E;
-  //    double h = 1e-8;
-  //    Matrix3d res_Ixyz_1_i_h_ad =
-  //        (st.E + h * st_dirs[i].E).transpose()
-  //        * (Ixyz  + h * srbi_dirs[i].getInertia())
-  //        * (st.E + h * st_dirs[i].E);
-  //    Matrix3d res_Ixyz_1_i_fd = //(res_Ixyz_1_i_h_ad - st.E.transpose() * Ixyz) / h;
-  //        (res_Ixyz_1_i_h_ad - res_Ixyz_1) / h;
-  //    cout << res_Ixyz_1_i_ad << endl << endl << res_Ixyz_1_i_fd << endl << endl;
-  //    cout << (res_Ixyz_1_i_ad - res_Ixyz_1_i_fd).norm() << endl;
-  //    CHECK_ARRAY_CLOSE(res_Ixyz_1_i_ad.data(), res_Ixyz_1_i_fd.data(), 9, 1e-6);
-  //  }
+  Matrix3d Ixyz = si.getInertia();
+  Matrix3d res_Ixyz_1 = st.E.transpose() * Ixyz * st.E;
 
   // derivative code
   for (unsigned i = 0; i < ndirs; i++) {
-    res_dirs[i] = Math::SpatialRigidBodyInertia (
-          srbi_dirs[i].m,
-          E_T_mr_dirs.col(i),
-          st.E.transpose() * Ixyz * st_dirs[i].E
-          + st.E.transpose() * srbi_dirs[i].getInertia() * st.E
-          + st_dirs[i].E.transpose() * Ixyz * st.E
+    res_dirs[i] = SpatialRigidBodyInertia (
+        si_dirs[i].m,
+        E_T_mr_dirs.col(i),
+        st.E.transpose() * Ixyz * st_dirs[i].E
+        + st.E.transpose() * si_dirs[i].getInertia() * st.E
+        + st_dirs[i].E.transpose() * Ixyz * st.E
 
-          - Math::VectorCrossMatrix(st.r) * Math::VectorCrossMatrix (st.E.transpose() * srbi_dirs[i].h)
-          - Math::VectorCrossMatrix(st.r) * Math::VectorCrossMatrix (st_dirs[i].E.transpose() * srbi.h)
-          - Math::VectorCrossMatrix(st_dirs[i].r) * Math::VectorCrossMatrix (st.E.transpose() * srbi.h)
+        - VectorCrossMatrix(st.r) * VectorCrossMatrix (st.E.transpose() * si_dirs[i].h)
+        - VectorCrossMatrix(st.r) * VectorCrossMatrix (st_dirs[i].E.transpose() * si.h)
+        - VectorCrossMatrix(st_dirs[i].r) * VectorCrossMatrix (st.E.transpose() * si.h)
 
-          - Math::VectorCrossMatrix (E_T_mr) * Math::VectorCrossMatrix (st_dirs[i].r)
-          - Math::VectorCrossMatrix (E_T_mr_dirs.col(i)) * Math::VectorCrossMatrix (st.r)
-          );
+        - VectorCrossMatrix (E_T_mr) * VectorCrossMatrix (st_dirs[i].r)
+        - VectorCrossMatrix (E_T_mr_dirs.col(i)) * VectorCrossMatrix (st.r)
+        );
   }
 
   // nominal code
   res = Math::SpatialRigidBodyInertia (
-        srbi.m,
-        E_T_mr,
-        res_Ixyz_1
-        - Math::VectorCrossMatrix(st.r) * Math::VectorCrossMatrix (st.E.transpose() * srbi.h)
-        - Math::VectorCrossMatrix (E_T_mr) * Math::VectorCrossMatrix (st.r));
+      si.m,
+      E_T_mr,
+      res_Ixyz_1
+      - VectorCrossMatrix (st.r) * VectorCrossMatrix (st.E.transpose() * si.h)
+      - VectorCrossMatrix (E_T_mr) * VectorCrossMatrix (st.r)
+      );
 }
 
 // -----------------------------------------------------------------------------

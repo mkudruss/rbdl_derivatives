@@ -314,7 +314,7 @@ RBDL_DLLAPI void ForwardDynamics (
     const VectorNd &QDot,
     const VectorNd &Tau,
     VectorNd &QDDot,
-    std::vector<SpatialVector> *f_ext) {
+    std::vector<SpatialVector> const *f_ext) {
   LOG << "-------- " << __func__ << " --------" << std::endl;
 
   SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);

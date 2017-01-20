@@ -307,9 +307,6 @@ inline void FDapplyTransposeSTSV(
 }
 
 TEST(CheckApplyTransposeSTSV) {
-  std::uniform_real_distribution<> dist(0.0, 1.0);
-  std::default_random_engine gen;
-
   for (int i = 0; i < 100; i++){
     unsigned ndirs = 18;
     Matrix3d E = Matrix3d::Random();
@@ -346,6 +343,82 @@ TEST(CheckApplyTransposeSTSV) {
           ndirs,
           st, st_dirs,
           sv, sm_dirs,
+          fd_res, fd_res_dirs);
+
+    CHECK_ARRAY_CLOSE(ad_res.data(), fd_res.data(), 6, 1e-7);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      CHECK_ARRAY_CLOSE(ad_res_dirs[idir].data(), fd_res_dirs[idir].data(), 6, 1e-7);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+inline void FDaddApplyAdjointSTSV (
+    unsigned ndirs,
+    double dscal,
+    SpatialTransform const & st,
+    std::vector<SpatialTransform> const & st_dirs,
+    SpatialVector const & sv,
+    std::vector<SpatialVector> const & sv_dirs,
+    SpatialVector & res,
+    std::vector<SpatialVector> & res_dirs) {
+  assert(ndirs <= st_dirs.size());
+  assert(ndirs <= sv_dirs.size());
+  assert(ndirs <= res_dirs.size());
+
+  SpatialVector offset = res;
+  res += dscal * st.toMatrixAdjoint() * sv;
+  double h = 1e-8;
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    SpatialTransform sth = st;
+    sth.E = st.E + h * st_dirs[idir].E;
+    sth.r = st.r + h * st_dirs[idir].r;
+    SpatialVector svh;
+    svh = sv + h * sv_dirs[idir];
+    res_dirs[idir] += (dscal * (sth.toMatrixAdjoint() * svh) - (res - offset)) / h;
+  }
+}
+
+TEST(CheckAddApplyAdjointSTSV) {
+  for (int i = 0; i < 100; i++){
+    unsigned ndirs = 18;
+    Matrix3d E = Matrix3d::Random();
+    Vector3d r = Vector3d::Random();
+    SpatialTransform st(E, r);
+    SpatialVector sv = SpatialVector::Random();
+    vector<SpatialTransform> st_dirs(ndirs, SpatialTransform::Zero());
+    vector<SpatialVector> sv_dirs(ndirs, SpatialVector::Zero());
+
+    SpatialVector ad_res = SpatialVector::Zero();
+    vector<SpatialVector> ad_res_dirs(ndirs, SpatialVector::Zero());
+
+    SpatialVector fd_res = SpatialVector::Zero();
+    vector<SpatialVector> fd_res_dirs(ndirs, SpatialVector::Zero());
+
+    unsigned idir = 0;
+    for (; idir < 9u; idir++) {
+      st_dirs[idir].E(idir % 3, idir / 3) = 1.0;
+    }
+    for (; idir < 12u; idir++) {
+      st_dirs[idir].r(idir - 9u) = 1.0;
+    }
+    for (; idir < ndirs; idir++) {
+      sv_dirs[idir](idir - 12u) = 1.0;
+    }
+
+    AD::addApplyAdjointSTSV(
+          ndirs,
+          -1.0,
+          st, st_dirs,
+          sv, sv_dirs,
+          ad_res, ad_res_dirs);
+
+    FDaddApplyAdjointSTSV(
+          ndirs,
+          -1.0,
+          st, st_dirs,
+          sv, sv_dirs,
           fd_res, fd_res_dirs);
 
     CHECK_ARRAY_CLOSE(ad_res.data(), fd_res.data(), 6, 1e-7);

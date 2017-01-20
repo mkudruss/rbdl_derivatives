@@ -32,8 +32,7 @@ namespace AD {
 // -----------------------------------------------------------------------------
 
 RBDL_DLLAPI
-void ForwardDynamics (
-    Model& model,
+void ForwardDynamics (Model& model,
     ADModel& ad_model,
     const Math::VectorNd& q,
     const Math::MatrixNd& q_dirs,
@@ -43,8 +42,8 @@ void ForwardDynamics (
     const Math::MatrixNd& tau_dirs,
     Math::VectorNd & qddot,
     Math::MatrixNd & ad_qddot,
-    std::vector<Math::SpatialVector>* f_ext
-    );
+    std::vector<Math::SpatialVector> const * f_ext = NULL,
+    std::vector<std::vector<Math::SpatialVector>> const * f_ext_dirs = NULL);
 
 RBDL_DLLAPI
 void InverseDynamics(

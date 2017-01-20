@@ -30,7 +30,10 @@ void ForwardDynamics(
     const MatrixNd& tau_dirs,
     VectorNd& qddot,
     MatrixNd& fd_qddot,
-    vector<SpatialVector>* f_ext) {
+    vector<SpatialVector> const * f_ext,
+    vector<vector<SpatialVector>> const * f_ext_dirs) {
+  assert((f_ext == NULL) == (f_ext_dirs == NULL));
+
 	assert(q_dirs.cols() == qdot_dirs.cols()
 		&& q_dirs.cols() == fd_qddot.cols()
 		&& tau_dirs.cols() == q_dirs.cols()
@@ -50,9 +53,16 @@ void ForwardDynamics(
     VectorNd qh  = q + h * q_dirs.col(idir);
     VectorNd qdh = qdot + h * qdot_dirs.col(idir);
     VectorNd tauh = tau + h * tau_dirs.col(idir);
-
+    vector<SpatialVector> f_exth_;
+    if (f_ext) {
+      f_exth_.resize(f_ext->size());
+      for (unsigned i = 0; i < f_ext->size(); i++) {
+        f_exth_[i] = (*f_ext)[i] + h * (*f_ext_dirs)[i][idir];
+      }
+    }
+    vector<SpatialVector> const * f_exth = f_ext ? &f_exth_ : NULL;
     Model modelh = model;
-    ForwardDynamics(modelh, qh, qdh, tauh, hd_qddot,f_ext);
+    ForwardDynamics(modelh, qh, qdh, tauh, hd_qddot, f_exth);
     fd_qddot.col(idir) = (hd_qddot - qddot) / h;
     computeFDEntry(model, modelh, h, idir, fd_model);
   }
