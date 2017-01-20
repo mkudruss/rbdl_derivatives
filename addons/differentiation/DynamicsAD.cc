@@ -238,15 +238,6 @@ void ForwardDynamics (
 		unsigned int lambda = model.lambda[i];
 		SpatialTransform X_lambda = model.X_lambda[i];
 
-//		// derivative evaluation
-//		for(unsigned int j = 0; j < ndirs; j++) {
-//      ad_model.a[i][j] = ad_model.X_lambda[i][j].apply(model.a[lambda])
-//				+ X_lambda.apply(ad_model.a[lambda][j])
-//				+ ad_model.c[i][j];
-//		}
-//		// nominal evaluation
-//		model.a[i] = X_lambda.apply(model.a[lambda]) + model.c[i];
-
     applySTSV(ndirs,
               model.X_lambda[i], ad_model.X_lambda[i],
               model.a[lambda], ad_model.a[lambda],
@@ -302,8 +293,7 @@ void InverseDynamics(
 	const Math::MatrixNd& qddot_dirs,
 	Math::VectorNd& tau,
 	Math::MatrixNd& ad_tau,
-	std::vector<Math::SpatialVector> *f_ext
-){
+  std::vector<Math::SpatialVector> *f_ext) {
 	model.v[0].setZero();
 	model.a[0].set (0., 0., 0.,
 			-model.gravity[0],
@@ -349,14 +339,24 @@ void InverseDynamics(
 			model.X_base[i] = model.X_lambda[i];
 		}
 
-		// derivative evaluation
-    for(unsigned int j = 0; j < ndirs; j++) {
-      ad_model.v[i][j] = ad_model.X_lambda[i][j].apply(model.v[lambda])
-        + model.X_lambda[i].apply (ad_model.v[lambda][j])
-        + ad_model.v_J[i][j];
+//    // derivative evaluation
+//    for(unsigned int j = 0; j < ndirs; j++) {
+//      ad_model.v[i][j] = ad_model.X_lambda[i][j].apply(model.v[lambda])
+//        + model.X_lambda[i].apply (ad_model.v[lambda][j])
+//        + ad_model.v_J[i][j];
+//    }
+//		// nominal evaluation
+//		model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
+
+    applySTSV(ndirs,
+              model.X_lambda[i], ad_model.X_lambda[i],
+              model.v[lambda], ad_model.v[lambda],
+              model.v[i], ad_model.v[i]);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_model.v[i][idir] += ad_model.v_J[i][idir];
     }
-		// nominal evaluation
-		model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
+    model.v[i] += model.v_J[i];
+
 
 		// derivative evaluation
 		for(unsigned int j = 0; j < ndirs; j++) {
@@ -375,17 +375,25 @@ void InverseDynamics(
 				+ model.c[i]
 				+ model.multdof3_S[i] * Vector3d (qddot[q_index], qddot[q_index + 1], qddot[q_index + 2]);
 		} else {
-			// derivative evaluation
-			for(unsigned int j = 0; j < ndirs; j++) {
-        ad_model.a[i][j] =
-            ad_model.X_lambda[i][j].apply(model.a[lambda])
-						+ model.X_lambda[i].apply(ad_model.a[lambda][j])
-						+ ad_model.c[i][j]
-						+ model.S[i] * qddot_dirs(q_index,j);
-			}
-			// nominal evaluation
-			model.a[i] = model.X_lambda[i].apply(model.a[lambda])
-					+ model.c[i] + model.S[i] * qddot[q_index];
+//			// derivative evaluation
+//			for(unsigned int j = 0; j < ndirs; j++) {
+//        ad_model.a[i][j] =
+//            ad_model.X_lambda[i][j].apply(model.a[lambda])
+//						+ model.X_lambda[i].apply(ad_model.a[lambda][j])
+//						+ ad_model.c[i][j]
+//						+ model.S[i] * qddot_dirs(q_index,j);
+//			}
+//			// nominal evaluation
+//			model.a[i] = model.X_lambda[i].apply(model.a[lambda])
+//					+ model.c[i] + model.S[i] * qddot[q_index];
+      applySTSV(ndirs,
+                model.X_lambda[i], ad_model.X_lambda[i],
+                model.a[lambda], ad_model.a[lambda],
+                model.a[i], ad_model.a[i]);
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.a[i][idir] += ad_model.c[i][idir] + model.S[i] * qddot_dirs(q_index, idir);
+      }
+      model.a[i] += model.c[i] + model.S[i] * qddot(q_index);
 		}
 
 		if (!model.mBodies[i].mIsVirtual) {
@@ -435,16 +443,27 @@ void InverseDynamics(
 		}
 
 		if (model.lambda[i] != 0) {
-			// derivative evaluation
-			for(unsigned int j = 0; j < ndirs; j++) {
-        ad_model.f[model.lambda[i]][j] =
-            ad_model.f[model.lambda[i]][j]
-            + ad_model.X_lambda[i][j].applyTranspose (model.f[i])
-            + model.X_lambda[i].applyTranspose(ad_model.f[i][j]);
-			}
-			// nominal evaluation
-			model.f[model.lambda[i]] = model.f[model.lambda[i]]
-				+ model.X_lambda[i].applyTranspose(model.f[i]);
+//			// derivative evaluation
+//			for(unsigned int j = 0; j < ndirs; j++) {
+//        ad_model.f[model.lambda[i]][j] =
+//            ad_model.f[model.lambda[i]][j]
+//            + ad_model.X_lambda[i][j].applyTranspose (model.f[i])
+//            + model.X_lambda[i].applyTranspose(ad_model.f[i][j]);
+//			}
+//			// nominal evaluation
+//			model.f[model.lambda[i]] = model.f[model.lambda[i]]
+//				+ model.X_lambda[i].applyTranspose(model.f[i]);
+
+      SpatialVector summand;
+      vector<SpatialVector> ad_summand(ndirs);
+      applyTransposeSTSV(ndirs,
+                         model.X_lambda[i], ad_model.X_lambda[i],
+                         model.f[i], ad_model.f[i],
+                         summand, ad_summand);
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.f[model.lambda[i]][idir] += ad_summand[idir];
+      }
+      model.f[model.lambda[i]] += summand;
 		}
 	}
 }

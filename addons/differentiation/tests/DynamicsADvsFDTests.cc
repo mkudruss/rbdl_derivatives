@@ -171,13 +171,13 @@ TEST_FIXTURE(Arm2DofZ, Arm2DofZInverseDynamicsADTest) {
   InverseDynamicsADTestTemplate(*this, 1e-6);
 }
 
-//TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpInverseDynamicsADTest) {
-//  InverseDynamicsADTestTemplate(*this, 1e-5);
-//}
+TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpInverseDynamicsADTest) {
+  InverseDynamicsADTestTemplate(*this, 1e-5);
+}
 
-//TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZYpInverseDynamicsADTest) {
-//    InverseDynamicsADTestTemplate(*this, 1e-6);
-//}
+TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZYpInverseDynamicsADTest) {
+    InverseDynamicsADTestTemplate(*this, 1e-6);
+}
 
 // -----------------------------------------------------------------------------
 
