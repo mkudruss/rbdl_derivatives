@@ -21,6 +21,19 @@ void computeFDEntry(
     fd_model.X_J[i][idir].E = (modelh.X_J[i].E - model.X_J[i].E) / h;
     fd_model.X_J[i][idir].r = (modelh.X_J[i].r - model.X_J[i].r) / h;
   }
+  for (unsigned i = 0; i < model.Ic.size(); i++) {
+    fd_model.Ic[i][idir].m = (modelh.Ic[i].m - model.Ic[i].m) / h;
+    fd_model.Ic[i][idir].h = (modelh.Ic[i].h - model.Ic[i].h) / h;
+    fd_model.Ic[i][idir].Ixx = (modelh.Ic[i].Ixx - model.Ic[i].Ixx) / h;
+    fd_model.Ic[i][idir].Iyx = (modelh.Ic[i].Iyx - model.Ic[i].Iyx) / h;
+    fd_model.Ic[i][idir].Iyy = (modelh.Ic[i].Iyy - model.Ic[i].Iyy) / h;
+    fd_model.Ic[i][idir].Izx = (modelh.Ic[i].Izx - model.Ic[i].Izx) / h;
+    fd_model.Ic[i][idir].Izy = (modelh.Ic[i].Izy - model.Ic[i].Izy) / h;
+    fd_model.Ic[i][idir].Izz = (modelh.Ic[i].Izz - model.Ic[i].Izz) / h;
+  }
+  for (unsigned i = 0; i < model.IA.size(); i++) {
+    fd_model.IA[i][idir] = (modelh.IA[i] - model.IA[i]) / h;
+  }
   for (unsigned i = 0; i < model.c.size(); i++) {
     fd_model.c[i][idir] = (modelh.c[i] - model.c[i]) / h;
   }
@@ -39,6 +52,16 @@ void computeFDEntry(
   for (unsigned i = 0; i < model.U.size(); i++) {
     fd_model.U[i][idir] = (modelh.U[i] - model.U[i]) / h;
   }
+  for (unsigned i = 0; i < model.pA.size(); i++) {
+    fd_model.pA[i][idir] = (modelh.pA[i] - model.pA[i]) / h;
+  }
+  for (unsigned i = 0; i < model.u.rows(); i++) {
+    fd_model.u(i, idir) = (modelh.u(i) - model.u(i)) / h;
+  }
+  for (unsigned i = 0; i < model.d.rows(); i++) {
+    fd_model.d(i, idir) = (modelh.d(i) - model.d(i)) / h;
+  }
+
 }
 
 }

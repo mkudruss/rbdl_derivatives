@@ -32,14 +32,12 @@ struct ADModel {
 
     // derivative values
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_lambda;
-
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_base;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_J;
 
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v_J;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > c_J;
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > a_J;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > a;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > c;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > f;

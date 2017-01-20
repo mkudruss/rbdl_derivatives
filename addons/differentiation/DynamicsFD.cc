@@ -20,18 +20,17 @@ namespace FD {
 
 RBDL_DLLAPI
 void ForwardDynamics(
-  Model & model,
-  ADModel & fd_model,
-	const VectorNd& q,
-	const MatrixNd& q_dirs,
-	const VectorNd& qdot,
-	const MatrixNd& qdot_dirs,
-	const VectorNd& tau,
-	const MatrixNd& tau_dirs,
-	VectorNd& qddot,
-	MatrixNd& fd_qddot,
-    vector<SpatialVector>* f_ext
-) {
+    Model & model,
+    ADModel & fd_model,
+    const VectorNd& q,
+    const MatrixNd& q_dirs,
+    const VectorNd& qdot,
+    const MatrixNd& qdot_dirs,
+    const VectorNd& tau,
+    const MatrixNd& tau_dirs,
+    VectorNd& qddot,
+    MatrixNd& fd_qddot,
+    vector<SpatialVector>* f_ext) {
 	assert(q_dirs.cols() == qdot_dirs.cols()
 		&& q_dirs.cols() == fd_qddot.cols()
 		&& tau_dirs.cols() == q_dirs.cols()
@@ -47,12 +46,13 @@ void ForwardDynamics(
 	VectorNd qdot_dir(qdot);
 	VectorNd tau_dir(tau);
 
-  for(unsigned idir = 0; idir < ndirs; ++idir) {
-    q_dir = q_dirs.col(idir);
-    qdot_dir = qdot_dirs.col(idir);
-    tau_dir = tau_dirs.col(idir);
+  for(unsigned idir = 0; idir < ndirs; idir++) {
+    VectorNd qh  = q + h * q_dirs.col(idir);
+    VectorNd qdh = qdot + h * qdot_dirs.col(idir);
+    VectorNd tauh = tau + h * tau_dirs.col(idir);
+
     Model modelh = model;
-    ForwardDynamics(model, q + h*q_dir, qdot + h*qdot_dir, tau + h*tau_dir, hd_qddot,f_ext);
+    ForwardDynamics(modelh, qh, qdh, tauh, hd_qddot,f_ext);
     fd_qddot.col(idir) = (hd_qddot - qddot) / h;
     computeFDEntry(model, modelh, h, idir, fd_model);
   }

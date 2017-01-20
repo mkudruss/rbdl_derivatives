@@ -24,17 +24,17 @@ namespace AD {
 
 RBDL_DLLAPI
 void ForwardDynamics (
-	Model& model,
-	ADModel& ad_model,
-	const VectorNd& q,
-	const MatrixNd& q_dirs,
-	const VectorNd& qdot,
-	const MatrixNd& qdot_dirs,
-	const VectorNd& tau,
-	const MatrixNd& tau_dirs,
-	VectorNd& qddot,
-	MatrixNd& ad_qddot,
-	vector<SpatialVector>* f_ext) {
+    Model& model,
+    ADModel& ad_model,
+    const VectorNd& q,
+    const MatrixNd& q_dirs,
+    const VectorNd& qdot,
+    const MatrixNd& qdot_dirs,
+    const VectorNd& tau,
+    const MatrixNd& tau_dirs,
+    VectorNd& qddot,
+    MatrixNd& ad_qddot,
+    vector<SpatialVector>* f_ext) {
 	SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
 
 	unsigned int ndirs = q_dirs.cols();
@@ -51,17 +51,18 @@ void ForwardDynamics (
 		jcalc(model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
 
 		if (lambda != 0) {
-			// derivative evaluation
+//      // derivative evaluation
 //      for(unsigned idir = 0; idir < ndirs; idir++) {
 //        ad_model.X_base[i][idir] =
 //            ad_model.X_lambda[i][idir] * model.X_base[lambda]
 //            + model.X_lambda[i]/* .toMatrix()*/ * ad_model.X_base[lambda][idir];
 //			}
+//			// nominal evaluation
+//			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
       mulSTST(model.X_lambda[i], ad_model.X_lambda[i],
               model.X_base[lambda], ad_model.X_base[lambda],
               model.X_base[i], ad_model.X_base[i]);
-			// nominal evaluation
-			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+
 		} else {
 			// derivative evaluation
 			for(unsigned int j = 0; j < ndirs; j++) {
@@ -114,6 +115,7 @@ void ForwardDynamics (
 		model.pA[i] = crossf(model.v[i],model.I[i] * model.v[i]);
 
     if (f_ext != NULL && (*f_ext)[i] != SpatialVector::Zero()) {
+#warning potential bug here
 			// derivative evaluation
       for(unsigned int idir = 0; idir < ndirs; idir++) {
         SpatialMatrix ad_X_base_force(ad_model.X_base[i][idir].toMatrix());
@@ -180,9 +182,9 @@ void ForwardDynamics (
 			model.u[i] = tau[q_index] - model.S[i].dot(model.pA[i]);
 
 			unsigned int lambda = model.lambda[i];
-			if (lambda != 0) {
+      if (lambda != 0) {
         vector<SpatialMatrix> ad_Ia(ndirs, SpatialMatrix::Zero());
-				// derivative evaluation
+        // derivative evaluation
 				for(unsigned int j = 0; j < ndirs; j++) {
 					ad_Ia[j] = ad_model.IA[i][j]
 						- ad_model.U[i][j] * (model.U[i] / model.d[i]).transpose()
@@ -201,29 +203,50 @@ void ForwardDynamics (
 						+ ad_model.U[i][j] * model.u[i] / model.d[i]
 						+ model.U[i] * ad_model.u(i,j) / model.d[i]
 						+ model.U[i] * model.u[i] * (-ad_model.d(i,j)) / (model.d[i] * model.d[i]);
-				}
+				}        
 				// nominal evaluation
 				SpatialVector pa = model.pA[i] + Ia * model.c[i] + model.U[i] * model.u[i] / model.d[i];
-#ifdef EIGEN_CORE_H
-        // derivative evaluation
-				for(unsigned int j = 0; j < ndirs; j++) {
-					ad_model.IA[lambda][j].noalias() +=
-            ad_model.X_lambda[i][j].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix()
-						+ model.X_lambda[i].toMatrixTranspose() * ad_Ia[j] * model.X_lambda[i].toMatrix()
-            + model.X_lambda[i].toMatrixTranspose() * Ia * ad_model.X_lambda[i][j].toMatrix();
-				}
-				// nominal evaluation
-				model.IA[lambda].noalias() += model.X_lambda[i].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix();
 
+#ifdef EIGEN_CORE_H
+//        // derivative evaluation
+//        for(unsigned int j = 0; j < ndirs; j++) {
+//          ad_model.IA[lambda][j].noalias() +=
+//              ad_model.X_lambda[i][j].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix()
+//              + model.X_lambda[i].toMatrixTranspose() * ad_Ia[j] * model.X_lambda[i].toMatrix()
+//              + model.X_lambda[i].toMatrixTranspose() * Ia * ad_model.X_lambda[i][j].toMatrix();
+//        }
+//        // nominal evaluation
+//        model.IA[lambda].noalias() += model.X_lambda[i].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix();
+
+        add_sqrFormSTSM_noalias(
+              ndirs,
+              model.X_lambda[i], ad_model.X_lambda[i],
+              Ia, ad_Ia,
+              model.IA[lambda], ad_model.IA[lambda]);
 
 #warning "Code below contains probably a bug (AD variant of applyTranspose is necessary!)"
-				// derivative evaluation
-        for(unsigned idir = 0; idir < ndirs; idir++) {
-          ad_model.pA[lambda][idir].noalias() += ad_model.X_lambda[i][idir].applyTranspose(pa)
-            + model.X_lambda[i].applyTranspose(ad_pa[idir]);
-				}
-				// nominal evaluation
-				model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
+//				// derivative evaluation
+//        for(unsigned idir = 0; idir < ndirs; idir++) {
+//          ad_model.pA[lambda][idir].noalias() +=
+//              ad_model.X_lambda[i][idir].applyTranspose(pa)
+//            + model.X_lambda[i].applyTranspose(ad_pa[idir]);
+//        }
+//        // nominal evaluation
+//        model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
+
+        SpatialVector summand;
+        vector<SpatialVector> ad_summand(ndirs);
+
+        applyTransposeSTSV(
+              ndirs,
+              model.X_lambda[i], ad_model.X_lambda[i],
+              pa, ad_pa,
+              summand, ad_summand);
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          ad_model.pA[lambda][idir].noalias() += ad_summand[idir];
+        }
+        model.pA[lambda].noalias() += summand;
+
 #else
 				cerr << "Simple math not yet supported." << endl;
 				abort();
@@ -234,7 +257,10 @@ void ForwardDynamics (
 		}
 	}
 
-	model.a[0] = spatial_gravity * -1.;
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_model.a[0][idir].setZero();
+  }
+  model.a[0] = spatial_gravity * -1.;
 
 	for (i = 1; i < model.mBodies.size(); i++) {
 		unsigned int q_index = model.mJoints[i].q_index;
@@ -259,38 +285,38 @@ void ForwardDynamics (
     }
     model.a[i] += model.c[i];
 
+    if (model.mJoints[i].mDoFCount == 3
+        && model.mJoints[i].mJointType != JointTypeCustom) {
+      cerr << __FILE__ << " " << __LINE__
+           << ": Multi-dof joints not supported." << endl;
+      abort();
+    } else if (model.mJoints[i].mDoFCount == 1
+        && model.mJoints[i].mJointType != JointTypeCustom) {
+      // derivative evaluation
+      for(unsigned idir = 0; idir < ndirs; idir++) {
+        ad_qddot(q_index, idir) =
+            -(ad_model.d(i, idir) / (model.d[i] * model.d[i]))
+            * (model.u[i] - model.U[i].dot(model.a[i]))
+            + (1./model.d[i])
+            * (ad_model.u(i, idir)
+               - ad_model.U[i][idir].dot(model.a[i])
+               - model.U[i].dot(ad_model.a[i][idir]));
+      }
+      // nominal evaluation
+      qddot[q_index] = (1./model.d[i]) * (model.u[i] - model.U[i].dot(model.a[i]));
 
-
-		if (model.mJoints[i].mDoFCount == 3) {
-			cerr << "Multi-dof joints not supported." << endl;
-			abort();
-//          Vector3d qdd_temp = model.multdof3_Dinv[i] * (model.multdof3_u[i] - model.multdof3_U[i].transpose() * model.a[i]);
-//          qddot[q_index] = qdd_temp[0];
-//          qddot[q_index + 1] = qdd_temp[1];
-//          qddot[q_index + 2] = qdd_temp[2];
-//          model.a[i] = model.a[i] + model.multdof3_S[i] * qdd_temp;
-        } else {
-			// derivative evaluation
-			for(unsigned idir = 0; idir < ndirs; idir++) {
-				ad_qddot(q_index,idir) =
-						-(ad_model.d(i,idir) / (model.d[i] * model.d[i]))
-							* (model.u[i] - model.U[i].dot(model.a[i]))
-						+ (1./model.d[i])
-							* (ad_model.u(i,idir)
-								 - ad_model.U[i][idir].dot(model.a[i])
-								 - model.U[i].dot(ad_model.a[i][idir]));
-			}
-			// nominal evaluation
-			qddot[q_index] = (1./model.d[i]) * (model.u[i] - model.U[i].dot(model.a[i]));
-
-			// derivative evaluation
-			for(unsigned int j = 0; j < ndirs; j++) {
-				ad_model.a[i][j] = ad_model.a[i][j] + model.S[i] * ad_qddot(q_index,j);
-			}
-			// nominal evaluation
-			model.a[i] = model.a[i] + model.S[i] * qddot[q_index];
-		}
-	}
+      // derivative evaluation
+      for(unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.a[i][idir] = ad_model.a[i][idir] + model.S[i] * ad_qddot(q_index, idir);
+      }
+      // nominal evaluation
+      model.a[i] = model.a[i] + model.S[i] * qddot[q_index];
+    } else {
+      cerr << __FILE__ << " " << __LINE__
+           << ": Custom joints not supported." << endl;    abort();
+      abort();
+    }
+  }
 }
 
 RBDL_DLLAPI

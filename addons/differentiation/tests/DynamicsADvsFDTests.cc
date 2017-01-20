@@ -27,8 +27,8 @@ void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials,
         double CHECK_ARRAY_PREC = 1e-7) {
     Model ad_model = obj.model;
     Model fd_model = obj.model;
-    ADModel & ad_d_model = obj.ad_model;
-    ADModel & fd_d_model = obj.ad_model;
+    ADModel ad_d_model = obj.ad_model;
+    ADModel fd_d_model = obj.ad_model;
     //srand((unsigned int) time(0));
     srand(666);
 
@@ -160,20 +160,20 @@ void InverseDynamicsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-7) {
     CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), CHECK_ARRAY_PREC);
 }
 
-//TEST_FIXTURE(CartPendulum, CartPendulumInverseDynamicsADTest){
-//    InverseDynamicsADTestTemplate<CartPendulum>(*this);
-//}
+TEST_FIXTURE(CartPendulum, CartPendulumInverseDynamicsADTest){
+  InverseDynamicsADTestTemplate<CartPendulum>(*this);
+}
 
-//TEST_FIXTURE(Arm2DofX, Arm2DofXInverseDynamicsADTest) {
-//    InverseDynamicsADTestTemplate(*this, 1e-6);
-//}
+TEST_FIXTURE(Arm2DofX, Arm2DofXInverseDynamicsADTest) {
+  InverseDynamicsADTestTemplate(*this, 1e-6);
+}
 
-//TEST_FIXTURE(Arm2DofZ, Arm2DofZInverseDynamicsADTest) {
-//    InverseDynamicsADTestTemplate(*this, 1e-6);
-//}
+TEST_FIXTURE(Arm2DofZ, Arm2DofZInverseDynamicsADTest) {
+  InverseDynamicsADTestTemplate(*this, 1e-6);
+}
 
 //TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpInverseDynamicsADTest) {
-//    InverseDynamicsADTestTemplate(*this, 1e-5);
+//  InverseDynamicsADTestTemplate(*this, 1e-5);
 //}
 
 //TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZYpInverseDynamicsADTest) {

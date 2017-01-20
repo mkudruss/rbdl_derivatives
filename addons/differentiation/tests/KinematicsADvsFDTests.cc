@@ -126,33 +126,35 @@ void CalcPointVelocityTemplate(T & obj) {
         G_ad = AD::CalcPointVelocity (model, ad_model, q, q_dirs, qdot,
             qdot_dirs, body_id, point_position, derivative_ad, true);
 
-        // compare nominal results
+        // nominal check
         CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
         CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
         CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
+
+        // derivative check
         CHECK_ARRAY_CLOSE(derivative_ad.data(), derivative_fd.data(),
                           3 * ndirs, TEST_PREC * 1e1);
     }
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointVelocity) {
-    CalcPointVelocityTemplate(*this);
+  CalcPointVelocityTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointVelocity) {
-    CalcPointVelocityTemplate(*this);
+  CalcPointVelocityTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointVelocity) {
-    CalcPointVelocityTemplate(*this);
+  CalcPointVelocityTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointVelocity) {
-    CalcPointVelocityTemplate(*this);
+  CalcPointVelocityTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointVelocity) {
-    CalcPointVelocityTemplate(*this);
+  CalcPointVelocityTemplate(*this);
 }
 
 // -----------------------------------------------------------------------------
@@ -210,23 +212,23 @@ void CalcBaseToBodyCoordinatesTemplate(T & obj) {
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcBaseToBodyCoordinates) {
-    CalcBaseToBodyCoordinatesTemplate(*this);
+  CalcBaseToBodyCoordinatesTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcBaseToBodyCoordinates) {
-    CalcBaseToBodyCoordinatesTemplate(*this);
+  CalcBaseToBodyCoordinatesTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcBaseToBodyCoordinates) {
-    CalcBaseToBodyCoordinatesTemplate(*this);
+  CalcBaseToBodyCoordinatesTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBaseToBodyCoordinates) {
-    CalcBaseToBodyCoordinatesTemplate(*this);
+  CalcBaseToBodyCoordinatesTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBaseToBodyCoordinates) {
-    CalcBaseToBodyCoordinatesTemplate(*this);
+  CalcBaseToBodyCoordinatesTemplate(*this);
 }
 
 // -----------------------------------------------------------------------------
@@ -291,23 +293,23 @@ void CalcBodyToBaseCoordinatesTemplate(T & obj) {
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseCoordinates) {
-    CalcBodyToBaseCoordinatesTemplate(*this);
+  CalcBodyToBaseCoordinatesTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcBodyToBaseCoordinates) {
-    CalcBodyToBaseCoordinatesTemplate(*this);
+  CalcBodyToBaseCoordinatesTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcBodyToBaseCoordinates) {
-    CalcBodyToBaseCoordinatesTemplate(*this);
+  CalcBodyToBaseCoordinatesTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBodyToBaseCoordinates) {
-    CalcBodyToBaseCoordinatesTemplate(*this);
+  CalcBodyToBaseCoordinatesTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyToBaseCoordinates) {
-    CalcBodyToBaseCoordinatesTemplate(*this);
+  CalcBodyToBaseCoordinatesTemplate(*this);
 }
 
 // -----------------------------------------------------------------------------
@@ -341,23 +343,23 @@ void CalcBodyWorldOrientationTemplate(T & obj) {
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyWorldOrientation) {
-    CalcBodyWorldOrientationTemplate(*this);
+  CalcBodyWorldOrientationTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcBodyWorldOrientation) {
-    CalcBodyWorldOrientationTemplate(*this);
+  CalcBodyWorldOrientationTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcBodyWorldOrientation) {
-    CalcBodyWorldOrientationTemplate(*this);
+  CalcBodyWorldOrientationTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBodyWorldOrientation) {
-    CalcBodyWorldOrientationTemplate(*this);
+  CalcBodyWorldOrientationTemplate(*this);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyWorldOrientation) {
-    CalcBodyWorldOrientationTemplate(*this);
+  CalcBodyWorldOrientationTemplate(*this);
 }
 
 // -----------------------------------------------------------------------------

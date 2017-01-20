@@ -195,7 +195,7 @@ struct RBDL_DLLAPI SpatialTransform {
    *
    * \returns (E^T * n + rx * E^T * f, E^T * f)
    */
-  SpatialVector applyTranspose (const SpatialVector &f_sp) {
+  SpatialVector applyTranspose (const SpatialVector &f_sp) const {
     Vector3d E_T_f (
         E(0,0) * f_sp[3] + E(1,0) * f_sp[4] + E(2,0) * f_sp[5],
         E(0,1) * f_sp[3] + E(1,1) * f_sp[4] + E(2,1) * f_sp[5],

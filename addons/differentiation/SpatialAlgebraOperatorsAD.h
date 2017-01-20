@@ -12,6 +12,15 @@ namespace AD {
 
 using namespace RigidBodyDynamics::Math;
 
+/**
+ * @brief mulSTST for ST A and ST B compute A * B
+ * @param lhs A
+ * @param lhs_dirs dA
+ * @param rhs B
+ * @param rhs_dirs
+ * @param res A * B
+ * @param res_dirs d(A * B)
+ */
 inline void mulSTST(
     SpatialTransform const & lhs,
     std::vector<SpatialTransform> const & lhs_dirs,
@@ -38,6 +47,14 @@ inline void mulSTST(
   res.r = rhs.r + rhs.E.transpose() * lhs.r;
 }
 
+/**
+ * @brief mulSTST for ST A and ST B compute A * B if B is constant (dB = 0)
+ * @param lhs A
+ * @param lhs_dirs dA
+ * @param rhs B
+ * @param res A * B
+ * @param res_dirs d(A * B)
+ */
 inline void mulSTST(
     SpatialTransform const & lhs,
     std::vector<SpatialTransform> const & lhs_dirs,
@@ -59,8 +76,48 @@ inline void mulSTST(
   res.r = rhs.r + rhs.E.transpose() * lhs.r;
 }
 
+/**
+ * @brief add_sqrFormSTSM_noalias ST A, SM B and SM C compute C += A^T * B * A
+ * @param st A
+ * @param st_dirs dA
+ * @param sm B
+ * @param sm_dirs dB
+ * @param res C += A^T * B * A
+ * @param res_dirs dC += d(A^T * B * A)
+ */
+inline void add_sqrFormSTSM_noalias (
+    unsigned ndirs,
+    SpatialTransform const & st,
+    std::vector<SpatialTransform> const & st_dirs,
+    SpatialMatrix const & sm,
+    std::vector<SpatialMatrix> const & sm_dirs,
+    SpatialMatrix & res,
+    std::vector<SpatialMatrix> & res_dirs) {
+  assert(ndirs <= st_dirs.size());
+  assert(ndirs <= sm_dirs.size());
+  assert(ndirs <= res_dirs.size());
 
-inline void applySTSV(
+  SpatialMatrix A   = st.toMatrix();
+  SpatialMatrix A_T = A.transpose();
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    SpatialMatrix A_dir;
+    A_dir.block<3,3>(0,0) = st_dirs[idir].E;
+    A_dir.block<3,3>(3,0) =
+        - st_dirs[idir].E * VectorCrossMatrix(st.r)
+        - st.E * VectorCrossMatrix(st_dirs[idir].r);
+    A_dir.block<3,3>(0,3).setZero();
+    A_dir.block<3,3>(3,3) = st_dirs[idir].E;
+
+    res_dirs[idir].noalias() +=
+        A_dir.transpose() * sm * A
+        + A_T * sm_dirs[idir] * A
+        +  A_T * sm * A_dir;
+  }
+  res.noalias() += A_T * sm * A;
+}
+
+inline void applySTSV (
     unsigned ndirs,
     SpatialTransform const & st,
     std::vector<SpatialTransform> const & st_dirs,
@@ -132,6 +189,39 @@ inline void applySTSV(
       st.E(2,0) * v_rxw[0] + st.E(2,1) * v_rxw[1] + st.E(2,2) * v_rxw[2]
       );
 }
+
+inline void applyTransposeSTSV (
+    unsigned ndirs,
+    SpatialTransform const & st,
+    std::vector<SpatialTransform> const & st_dirs,
+    SpatialVector const & sv,
+    std::vector<SpatialVector> const & sv_dirs,
+    SpatialVector & res,
+    std::vector<SpatialVector> & res_dirs) {
+  assert(ndirs <= st_dirs.size());
+  assert(ndirs <= sv_dirs.size());
+  assert(ndirs <= res_dirs.size());
+
+  Vector3d E_T_f = st.E.transpose() * sv.segment<3>(3);
+  Vector3d E_T_n = st.E.transpose() * sv.segment<3>(0);
+  Vector3d top = E_T_n + st.r.cross(E_T_f);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    res_dirs[idir].segment<3>(3) =
+        st.E.transpose() * sv_dirs[idir].segment<3>(3)
+        + st_dirs[idir].E.transpose() * sv.segment<3>(3);
+
+    res_dirs[idir].segment<3>(0) =
+        st.E.transpose() * sv_dirs[idir].segment<3>(0)
+        + st_dirs[idir].E.transpose() * sv.segment<3>(0)
+        + st_dirs[idir].r.cross(E_T_f)
+        + st.r.cross(res_dirs[idir].segment<3>(3));
+  }
+
+  res.segment<3>(0) = top;
+  res.segment<3>(3) = E_T_f;
+}
+
 
 inline void applyTransposeAD (
     unsigned ndirs,

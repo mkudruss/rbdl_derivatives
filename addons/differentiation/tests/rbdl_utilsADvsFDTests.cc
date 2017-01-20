@@ -281,6 +281,157 @@ TEST(CheckApplySTSV) {
 
 // -----------------------------------------------------------------------------
 
+inline void FDapplyTransposeSTSV(
+    unsigned ndirs,
+    SpatialTransform const & st,
+    std::vector<SpatialTransform> const & st_dirs,
+    SpatialVector const & sv,
+    std::vector<SpatialVector> const & sv_dirs,
+    SpatialVector & res,
+    std::vector<SpatialVector> & res_dirs) {
+  assert(ndirs <= st_dirs.size());
+  assert(ndirs <= sv_dirs.size());
+  assert(ndirs <= res_dirs.size());
+
+  res = st.applyTranspose(sv);
+  double h = 1e-8;
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    SpatialTransform sth;
+    sth.E = st.E + h * st_dirs[idir].E;
+    sth.r = st.r + h * st_dirs[idir].r;
+    SpatialVector svh;
+    svh = sv + h * sv_dirs[idir];
+    res_dirs[idir] = (sth.applyTranspose(svh) - res) / h;
+  }
+}
+
+TEST(CheckApplyTransposeSTSV) {
+  std::uniform_real_distribution<> dist(0.0, 1.0);
+  std::default_random_engine gen;
+
+  for (int i = 0; i < 100; i++){
+    unsigned ndirs = 18;
+    Matrix3d E = Matrix3d::Random();
+    Vector3d r = Vector3d::Random();
+    SpatialTransform st(E, r);
+    SpatialVector sv = SpatialVector::Random();
+    vector<SpatialTransform> st_dirs(ndirs, SpatialTransform::Zero());
+    vector<SpatialVector> sm_dirs(ndirs, SpatialVector::Zero());
+
+    SpatialVector ad_res = SpatialVector::Zero();
+    vector<SpatialVector> ad_res_dirs(ndirs, SpatialVector::Zero());
+
+    SpatialVector fd_res = SpatialVector::Zero();
+    vector<SpatialVector> fd_res_dirs(ndirs, SpatialVector::Zero());
+
+    unsigned idir = 0;
+    for (; idir < 9u; idir++) {
+      st_dirs[idir].E(idir % 3, idir / 3) = 1.0;
+    }
+    for (; idir < 12u; idir++) {
+      st_dirs[idir].r(idir - 9u) = 1.0;
+    }
+    for (; idir < ndirs; idir++) {
+      sm_dirs[idir](idir - 12u) = 1.0;
+    }
+
+    AD::applyTransposeSTSV(
+          ndirs,
+          st, st_dirs,
+          sv, sm_dirs,
+          ad_res, ad_res_dirs);
+
+    FDapplyTransposeSTSV(
+          ndirs,
+          st, st_dirs,
+          sv, sm_dirs,
+          fd_res, fd_res_dirs);
+
+    CHECK_ARRAY_CLOSE(ad_res.data(), fd_res.data(), 6, 1e-7);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      CHECK_ARRAY_CLOSE(ad_res_dirs[idir].data(), fd_res_dirs[idir].data(), 6, 1e-7);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+inline void FDadd_sqrFormSTSM_noalias(
+    unsigned ndirs,
+    SpatialTransform const & st,
+    std::vector<SpatialTransform> const & st_dirs,
+    SpatialMatrix const & sm,
+    std::vector<SpatialMatrix> const & sm_dirs,
+    SpatialMatrix & res,
+    std::vector<SpatialMatrix> & res_dirs) {
+  assert(ndirs <= st_dirs.size());
+  assert(ndirs <= sm_dirs.size());
+  assert(ndirs <= res_dirs.size());
+
+  SpatialMatrix offset = res;
+  res.noalias() += st.toMatrixTranspose() * sm * st.toMatrix() ;
+  double h = 1e-8;
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    SpatialTransform sth = st;
+    sth.E = st.E + h * st_dirs[idir].E;
+    sth.r = st.r + h * st_dirs[idir].r;
+    SpatialMatrix smh;
+    smh = sm + h * sm_dirs[idir];
+
+    res_dirs[idir].noalias() += ((sth.toMatrixTranspose() * smh * sth.toMatrix()) - (res - offset)) / h;
+  }
+}
+
+TEST(CheckAdd_sqrFormSTSM_noalias) {
+  for (int i = 0; i < 100; i++){
+    unsigned ndirs = 48;
+    Matrix3d E = Matrix3d::Random();
+    Vector3d r = Vector3d::Random();
+    SpatialTransform st(E, r);
+    SpatialMatrix sm = SpatialMatrix::Random();
+    vector<SpatialTransform> st_dirs(ndirs, SpatialTransform::Zero());
+    vector<SpatialMatrix> sm_dirs(ndirs, SpatialMatrix::Zero());
+
+    SpatialMatrix ad_res = SpatialMatrix::Random();
+    vector<SpatialMatrix> ad_res_dirs(ndirs, SpatialMatrix::Zero());
+
+    SpatialMatrix fd_res = ad_res;
+    vector<SpatialMatrix> fd_res_dirs(ndirs, SpatialMatrix::Zero());
+
+    unsigned idir = 0;
+    for (; idir < 9u; idir++) {
+      st_dirs[idir].E(idir % 3, idir / 3) = 1.0;
+    }
+    for (; idir < 12u; idir++) {
+      st_dirs[idir].r(idir - 9u) = 1.0;
+    }
+    for (; idir < ndirs; idir++) {
+      sm_dirs[idir]((idir - 12u) / 6, (idir - 12u) % 6) = 1.0;
+    }
+
+    AD::add_sqrFormSTSM_noalias(
+          ndirs,
+          st, st_dirs,
+          sm, sm_dirs,
+          ad_res, ad_res_dirs);
+
+    FDadd_sqrFormSTSM_noalias(
+          ndirs,
+          st, st_dirs,
+          sm, sm_dirs,
+          fd_res, fd_res_dirs);
+
+    CHECK_ARRAY_CLOSE(ad_res.data(), fd_res.data(), 6, 1e-7);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      CHECK_ARRAY_CLOSE(ad_res_dirs[idir].data(), fd_res_dirs[idir].data(), 36, 1e-6);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+
 template <typename T>
 void CalcPotentialEnergyADTestTemplate(T & obj) {
   Model & model = obj.model;

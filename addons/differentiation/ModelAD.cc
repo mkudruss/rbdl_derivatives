@@ -36,7 +36,6 @@ ADModel::ADModel (RigidBodyDynamics::Model& model) {
     v_J.resize(model.mBodies.size(), vec);
     v.resize(model.mBodies.size(), vec);
     c_J.resize(model.mBodies.size(), vec);
-    a_J.resize(model.mBodies.size(), vec);
     a.resize(model.mBodies.size(), vec);
 
     Ic.resize(model.mBodies.size(), SRBI);
@@ -51,7 +50,9 @@ ADModel::ADModel (RigidBodyDynamics::Model& model) {
     //u.resize(model.mBodies.size(), double);
     //d.resize(model.mBodies.size(), double);
     u.resize(model.u.rows(), ndirs);
+    u.setZero();
     d.resize(model.d.rows(), ndirs);
+    d.setZero();
 }
 
 void ADModel::resize_directions (unsigned requested_ndirs){
@@ -80,10 +81,6 @@ void ADModel::resize_directions (unsigned requested_ndirs){
 
         for (unsigned int i = 0; i < c_J.size(); ++i) {
             c_J[i].resize(ndirs, SpatialVector::Zero());
-        }
-
-        for (unsigned int i = 0; i < c_J.size(); ++i) {
-            a_J[i].resize(ndirs, SpatialVector::Zero());
         }
 
         for (unsigned int i = 0; i < c_J.size(); ++i) {
@@ -131,6 +128,8 @@ void ADModel::resize_directions (unsigned requested_ndirs){
         // }
 
         u.resize(u.rows(), ndirs);
+        u.setZero();
         d.resize(d.rows(), ndirs);
+        d.setZero();
     }
 }

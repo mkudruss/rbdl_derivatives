@@ -32,8 +32,8 @@ namespace AD {
 using namespace RigidBodyDynamics::Math;
 
 RBDL_DLLAPI void jcalc (
-    Model &model,
-    ADModel &ad_model,
+    Model & model,
+    ADModel & ad_model,
     unsigned int joint_id,
     const VectorNd &q,
     const MatrixNd &q_dirs,
@@ -153,8 +153,6 @@ RBDL_DLLAPI void jcalc (
     std::cerr << "Error: invalid joint type " << model.mJoints[joint_id].mJointType << " at id " << joint_id << std::endl;
     abort();
   }
-
-
 
   // derivative code
   for (unsigned int idir = 0; idir < ndirs; ++idir) {

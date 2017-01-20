@@ -498,6 +498,7 @@ RBDL_DLLAPI void ForwardDynamics (
           << std::endl;
       }
     }
+
   }
 
   //  ClearLogOutput();
@@ -508,6 +509,7 @@ RBDL_DLLAPI void ForwardDynamics (
     unsigned int q_index = model.mJoints[i].q_index;
     unsigned int lambda = model.lambda[i];
     SpatialTransform X_lambda = model.X_lambda[i];
+
 
     model.a[i] = X_lambda.apply(model.a[lambda]) + model.c[i];
     LOG << "a'[" << i << "] = " << model.a[i].transpose() << std::endl;
