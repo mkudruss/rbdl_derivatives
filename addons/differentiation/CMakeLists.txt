@@ -24,13 +24,12 @@ SET (CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 SET ( DIFFERENTIATION_SOURCES
 	ModelAD.cc
   FdModelEntry.cc
-	ContactsAD.cc
+  ConstraintsAD.cc
+  ContactsFD.cc
 	KinematicsAD.cc
 	KinematicsFD.cc
 	DynamicsAD.cc
 	DynamicsFD.cc
-	ContactsAD.cc
-	ContactsFD.cc
 	JointAD.cc
 	rbdl_utilsAD.cc
 	rbdl_utilsFD.cc

@@ -1,4 +1,5 @@
 #include "ContactsFD.h"
+#include "FdModelEntry.h"
 
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
@@ -11,41 +12,38 @@ using namespace std;
 
 RBDL_DLLAPI
 void CalcConstraintsJacobian(
-        Model &model,
-        ADModel &ad_model,
-        const Math::VectorNd &Q,
-        const Math::MatrixNd &Q_dirs,
-        ConstraintSet & CS,
-        ADConstraintSet & ad_CS,
-        Math::MatrixNd &G,
-        std::vector<Math::MatrixNd> &G_dirs
-) {
-    // NOTE we provide new Qs every call, therefore update kinematics!
-    bool update_kinematics = true;
+    Model & model,
+    ADModel * fd_model,
+    const VectorNd & q,
+    const MatrixNd & q_dirs,
+    ConstraintSet & CS,
+    ADConstraintSet & ad_CS,
+    MatrixNd & G,
+    vector<MatrixNd> & G_dirs) {
+  unsigned ndirs = q_dirs.cols();
+  assert(ndirs == G_dirs.size());
 
-    unsigned int ndirs = Q_dirs.cols();
+  bool update_kinematics = true;
 
-    // temporary evaluation at current point
-
-    CalcConstraintsJacobian(model, Q, CS, G, update_kinematics);
-    // std::cout << "In function '" << __func__ << "'!" << std::endl;
-    // std::cout << "G = \n" << G << std::endl;
-    // std::cout << "Leaving function '" << __func__ << "'!" << std::endl;
-    // std::cout << std::endl;
-
-    double h = 1e-8;
-    MatrixNd G_temp = MatrixNd::Zero (3, model.dof_count);
-    for (unsigned int idir = 0; idir < ndirs; idir++) {
-        VectorNd Q_dir = Q_dirs.block(0, idir, model.q_size, 1);
-
-        // temporary evaluation at perturbed point
-        CalcConstraintsJacobian(
-            model, Q + h * Q_dir, CS, G_temp, update_kinematics
-        );
-
-        // calculate finite difference
-        G_dirs[idir] = (G_temp - G) / h;
+  CalcConstraintsJacobian(model, q, CS, G, update_kinematics);
+  double h = 1e-8;
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model * modelh;
+    if (fd_model) {
+      modelh = new Model(model);
+    } else {
+      modelh = &model;
     }
+    MatrixNd Gh = MatrixNd::Zero (3, model.dof_count);
+    VectorNd q_dir = q_dirs.block(0, idir, model.q_size, 1);
+    CalcConstraintsJacobian(
+          *modelh, q + h * q_dir, CS, Gh, update_kinematics);
+    G_dirs[idir] = (Gh - G) / h;
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
+  }
 }
 
 RBDL_DLLAPI

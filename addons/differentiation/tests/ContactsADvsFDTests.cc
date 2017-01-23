@@ -7,8 +7,10 @@
 #include "rbdl/Kinematics.h"
 #include "rbdl/rbdl_mathutils.h"
 
-#include "ContactsAD.h"
+#include "ConstraintsAD.h"
 #include "ContactsFD.h"
+
+#include "ModelCheckADvsFD.h"
 
 #include "Fixtures.h"
 
@@ -21,107 +23,106 @@ double const TEST_PREC = 1.0e-8;
 // -----------------------------------------------------------------------------
 
 template <typename T>
-void CalcContactJacobianTemplate(T & obj) {
-    // rename for convenience
-    Model& model = *(obj.model);
-    ADModel& ad_model = *(obj.ad_model);
+void CalcContactJacobianTemplate(
+    T & obj,
+    double array_close_prec) {
+  Model   ad_model = *(obj.model);
+  Model   fd_model = *(obj.model);
+  ADModel ad_d_model = *(obj.ad_model);
+  ADModel fd_d_model = *(obj.ad_model);
 
-    ConstraintSet& cs = obj.constraint_set;
-    ADConstraintSet& ad_cs = obj.ad_constraint_set;
+  ConstraintSet& cs = obj.constraint_set;
+  ADConstraintSet& ad_cs = obj.ad_constraint_set;
 
-    // set up input quantities
-    int const nq = model.dof_count;
-    unsigned const ndirs = nq;
+  // set up input quantities
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
 
-    bool update_kinematics = true;
-    VectorNd q = VectorNd::Zero(nq);
-    MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+  bool update_kinematics = true;
+  VectorNd q = VectorNd::Zero(nq);
+  MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
 
-    // set up no output quantities
-    MatrixNd G = MatrixNd::Zero (3, nq);
-    MatrixNd G_ad = MatrixNd::Zero (3, nq);
-    MatrixNd G_fd = MatrixNd::Zero (3, nq);
+  // set up no output quantities
+  MatrixNd G = MatrixNd::Zero (3, nq);
+  MatrixNd G_ad = MatrixNd::Zero (3, nq);
+  MatrixNd G_fd = MatrixNd::Zero (3, nq);
 
-    // set up derivative output quantities
-    vector<MatrixNd> derivative_ad (ndirs, G_ad);
-    vector<MatrixNd> derivative_fd (ndirs, G_fd);
+  // set up derivative output quantities
+  vector<MatrixNd> derivative_ad (ndirs, G_ad);
+  vector<MatrixNd> derivative_fd (ndirs, G_fd);
 
-    // call nominal version
-    RigidBodyDynamics::CalcConstraintsJacobian(model, q, cs, G, update_kinematics);
+  // call nominal version
+  CalcConstraintsJacobian(ad_model, q, cs, G, update_kinematics);
 
-    // call AD version
-    RigidBodyDynamics::AD::CalcContactJacobian(
-        model, ad_model,
+  AD::CalcContactJacobian(
+        ad_model, ad_d_model,
         q, q_dirs,
         cs, ad_cs,
         G_ad, derivative_ad,
         update_kinematics
-    );
+        );
 
-    // call FD version
-    RigidBodyDynamics::FD::CalcConstraintsJacobian(
-        model, ad_model,
+  FD::CalcConstraintsJacobian(
+        fd_model, &fd_d_model,
         q, q_dirs,
         cs, ad_cs,
         G_fd, derivative_fd
-    );
-
-    // compare nominal results
-    // std::cout << "G = \n" << G << std::endl;
-    // std::cout << "G_ad = \n" << G_ad << std::endl;
-    // std::cout << "G_fd = \n" << G_fd << std::endl;
-    CHECK_ARRAY_CLOSE(G.data(), G_ad.data(), G.size(), TEST_PREC);
-    CHECK_ARRAY_CLOSE(G.data(), G_fd.data(), G.size(), TEST_PREC);
-    CHECK_ARRAY_CLOSE(G_fd.data(), G_ad.data(), G.size(), TEST_PREC);
-
-    for (unsigned idir = 0; idir < ndirs; idir++) {
-        // std::cout << "G_ad[" << idir << "] = \n" << derivative_ad[idir] << std::endl;
-        // std::cout << "G_fd[" << idir << "] = \n" << derivative_fd[idir] << std::endl;
-        // std::cout << std::endl;
-        CHECK_ARRAY_CLOSE(
-            derivative_fd[idir].data(),
-            derivative_ad[idir].data(),
-            derivative_ad[idir].size(),
-            TEST_PREC * 1e+01 // NOTE had to reduce accuracy of check
         );
-    }
+
+  checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+
+  CHECK_ARRAY_CLOSE(G.data(), G_ad.data(), G.size(), array_close_prec);
+  CHECK_ARRAY_CLOSE(G.data(), G_fd.data(), G.size(), array_close_prec);
+  CHECK_ARRAY_CLOSE(G_fd.data(), G_ad.data(), G.size(), array_close_prec);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    cout << endl << idir << endl;
+    cout << "AD = " << endl << derivative_ad[idir] << endl;
+    cout << "FD = " << endl << derivative_fd[idir] << endl;
+
+    CHECK_ARRAY_CLOSE(
+          derivative_fd[idir].data(),
+          derivative_ad[idir].data(),
+          derivative_ad[idir].size(),
+          array_close_prec);
+  }
 }
 
-//TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobian) {
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobian) {
 
-//    // add contacts and bind them to constraint set
-//    constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
-//    constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
-//    constraint_set.Bind (*model);
+    // add contacts and bind them to constraint set
+    constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+    constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+    constraint_set.Bind (*model);
 
-//    ad_constraint_set = ADConstraintSet(constraint_set, model->dof_count);
+    ad_constraint_set = ADConstraintSet(constraint_set, model->dof_count);
 
-///*
-//    VectorNd QDDot_lagrangian = VectorNd::Constant (model->mBodies.size() - 1, 0.);
+/*
+    VectorNd QDDot_lagrangian = VectorNd::Constant (model->mBodies.size() - 1, 0.);
 
-//    ClearLogOutput();
+    ClearLogOutput();
 
-//    ForwardDynamicsContactsDirect (*model, Q, QDot, Tau, constraint_set_lagrangian, QDDot_lagrangian);
-//    ForwardDynamicsContactsKokkevis (*model, Q, QDot, Tau, constraint_set, QDDot_contacts);
+    ForwardDynamicsContactsDirect (*model, Q, QDot, Tau, constraint_set_lagrangian, QDDot_lagrangian);
+    ForwardDynamicsContactsKokkevis (*model, Q, QDot, Tau, constraint_set, QDDot_contacts);
 
-//    point_accel_lagrangian = CalcPointAcceleration (*model, Q, QDot, QDDot_lagrangian, contact_body_id, contact_point, true);
-//    point_accel_contacts = CalcPointAcceleration (*model, Q, QDot, QDDot_contacts, contact_body_id, contact_point, true);
+    point_accel_lagrangian = CalcPointAcceleration (*model, Q, QDot, QDDot_lagrangian, contact_body_id, contact_point, true);
+    point_accel_contacts = CalcPointAcceleration (*model, Q, QDot, QDDot_contacts, contact_body_id, contact_point, true);
 
-//    // check whether FDContactsLagrangian and FDContacts match
-//    CHECK_ARRAY_CLOSE (
-//            constraint_set_lagrangian.force.data(),
-//            constraint_set.force.data(),
-//            constraint_set.size(), TEST_PREC
-//            );
+    // check whether FDContactsLagrangian and FDContacts match
+    CHECK_ARRAY_CLOSE (
+            constraint_set_lagrangian.force.data(),
+            constraint_set.force.data(),
+            constraint_set.size(), TEST_PREC
+            );
 
-//    // check whether the point accelerations match
-//    CHECK_ARRAY_CLOSE (point_accel_lagrangian.data(), point_accel_contacts.data(), 3, TEST_PREC);
+    // check whether the point accelerations match
+    CHECK_ARRAY_CLOSE (point_accel_lagrangian.data(), point_accel_contacts.data(), 3, TEST_PREC);
 
-//    // check whether the generalized accelerations match
-//    CHECK_ARRAY_CLOSE (QDDot_lagrangian.data(), QDDot_contacts.data(), QDDot_lagrangian.size(), TEST_PREC);
-//    */
-//    CalcContactJacobianTemplate(*this);
-//}
+    // check whether the generalized accelerations match
+    CHECK_ARRAY_CLOSE (QDDot_lagrangian.data(), QDDot_contacts.data(), QDDot_lagrangian.size(), TEST_PREC);
+    */
+    CalcContactJacobianTemplate(*this, 1e-5);
+}
 
 
 /*

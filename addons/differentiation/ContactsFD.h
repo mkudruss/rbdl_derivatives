@@ -7,7 +7,7 @@
 #include "rbdl/Constraints.h"
 
 #include "KinematicsAD.h"
-#include "ContactsAD.h"
+#include "ConstraintsAD.h"
 
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
@@ -18,14 +18,13 @@ namespace FD {
 RBDL_DLLAPI
 void CalcConstraintsJacobian (
     Model &model,
-    ADModel &ad_model,
-    const Math::VectorNd &Q,
-    const Math::MatrixNd &Q_dirs,
+    ADModel * fd_model, // NULL means execution without fd_model update
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
     ConstraintSet &CS,
     ADConstraintSet &ad_CS,
     Math::MatrixNd &G,
-    std::vector<Math::MatrixNd> &G_dirs
-    );
+    std::vector<Math::MatrixNd> &G_dirs);
 
 RBDL_DLLAPI
 void ComputeConstraintImpulsesDirect (
