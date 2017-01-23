@@ -269,8 +269,6 @@ TEST (SolveContactSystemDirectTest) {
     CHECK_ARRAY_CLOSE(ad_cwise_normalized.data(), fd_cwise_normalized.data(),
                       (nm + nc) * ndirs,
                       1e-5);
-//    CHECK_ARRAY_CLOSE(ad_x_dirs.data(), fd_x_dirs.data(), (nm + nc) * ndirs,
-//                      1e-5);
     CHECK_ARRAY_CLOSE(ad_b_dirs.data(), fd_b_dirs.data(), (nm + nc) * ndirs,
                       1e-4);
   }
