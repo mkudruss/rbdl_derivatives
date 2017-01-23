@@ -81,9 +81,6 @@ void CalcContactJacobianTemplate(
     CHECK_ARRAY_CLOSE(G_fd.data(), G_ad.data(), G.size(), array_close_prec);
 
     for (unsigned idir = 0; idir < ndirs; idir++) {
-      //    cout << endl << idir << endl;
-      //    cout << "AD = " << endl << ad_d_G[idir] << endl;
-      //    cout << "FD = " << endl << fd_d_G[idir] << endl;
       CHECK_ARRAY_CLOSE(
             fd_d_G[idir].data(),
             ad_d_G[idir].data(),
