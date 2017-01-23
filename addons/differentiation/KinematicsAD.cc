@@ -227,58 +227,26 @@ Vector3d CalcBodyToBaseCoordinates (
 		// UpdateKinematicsCustom (model, &Q, NULL, NULL);
 	}
 
-	if (body_id >= model.fixed_body_discriminator) {
-		cerr << "fixed bodies not supported yet." << endl;
-		abort();
+  if (body_id >= model.fixed_body_discriminator) {
+    cerr << __FILE__ << " " << __LINE__
+         << ": Fixed bodies not yet supported!" << endl;
+    abort();
+  }
 
-		unsigned int fbody_id = body_id - model.fixed_body_discriminator;
-		unsigned int parent_id = model.mFixedBodies[fbody_id].mMovableParent;
-
-		// derivative evaluation
-		for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-			// Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
-			// Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
-		}
-		// nominal evaluation
-		Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
-		Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
-
-		// derivative evaluation
-		for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-			// Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
-			// Vector3d parent_body_position = model.X_base[parent_id].r;
-		}
-		// nominal evaluation
-		Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
-		Vector3d parent_body_position = model.X_base[parent_id].r;
-
-		// derivative evaluation
-		for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-			// *(ad_body_to_base_coordinates)[idirs] =
-			// parent_body_position + parent_body_rotation * (fixed_position + fixed_rotation * (point_body_coordinates));
-		}
-		// nominal evaluation
-		return parent_body_position + parent_body_rotation * (fixed_position + fixed_rotation * (point_body_coordinates));
-	}
-
-	// derivative evaluation
+  // derivative evaluation
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    ad_body_rotation[idir] = ad_model.X_base[body_id][idir].E;
-//        AD::E_from_Matrix(ad_model.X_base[body_id][idir]).transpose();
+    ad_body_rotation[idir] = ad_model.X_base[body_id][idir].E.transpose();
     ad_body_position[idir] = ad_model.X_base[body_id][idir].r;
-//        AD::r_from_Matrix(
-//					model.X_base[body_id].toMatrix(), ad_model.X_base[body_id][idir]
-//					);
 
-		// NOTE point_body_coordinates is a constant, no derivative needed!
-		ad_body_to_base_coordinates.col(idir) = ad_body_position[idir]
-				+ ad_body_rotation[idir] * point_body_coordinates;
-	}
+    // NOTE point_body_coordinates is constant, no derivative needed!
+    ad_body_to_base_coordinates.col(idir) = ad_body_position[idir]
+        + ad_body_rotation[idir] * point_body_coordinates;
+  }
 
-	// nominal evaluation
-	Matrix3d body_rotation = model.X_base[body_id].E.transpose();
-	Vector3d body_position = model.X_base[body_id].r;
-	return body_position + body_rotation * point_body_coordinates;
+  // nominal evaluation
+  Matrix3d body_rotation = model.X_base[body_id].E.transpose();
+  Vector3d body_position = model.X_base[body_id].r;
+  return body_position + body_rotation * point_body_coordinates;
 }
 
 
@@ -299,14 +267,15 @@ RBDL_DLLAPI Vector3d CalcBaseToBodyCoordinates (
 	assert(3     == base_point_position_dirs.rows());
 	assert(3     == ad_base_to_body_coordinates.rows());
 
-	if (update_kinematics) {
-		UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
-	}
+  if (update_kinematics) {
+    UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
+  }
 
-	if (body_id >= model.fixed_body_discriminator) {
-		cerr << "Fixed bodies not yet supported!" << endl;
-		abort();
-	}
+  if (body_id >= model.fixed_body_discriminator) {
+    cerr << __FILE__ << " " << __LINE__
+         << ": Fixed bodies not yet supported!" << endl;
+    abort();
+  }
 
 	vector<Matrix3d> ad_body_rotation (ndirs, Matrix3d::Zero());
 	MatrixNd ad_body_position (3, ndirs);
@@ -965,40 +934,55 @@ void CalcPointJacobian (
   while (j != 0) {
     unsigned int q_index = model.mJoints[j].q_index;
 
-    if (model.mJoints[j].mDoFCount == 3) {
-      std::cout << "3DoF joints are not yet supported!" << std::endl;
-      std::cout << "bailing out ..." << std::endl;
-      abort();
-      G.block(0, q_index, 3, 3) = ((point_trans * model.X_base[j].inverse()).toMatrix() * model.multdof3_S[j]).block(3,0,3,3);
-    } else {
-      SpatialTransform inv_X_base_j;
-      vector<SpatialTransform> ad_inv_X_base_j(ndirs);
+    if(model.mJoints[j].mJointType != JointTypeCustom) {
+      if (model.mJoints[j].mDoFCount == 3) {
+        cerr << __FILE__ << " " << __LINE__ << ": "
+             << "Multi-DoF joints not supported." << endl;
+        abort();
+        G.block(0, q_index, 3, 3) =
+          ((point_trans
+            * model.X_base[j].inverse()).toMatrix()
+           * model.multdof3_S[j]).block(3,0,3,3);
+      } else {
+        SpatialTransform inv_X_base_j;
+        vector<SpatialTransform> ad_inv_X_base_j(ndirs);
 
-      inverse(ndirs,
-              model.X_base[j], ad_model.X_base[j],
-              inv_X_base_j, ad_inv_X_base_j);
+        inverse(ndirs,
+                model.X_base[j], ad_model.X_base[j],
+                inv_X_base_j, ad_inv_X_base_j);
 
-      SpatialVector v;
-      vector<SpatialVector> ad_v(ndirs);
+        SpatialVector v;
+        vector<SpatialVector> ad_v(ndirs);
 
-      applySTSV(ndirs,
-                inv_X_base_j, ad_inv_X_base_j,
-                model.S[j],
-                v, ad_v);
+        applySTSV(ndirs,
+                  inv_X_base_j, ad_inv_X_base_j,
+                  model.S[j],
+                  v, ad_v);
 
-      SpatialVector ptv;
-      vector<SpatialVector> ad_ptv(ndirs);
-      applySTSV(ndirs,
-                point_trans, ad_point_trans,
-                v, ad_v,
-                ptv, ad_ptv);
+        SpatialVector ptv;
+        vector<SpatialVector> ad_ptv(ndirs);
+        applySTSV(ndirs,
+                  point_trans, ad_point_trans,
+                  v, ad_v,
+                  ptv, ad_ptv);
 
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        G_dirs[idir].block<3,1>(0, q_index) = ad_ptv[idir].segment<3>(3);
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          G_dirs[idir].block<3,1>(0, q_index) = ad_ptv[idir].segment<3>(3);
+        }
+        G.block<3,1>(0, q_index) = point_trans.apply(v).segment<3>(3);
       }
-      G.block<3,1>(0, q_index) = point_trans.apply(v).segment<3>(3);
-
+    } else {
+      cerr << __FILE__ << " " << __LINE__ << ": "
+           << "Custom joints not supported." << endl;
+      abort();
+      unsigned k = model.mJoints[j].custom_joint_index;
+      G.block(0, q_index, 3, model.mCustomJoints[k]->mDoFCount) =
+          ((point_trans
+            * model.X_base[j].inverse()).toMatrix()
+           * model.mCustomJoints[k]->S).block(
+            3,0,3,model.mCustomJoints[k]->mDoFCount);
     }
+
     j = model.lambda[j];
   }
 }

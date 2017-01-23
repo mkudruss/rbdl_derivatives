@@ -15,7 +15,8 @@ using namespace RigidBodyDynamics::Math;
 ADConstraintSet::ADConstraintSet(const ConstraintSet & CS, int dof_count) {
   ndirs = 4 * dof_count;
 
-  G.resize(ndirs, MatrixNd::Zero(CS.G.rows(), CS.G.cols()));
+  G.resize(ndirs,  MatrixNd::Zero(CS.G.rows(), CS.G.cols()));
+  Gi.resize(ndirs, MatrixNd::Zero(3, dof_count));
   A.resize(ndirs, MatrixNd::Zero(CS.A.rows(), CS.A.cols()));
   H.resize(ndirs, MatrixNd::Zero(CS.H.rows(), CS.H.cols()));
   b             = MatrixNd::Zero(CS.b.rows(), ndirs);
@@ -38,13 +39,13 @@ void CalcContactJacobian(
     ADModel &ad_model,
     const Math::VectorNd &q,
     const Math::MatrixNd &q_dirs,
-    const ConstraintSet &CS,
-    ADConstraintSet &ad_CS,
+    ConstraintSet & CS,
+    ADConstraintSet & ad_CS,
     Math::MatrixNd &G,
     vector<Math::MatrixNd> &G_dirs,
     bool update_kinematics) {
   unsigned int ndirs = q_dirs.cols();
-  assert(ndirs == G_dirs.size());
+  assert(ndirs <= G_dirs.size());
 
   if (update_kinematics) {
     // derivative evaluation
@@ -59,51 +60,103 @@ void CalcContactJacobian(
     // UpdateKinematicsCustom (model, &Q, NULL, NULL);
   }
 
-  unsigned int i,j;
+  // variables to check whether we need to recompute G.
+  ConstraintSet::ConstraintType prev_constraint_type
+    = ConstraintSet::ConstraintTypeLast;
+  unsigned int prev_body_id_1 = 0;
+  unsigned int prev_body_id_2 = 0;
+  SpatialTransform prev_body_X_1;
+  SpatialTransform prev_body_X_2;
 
-  // variables to check whether we need to recompute G
-  unsigned int prev_body_id = 0;
-  Vector3d prev_body_point = Vector3d::Zero();
-  // derivative evaluation
-  vector<MatrixNd> Gi_dirs (ndirs, MatrixNd::Zero (3, model.dof_count));
-  // nominal evaluation
-  MatrixNd Gi (3, model.dof_count);
+  for (unsigned int i = 0; i < CS.contactConstraintIndices.size(); i++) {
+    const unsigned int c = CS.contactConstraintIndices[i];
 
-  for (i = 0; i < CS.size(); i++) {
     // only compute the matrix Gi if actually needed
-    if (prev_body_id != CS.body[i] || prev_body_point != CS.point[i]) {
-      Gi.setZero();
-      // derivative evaluation
-      AD::CalcPointJacobian(
-            model, ad_model,
-            q, q_dirs,
-            CS.body[i], CS.point[i],
-            Gi, Gi_dirs,
-            false
-            );
-      // nominal evaluation
-      // NOTE nominal Jacobian is already computed by the AD version
-      // CalcPointJacobian (model, Q, CS.body[i], CS.point[i], Gi, false);
+    if (prev_constraint_type != CS.constraintType[c]
+        || prev_body_id_1 != CS.body[c]
+        || prev_body_X_1.r != CS.point[c]) {
 
-      prev_body_id = CS.body[i];
-      prev_body_point = CS.point[i];
+      // Compute the jacobian for the point.
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_CS.Gi[idir].setZero();
+      }
+      CS.Gi.setZero();
+      CalcPointJacobian (model, ad_model, q, q_dirs,
+                         CS.body[c], CS.point[c],
+                         CS.Gi, ad_CS.Gi,
+                         false);
+
+      prev_constraint_type = ConstraintSet::ContactConstraint;
+
+      // Update variables for optimization check.
+      prev_body_id_1 = CS.body[c];
+      prev_body_X_1 = Xtrans(CS.point[c]);
     }
 
-    for (j = 0; j < model.dof_count; j++) {
-      // derivative evaluation
+    for(unsigned int j = 0; j < model.dof_count; j++) {
+      MatrixNd gaxis_dirs(3, ndirs);
       for (unsigned idir = 0; idir < ndirs; idir++) {
-        Vector3d gaxis_dirs (
-              Gi_dirs[idir](0,j),
-              Gi_dirs[idir](1,j),
-              Gi_dirs[idir](2,j));
-            G_dirs[idir](i,j) = gaxis_dirs.transpose() * CS.normal[i];
+        gaxis_dirs.col(idir) = ad_CS.Gi[idir].col(j);
       }
-      // nominal evaluation
-      Math::Vector3d gaxis (Gi(0,j), Gi(1,j), Gi(2,j));
-      // nominal evaluation
-      G(i,j) = gaxis.transpose() * CS.normal[i];
+      Vector3d gaxis (CS.Gi(0,j), CS.Gi(1,j), CS.Gi(2,j));
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        G_dirs[idir](c,j) = gaxis_dirs.col(idir).transpose() * CS.normal[c];
+      }
+      G(c,j) = gaxis.transpose() * CS.normal[c];
     }
   }
+
+
+
+  //
+  //
+
+
+//  unsigned int i,j;
+
+//  // variables to check whether we need to recompute G
+//  unsigned int prev_body_id = 0;
+//  Vector3d prev_body_point = Vector3d::Zero();
+//  // derivative evaluation
+//  vector<MatrixNd> Gi_dirs (ndirs, MatrixNd::Zero (3, model.dof_count));
+//  // nominal evaluation
+//  MatrixNd Gi (3, model.dof_count);
+
+//  for (i = 0; i < CS.size(); i++) {
+//    // only compute the matrix Gi if actually needed
+//    if (prev_body_id != CS.body[i] || prev_body_point != CS.point[i]) {
+//      Gi.setZero();
+//      // derivative evaluation
+//      AD::CalcPointJacobian(
+//            model, ad_model,
+//            q, q_dirs,
+//            CS.body[i], CS.point[i],
+//            Gi, Gi_dirs,
+//            false
+//            );
+//      // nominal evaluation
+//      // NOTE nominal Jacobian is already computed by the AD version
+//      // CalcPointJacobian (model, Q, CS.body[i], CS.point[i], Gi, false);
+
+//      prev_body_id = CS.body[i];
+//      prev_body_point = CS.point[i];
+//    }
+
+//    for (j = 0; j < model.dof_count; j++) {
+//      // derivative evaluation
+//      for (unsigned idir = 0; idir < ndirs; idir++) {
+//        Vector3d gaxis_dirs (
+//              Gi_dirs[idir](0,j),
+//              Gi_dirs[idir](1,j),
+//              Gi_dirs[idir](2,j));
+//            G_dirs[idir](i,j) = gaxis_dirs.transpose() * CS.normal[i];
+//      }
+//      // nominal evaluation
+//      Math::Vector3d gaxis (Gi(0,j), Gi(1,j), Gi(2,j));
+//      // nominal evaluation
+//      G(i,j) = gaxis.transpose() * CS.normal[i];
+//    }
+//  }
 }
 
 RBDL_DLLAPI
@@ -190,8 +243,8 @@ void CalcContactSystemVariables (
 
 RBDL_DLLAPI
 void ForwardDynamicsContactsDirect (
-    ADModel & ad_model,
     Model   & model,
+    ADModel & ad_model,
     const VectorNd & q,
     const MatrixNd & q_dirs,
     const VectorNd & qdot,
@@ -255,8 +308,8 @@ void ComputeContactImpulsesDirect (
   // Compute H
   UpdateKinematicsCustom(model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
 
-  vector<MatrixNd> H_ad(ndirs, CS.H);
-  CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, CS.H, H_ad, false);
+//  vector<MatrixNd> H_ad(ndirs, CS.H);
+  CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, CS.H, ad_CS.H, false);
   /// TODO: Check if false makes sense as last argument here.
 
   // Compute G
@@ -266,10 +319,10 @@ void ComputeContactImpulsesDirect (
   VectorNd c = CS.H * qdot_minus;
   MatrixNd c_ad(CS.H.rows(), ndirs);
   for (int i = 0; i < ndirs; i++) {
-    c_ad.block(0, i, CS.H.rows(), 1) = CS.H * qdot_minus_dirs.col(i) + H_ad[i] * qdot_minus;
+    c_ad.block(0, i, CS.H.rows(), 1) = CS.H * qdot_minus_dirs.col(i) + ad_CS.H[i] * qdot_minus;
   }
 
-  SolveContactSystemDirect (CS.H, H_ad, CS.G, ad_CS.G, c, c_ad, CS.v_plus,
+  SolveContactSystemDirect (CS.H, ad_CS.H, CS.G, ad_CS.G, c, c_ad, CS.v_plus,
                             ad_CS.v_plus, CS.A, ad_CS.A, CS.b, ad_CS.b,
                             CS.x, ad_CS.x, CS.linear_solver, ndirs);
 
@@ -390,7 +443,8 @@ void SolveContactSystemDirect (
 /// TODO: Add support for this solver also.
     default:
       LOG << "Error: Invalid linear solver: " << linear_solver << std::endl;
-      cerr << "Error: Invalid linear solver: " << linear_solver << std::endl;
+      cerr << __FILE__ << " " << __LINE__
+           << ": Error: Invalid linear solver: " << linear_solver << std::endl;
       assert (0);
       break;
   }

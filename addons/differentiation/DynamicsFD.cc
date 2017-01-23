@@ -124,16 +124,19 @@ void InverseDynamics(
         f_exth_[i] = (*f_ext)[i] + h * (*f_ext_dirs)[i][idir];
       }
     }
-    vector<SpatialVector> const * f_exth = f_ext ? &f_exth_ : NULL;
 
+    vector<SpatialVector> const * f_exth = f_ext ? &f_exth_ : NULL;
     q_dir = q_dirs.block(0,idir, model.q_size, 1);
     qdot_dir = qdot_dirs.block(0,idir, model.q_size, 1);
     qddot_dir = qddot_dirs.block(0,idir, model.q_size, 1);
+
     InverseDynamics(*modelh, q + h*q_dir,
                     qdot + h*qdot_dir,
                     qddot + h*qddot_dir,
-                    hd_tau,  f_exth);
+                    hd_tau, f_exth);
+
     fd_tau.block(0,idir,hd_tau.rows(),1) = (hd_tau - tau) / h;
+
     if (fd_model) {
       computeFDEntry(model, *modelh, h, idir, *fd_model);
       delete modelh;
@@ -178,24 +181,36 @@ void NonlinearEffects (
 }
 
 RBDL_DLLAPI
-void CompositeRigidBodyAlgorithm (
-    Model &model,
+void CompositeRigidBodyAlgorithm (Model &model,
+    ADModel * fd_model,
     const VectorNd &q,
     const MatrixNd &q_dirs,
-    vector<MatrixNd> &fd_out) {
+    MatrixNd &H,
+    vector<MatrixNd> &fd_H) {
   unsigned int ndirs = q_dirs.cols();
-  assert(ndirs == fd_out.size());
+  assert(ndirs == fd_H.size());
 
   MatrixNd inertia_ref = MatrixNd::Zero(q.size(),q.size());
   MatrixNd inertia_fd = MatrixNd::Zero(q.size(),q.size());
 
   CompositeRigidBodyAlgorithm(model, q, inertia_ref, true);
   double h = 1.0e-8;
-  for (unsigned int j = 0; j < ndirs; j++) {
-    VectorNd q_dir = q_dirs.block(0,j, model.qdot_size, 1);
-    CompositeRigidBodyAlgorithm(model, q+h*q_dir, inertia_fd, true);
-    fd_out[j] = (inertia_fd - inertia_ref) / h;
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model * modelh;
+    if (fd_model) {
+      modelh = new Model(model);
+    } else {
+      modelh = &model;
+    }
+    VectorNd q_dir = q_dirs.col(idir);
+    CompositeRigidBodyAlgorithm(*modelh, q+h*q_dir, inertia_fd, true);
+    fd_H[idir] = (inertia_fd - inertia_ref) / h;
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
   }
+  H = inertia_ref;
 }
 
 // -----------------------------------------------------------------------------

@@ -70,8 +70,10 @@ void NonlinearEffects (
 RBDL_DLLAPI
 void CompositeRigidBodyAlgorithm (
     Model &model,
+    ADModel *fd_model,
     const Math::VectorNd & q,
     const Math::MatrixNd & q_dirs,
+    Math::MatrixNd & H,
     std::vector<Math::MatrixNd> & fd_out);
 
 // -----------------------------------------------------------------------------

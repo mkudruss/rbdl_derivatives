@@ -87,6 +87,36 @@ inline void inverse(
   res = SpatialTransform(st.E.transpose(), -st.E * st.r);
 }
 
+//RBDL_DLLAPI
+//inline void inverse(
+//    unsigned ndirs,
+//    SpatialTransform const & st,
+//    std::vector<SpatialTransform> const & st_dirs,
+//    SpatialMatrix & res,
+//    std::vector<SpatialMatrix> & res_dirs) {
+//  assert(ndirs <= st_dirs.size());
+//  assert(ndirs <= res_dirs.size());
+
+////  for (unsigned idir = 0; idir < ndirs; idir++) {
+////    res_dirs[idir].block<3,3>(0,0) = st_dirs[idir].E.transpose();
+////    res_dirs[idir].block<3,3>(0,3).setZero();
+////    res_dirs[idir].block<3,3>(3,0) =
+////    res_dirs[idir].block<3,3>(3,3) = st_dirs[idir].E.transpose();
+////  }
+
+////  res.block<3,3>(0,0) = st.E.transpose();
+////  res.block<3,3>(0,3).setZero();
+////  res.block<3,3>(3,0) = VectorCrossMatrix(st.r) * st.E.transpose();
+////  res.block<3,3>(3,3) = st.E.transpose();
+
+//  for (unsigned idir = 0; idir < ndirs; idir++) {
+//    res_dirs[idir] =
+//        SpatialTransform(st_dirs[idir].E.transpose(),
+//                         -st.E * st_dirs[idir].r - st_dirs[idir].E * st.r);
+//  }
+//  res = SpatialTransform(st.E.transpose(), -st.E * st.r);
+//}
+
 
 RBDL_DLLAPI
 inline SpatialMatrix inverse(SpatialMatrix X, SpatialMatrix X_dirs) {

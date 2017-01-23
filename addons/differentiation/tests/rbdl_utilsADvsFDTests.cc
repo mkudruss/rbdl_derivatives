@@ -243,11 +243,11 @@ TEST(CheckApplySTSV) {
     vector<SpatialTransform> st_dirs(ndirs, SpatialTransform::Zero());
     vector<SpatialVector> sv_dirs(ndirs, SpatialVector::Zero());
 
-    SpatialVector ad_res = SpatialVector::Zero();
-    vector<SpatialVector> ad_res_dirs(ndirs, SpatialVector::Zero());
+    SpatialVector ad_res = SpatialVector::Random();
+    vector<SpatialVector> ad_res_dirs(ndirs, SpatialVector::Random());
 
-    SpatialVector fd_res = SpatialVector::Zero();
-    vector<SpatialVector> fd_res_dirs(ndirs, SpatialVector::Zero());
+    SpatialVector fd_res = ad_res;
+    vector<SpatialVector> fd_res_dirs = ad_res_dirs;
 
     unsigned idir = 0;
     for (; idir < 9u; idir++) {
@@ -436,7 +436,7 @@ TEST(CheckAddApplyAdjointSTSV) {
 
 // -----------------------------------------------------------------------------
 
-inline void FDadd_sqrFormSTSM_noalias(
+inline void FDaddSqrFormSTSM_noalias(
     unsigned ndirs,
     SpatialTransform const & st,
     std::vector<SpatialTransform> const & st_dirs,
@@ -463,7 +463,7 @@ inline void FDadd_sqrFormSTSM_noalias(
   }
 }
 
-TEST(CheckAdd_sqrFormSTSM_noalias) {
+TEST(CheckAddSqrFormSTSM_noalias) {
   for (int i = 0; i < 100; i++){
     unsigned ndirs = 48;
     Matrix3d E = Matrix3d::Random();
@@ -496,7 +496,7 @@ TEST(CheckAdd_sqrFormSTSM_noalias) {
           sm, sm_dirs,
           ad_res, ad_res_dirs);
 
-    FDadd_sqrFormSTSM_noalias(
+    FDaddSqrFormSTSM_noalias(
           ndirs,
           st, st_dirs,
           sm, sm_dirs,
@@ -508,6 +508,8 @@ TEST(CheckAdd_sqrFormSTSM_noalias) {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 

@@ -1,6 +1,8 @@
 #include "FdModelEntry.h"
 
+// -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
+// -----------------------------------------------------------------------------
 
 void computeFDEntry(
     Model const & model,
@@ -64,7 +66,27 @@ void computeFDEntry(
   for (unsigned i = 0; i < model.f.size(); i++) {
     fd_model.f[i][idir] = (modelh.f[i] - model.f[i]) / h;
   }
-
 }
 
+void computeFDEntry(
+    ConstraintSet const & cs,
+    ConstraintSet const & csh,
+    double h, int idir,
+    ADConstraintSet &fd_cs) {
+  fd_cs.G[idir]  = (csh.G - cs.G) / h;
+  fd_cs.Gi[idir] = (csh.Gi - cs.Gi) / h;
+  fd_cs.A[idir]  = (csh.A - cs.A) / h;
+  fd_cs.H[idir]  = (csh.H - cs.H) / h;
+  fd_cs.b.col(idir) = (csh.b - cs.b) / h;
+  fd_cs.v_plus.col(idir) = (csh.v_plus - cs.v_plus) / h;
+  fd_cs.x.col(idir) = (csh.x - cs.x) / h;
+  fd_cs.impulse.col(idir) = (csh.impulse - cs.impulse) / h;
+  fd_cs.QDDot_0.col(idir) = (csh.QDDot_0 - cs.QDDot_0) / h;
+  fd_cs.C.col(idir) = (csh.C - cs.C) / h;
+  fd_cs.gamma.col(idir) = (csh.gamma - cs.gamma) / h;
+  fd_cs.force.col(idir) = (csh.force - cs.force) / h;
 }
+
+// -----------------------------------------------------------------------------
+} // RigidBodyDynamics
+// -----------------------------------------------------------------------------

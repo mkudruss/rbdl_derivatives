@@ -289,25 +289,37 @@ void CompositeRigidBodyAlgorithmADTestTemplate(
     T & obj,
     unsigned trial_count,
     double array_close_prec) {
-  Model & model = obj.model;
-  for (unsigned i = 0; i < trial_count; i++) {
-    MatrixNd q_dirs = MatrixNd::Random (model.qdot_size, model.qdot_size);
-    MatrixNd H = MatrixNd::Random(model.q_size,model.q_size);
-    vector<MatrixNd> fd_out(q_dirs.cols());
-    vector<MatrixNd> ad_out(q_dirs.cols(),MatrixNd::Zero(model.q_size,model.q_size));
-    ADModel ad_model(model);
-
+  Model model = obj.model;
+  Model fd_model = obj.model;
+  Model ad_model = obj.model;
+  ADModel ad_d_model(model);
+  ADModel fd_d_model = ad_d_model;
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    unsigned ndirs = model.qdot_size;
     VectorNd q = VectorNd::Random(model.qdot_size);
-    FD::CompositeRigidBodyAlgorithm(model, q, q_dirs, fd_out);
-    AD::CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, H, ad_out);
+    MatrixNd q_dirs = MatrixNd::Random (model.qdot_size, ndirs);
+    MatrixNd H = MatrixNd::Zero(q.size(),q.size());
+    MatrixNd ad_H = MatrixNd::Random(model.q_size, ndirs);
+    MatrixNd fd_H = MatrixNd::Random(model.q_size, ndirs);
+    vector<MatrixNd> fd_H_dirs(ndirs);
+    vector<MatrixNd> ad_H_dirs(ndirs, MatrixNd::Zero(model.q_size,model.q_size));
 
-    MatrixNd inertia_test = MatrixNd::Zero(q.size(),q.size());
-    CompositeRigidBodyAlgorithm(model, q, inertia_test, true);
-    for (size_t nIdx = 0; nIdx < fd_out.size(); nIdx++) {
-      CHECK_ARRAY_CLOSE (inertia_test.data(), H.data(),
-                         model.q_size * model.q_size,
-                         array_close_prec);
-      CHECK_ARRAY_CLOSE (fd_out[nIdx].data(), ad_out[nIdx].data(),
+    CompositeRigidBodyAlgorithm(model, q, H, true);
+    FD::CompositeRigidBodyAlgorithm(fd_model, &fd_d_model, q, q_dirs, fd_H, fd_H_dirs);
+    AD::CompositeRigidBodyAlgorithm(ad_model, ad_d_model, q, q_dirs, ad_H, ad_H_dirs);
+
+    checkModelsADvsFD(ndirs,
+                      ad_model, ad_d_model,
+                      fd_model, fd_d_model);
+
+    CHECK_ARRAY_CLOSE (H.data(), ad_H.data(),
+                       model.q_size * model.q_size,
+                       array_close_prec);
+    CHECK_ARRAY_CLOSE (H.data(), fd_H.data(),
+                       model.q_size * model.q_size,
+                       array_close_prec);
+    for (size_t idir = 0; idir < model.qdot_size; idir++) {
+      CHECK_ARRAY_CLOSE (fd_H_dirs[idir].data(), ad_H_dirs[idir].data(),
                          model.q_size * model.q_size,
                          array_close_prec);
     }

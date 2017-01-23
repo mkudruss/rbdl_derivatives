@@ -15,7 +15,7 @@
 #include "KinematicsFD.h"
 #include "FdModelEntry.h"
 
-using std::vector;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
@@ -46,86 +46,46 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
     return ref;
 }
 
+
 RBDL_DLLAPI
 Vector3d CalcBodyToBaseCoordinates (
     Model & model,
-    ADModel & ad_model,
+    ADModel * fd_model,
     VectorNd const & q,
     MatrixNd const & q_dirs,
     unsigned int body_id,
     Vector3d const & point_body_coordinates,
-    MatrixNd & fd_body_to_base_coordinates
-) {
-  Vector3d ret = Vector3d::Zero();
-
-  // update the Kinematics if necessary
-  UpdateKinematicsCustom (model, &q, NULL, NULL);
-
-  if (body_id >= model.fixed_body_discriminator) {
-    unsigned int fbody_id = body_id - model.fixed_body_discriminator;
-    unsigned int parent_id = model.mFixedBodies[fbody_id].mMovableParent;
-
-    Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
-    Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
-
-    Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
-    Vector3d parent_body_position = model.X_base[parent_id].r;
-
-    ret = parent_body_position
-        + parent_body_rotation * (
-          fixed_position + fixed_rotation * (point_body_coordinates)
-          );
-  } else {
-    Matrix3d body_rotation = model.X_base[body_id].E.transpose();
-    Vector3d body_position = model.X_base[body_id].r;
-
-    ret = body_position + body_rotation * point_body_coordinates;
-  }
-
-  unsigned int ndirs =  q_dirs.cols();
-  Vector3d temp = Vector3d::Zero();
-
-  assert (fd_body_to_base_coordinates.cols() == ndirs);
-
+    MatrixNd & fd_body_to_base_coordinates) {
+  unsigned ndirs = q_dirs.cols();
+  assert(ndirs == fd_body_to_base_coordinates.cols());
   double const h = 1e-8;
 
-  for (unsigned int idir = 0; idir < ndirs; ++idir) {
-    VectorNd Q_dir  =  q_dirs.col(idir);
+  Vector3d res =
+      CalcBodyToBaseCoordinates(model, q, body_id, point_body_coordinates);
 
-    // update the Kinematics if necessary
-    VectorNd Q_temp = q + h*Q_dir;
-    UpdateKinematicsCustom (model, &Q_temp, NULL, NULL);
-
-    if (body_id >= model.fixed_body_discriminator) {
-      std::cerr << "fixed bodies not supported yet." << std::endl;
-      abort();
-      unsigned int fbody_id = body_id - model.fixed_body_discriminator;
-      unsigned int parent_id = model.mFixedBodies[fbody_id].mMovableParent;
-
-      Matrix3d fixed_rotation = model.mFixedBodies[fbody_id].mParentTransform.E.transpose();
-      Vector3d fixed_position = model.mFixedBodies[fbody_id].mParentTransform.r;
-
-      Matrix3d parent_body_rotation = model.X_base[parent_id].E.transpose();
-      Vector3d parent_body_position = model.X_base[parent_id].r;
-
-      temp = parent_body_position
-          + parent_body_rotation
-          * (fixed_position + fixed_rotation * (point_body_coordinates));
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model * modelh;
+    if (fd_model) {
+      modelh = new Model(model);
     } else {
-      Matrix3d body_rotation = model.X_base[body_id].E.transpose();
-      Vector3d body_position = model.X_base[body_id].r;
-
-      temp = body_position + body_rotation * point_body_coordinates;
+      modelh = &model;
     }
-
-    // derivative evaluation
-    fd_body_to_base_coordinates.col(idir) = (temp - ret) / h;
+    VectorNd qh   = q + h * q_dirs.col(idir);
+    Vector3d resh =
+        CalcBodyToBaseCoordinates(*modelh, qh, body_id, point_body_coordinates);
+    fd_body_to_base_coordinates.col(idir) = (resh - res) / h;
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
   }
-  return ret;
+
+  return res;
 }
 
 RBDL_DLLAPI Vector3d CalcBaseToBodyCoordinates (
     Model & model,
+    ADModel * fd_model,
     VectorNd const & q,
     MatrixNd const & q_dirs,
     unsigned body_id,
@@ -138,12 +98,31 @@ RBDL_DLLAPI Vector3d CalcBaseToBodyCoordinates (
 
   Vector3d b2b = CalcBaseToBodyCoordinates (model, q, body_id,
       base_point_position);
+
   double h = 1e-8;
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    Vector3d b2bh = CalcBaseToBodyCoordinates(model, q + h * q_dirs.col(idir),
-        body_id, base_point_position + h * base_point_position_dirs.col(idir));
+    Model * modelh;
+    if (fd_model) {
+      modelh = new Model(model);
+    } else {
+      modelh = &model;
+    }
+
+    VectorNd qh = q + h * q_dirs.col(idir);
+    Vector3d base_point_positionh =
+        base_point_position + h * base_point_position_dirs.col(idir);
+
+    Vector3d b2bh = CalcBaseToBodyCoordinates(*modelh, qh, body_id,
+        base_point_positionh);
+
     fd_base_to_body_coordinates.col(idir) = (b2bh - b2b) / h;
+
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
   }
+
   return b2b;
 }
 
@@ -221,37 +200,38 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
 
 RBDL_DLLAPI
 void CalcPointJacobian (
-        Model &model,
-        ADModel &ad_model,
-        Math::VectorNd const &Q,
-        Math::MatrixNd const &Q_dirs,
-        unsigned int body_id,
-        Math::Vector3d const &point_position,
-        Math::MatrixNd &G,
-        std::vector<Math::MatrixNd> &G_dirs,
-        bool update_kinematics
-) {
-    unsigned int ndirs = Q_dirs.cols();
-    ad_model.resize_directions(ndirs);
+    Model &model,
+    ADModel &fd_model,
+    Math::VectorNd const &q,
+    Math::MatrixNd const &q_dirs,
+    unsigned int body_id,
+    Math::Vector3d const &point_position,
+    Math::MatrixNd &G,
+    std::vector<Math::MatrixNd> &G_dirs,
+    bool update_kinematics) {
+  unsigned int ndirs = q_dirs.cols();
+  fd_model.resize_directions(ndirs);
 
-    // temporary evaluation at current point
-    CalcPointJacobian (
-        model, Q, body_id, point_position, G, update_kinematics
-    );
-
-    double h = 1e-8;
-    MatrixNd G_temp = MatrixNd::Zero (3, model.dof_count);
-    for (unsigned int idir = 0; idir < ndirs; idir++) {
-        VectorNd Q_dir = Q_dirs.block(0, idir, model.q_size, 1);
-
-        // temporary evaluation at perturbed point
-        CalcPointJacobian (
-            model, Q + h * Q_dir, body_id, point_position, G_temp, update_kinematics
+  // temporary evaluation at current point
+  CalcPointJacobian (
+        model, q, body_id, point_position, G, update_kinematics
         );
 
-        // calculate finite difference
-        G_dirs[idir] = (G_temp - G) / h;
-    }
+  double h = 1e-8;
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model modelh = model;
+    VectorNd q_dir = q_dirs.block(0, idir, model.q_size, 1);
+    MatrixNd Gh = MatrixNd::Zero (3, model.dof_count);
+
+
+    // temporary evaluation at perturbed point
+    CalcPointJacobian (
+          modelh, q + h * q_dir, body_id, point_position, Gh, update_kinematics
+          );
+    G_dirs[idir] = (Gh - G) / h;
+    computeFDEntry(model, modelh, h, idir, fd_model);
+  }
 }
 
 RBDL_DLLAPI
