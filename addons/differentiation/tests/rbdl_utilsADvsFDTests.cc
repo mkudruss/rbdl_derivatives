@@ -142,9 +142,9 @@ TEST(CheckApplyTranspose) {
     SpatialTransform        st(E, r);
     SpatialRigidBodyInertia srbi(m, h, I);
 
-    SpatialRigidBodyInertia m1 = st.applyTranspose(srbi);
-    SpatialMatrix           m1a = m1.toMatrix();
-    SpatialMatrix           m2 = st.toMatrixTranspose() * srbi.toMatrix() * st.toMatrix();
+    // SpatialRigidBodyInertia m1 = st.applyTranspose(srbi);
+    // SpatialMatrix           m1a = m1.toMatrix();
+    // SpatialMatrix           m2 = st.toMatrixTranspose() * srbi.toMatrix() * st.toMatrix();
 
     unsigned const ndirs = 22;
 

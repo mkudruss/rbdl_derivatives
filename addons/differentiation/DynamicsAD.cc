@@ -193,7 +193,7 @@ void ForwardDynamics (Model& model,
 						+ ad_model.U[i][j] * model.u[i] / model.d[i]
 						+ model.U[i] * ad_model.u(i,j) / model.d[i]
 						+ model.U[i] * model.u[i] * (-ad_model.d(i,j)) / (model.d[i] * model.d[i]);
-				}        
+				}
 				// nominal evaluation
 				SpatialVector pa = model.pA[i] + Ia * model.c[i] + model.U[i] * model.u[i] / model.d[i];
 
@@ -235,7 +235,7 @@ void ForwardDynamics (Model& model,
 	for (i = 1; i < model.mBodies.size(); i++) {
 		unsigned int q_index = model.mJoints[i].q_index;
 		unsigned int lambda = model.lambda[i];
-		SpatialTransform X_lambda = model.X_lambda[i];
+		// SpatialTransform X_lambda = model.X_lambda[i];
 
     applySTSV(ndirs,
               model.X_lambda[i], ad_model.X_lambda[i],
@@ -393,7 +393,7 @@ void InverseDynamics(
       // nominal evaluation
       unsigned int k = model.mJoints[i].custom_joint_index;
       VectorNd customJointQDDot(model.mCustomJoints[k]->mDoFCount);
-      for(int z=0; z<model.mCustomJoints[k]->mDoFCount; ++z){
+      for(unsigned int z = 0; z < model.mCustomJoints[k]->mDoFCount; ++z){
         customJointQDDot[z] = qddot[q_index+z];
       }
       model.a[i] =  model.X_lambda[i].apply(model.a[lambda])
