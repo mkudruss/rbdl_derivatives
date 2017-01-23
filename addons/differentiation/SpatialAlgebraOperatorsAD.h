@@ -207,7 +207,7 @@ inline void applyTransposeSTSV (
   Vector3d top = E_T_n + st.r.cross(E_T_f);
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    res_dirs[idir].segment<3>(3) =
+    Vector3d E_T_f_dir = // if &res == &sv
         st.E.transpose() * sv_dirs[idir].segment<3>(3)
         + st_dirs[idir].E.transpose() * sv.segment<3>(3);
 
@@ -215,7 +215,9 @@ inline void applyTransposeSTSV (
         st.E.transpose() * sv_dirs[idir].segment<3>(0)
         + st_dirs[idir].E.transpose() * sv.segment<3>(0)
         + st_dirs[idir].r.cross(E_T_f)
-        + st.r.cross(res_dirs[idir].segment<3>(3));
+        + st.r.cross(E_T_f_dir);
+
+    res_dirs[idir].segment<3>(3) = E_T_f_dir;
   }
 
   res.segment<3>(0) = top;
@@ -240,15 +242,18 @@ inline void addApplyTransposeSTSV (
   Vector3d top = E_T_n + st.r.cross(E_T_f);
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    res_dirs[idir].segment<3>(3) += dscal * (
+    Vector3d E_T_f_dir = // if &res == &sv
         st.E.transpose() * sv_dirs[idir].segment<3>(3)
-        + st_dirs[idir].E.transpose() * sv.segment<3>(3));
+        + st_dirs[idir].E.transpose() * sv.segment<3>(3);
 
-    res_dirs[idir].segment<3>(0) += dscal * (
+    res_dirs[idir].segment<3>(0) +=
+        dscal * (
         st.E.transpose() * sv_dirs[idir].segment<3>(0)
         + st_dirs[idir].E.transpose() * sv.segment<3>(0)
         + st_dirs[idir].r.cross(E_T_f)
-        + st.r.cross(res_dirs[idir].segment<3>(3)));
+        + st.r.cross(E_T_f_dir));
+
+    res_dirs[idir].segment<3>(3) += dscal * E_T_f_dir;
   }
 
   res.segment<3>(0) += dscal * top;
@@ -273,24 +278,27 @@ inline void addApplyAdjointSTSV (
   Vector3d Ef = st.E * sv.segment<3>(3);
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    res_dirs[idir].segment<3>(0) += dscal * (
-          st_dirs[idir].E * n_rxf
-          + st.E * (
-            sv_dirs[idir].segment<3>(0)
-            - st.r.cross(sv_dirs[idir].segment<3>(3))
-            - st_dirs[idir].r.cross(sv.segment<3>(3))
-            )
+    Vector3d En_rxf_dir = // if &res == &sv
+        st_dirs[idir].E * n_rxf
+        + st.E * (
+          sv_dirs[idir].segment<3>(0)
+          - st.r.cross(sv_dirs[idir].segment<3>(3))
+          - st_dirs[idir].r.cross(sv.segment<3>(3))
           );
-    res_dirs[idir].segment<3>(3) += dscal * (
-          st_dirs[idir].E * sv.segment<3>(3)
-          + st.E * sv_dirs[idir].segment<3>(3));
+
+    res_dirs[idir].segment<3>(3) +=
+        dscal * (
+        st_dirs[idir].E * sv.segment<3>(3)
+        + st.E * sv_dirs[idir].segment<3>(3));
+
+    res_dirs[idir].segment<3>(0) += dscal * En_rxf_dir;
   }
 
   res.segment<3>(0) += dscal * En_rxf;
   res.segment<3>(3) += dscal * Ef;
 }
 
-inline void applyTransposeAD (
+inline void applyTransposeSTSI (
     unsigned ndirs,
     SpatialTransform const & st,
     std::vector<SpatialTransform> const & st_dirs,

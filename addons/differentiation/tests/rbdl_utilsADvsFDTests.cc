@@ -175,7 +175,7 @@ TEST(CheckApplyTranspose) {
 
     SpatialRigidBodyInertia ad_res;
     vector<SpatialRigidBodyInertia> ad_res_dirs(ndirs);
-    AD::applyTransposeAD(ndirs, st, st_dirs, srbi, srbi_dirs, ad_res, ad_res_dirs);
+    AD::applyTransposeSTSI(ndirs, st, st_dirs, srbi, srbi_dirs, ad_res, ad_res_dirs);
 
     SpatialRigidBodyInertia fd_res;
     vector<SpatialRigidBodyInertia> fd_res_dirs(ndirs);

@@ -82,7 +82,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
 //      }
       SpatialRigidBodyInertia         summand;
       vector<SpatialRigidBodyInertia> summand_res(ndirs);
-      applyTransposeAD(
+      applyTransposeSTSI(
             ndirs,
             model.X_lambda[i],
             ad_model.X_lambda[i],
@@ -123,7 +123,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
 
       SpatialRigidBodyInertia         summand;
       vector<SpatialRigidBodyInertia> summand_res(ndirs);
-      applyTransposeAD(
+      applyTransposeSTSI(
             ndirs,
             model.X_lambda[i],
             ad_model.X_lambda[i],

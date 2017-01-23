@@ -23,15 +23,17 @@ const double TEST_PREC = 1.0e-8;
 // -----------------------------------------------------------------------------
 
 template <typename T>
-void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials,
-                                   double CHECK_ARRAY_PREC = 1e-7) {
+void ForwardDynamicsADTestTemplate(
+    T & obj,
+    unsigned int trial_count,
+    double array_close_prec) {
   Model ad_model = obj.model;
   Model fd_model = obj.model;
   ADModel ad_d_model = obj.ad_model;
   ADModel fd_d_model = obj.ad_model;
   srand(666);
 
-  for(unsigned int trial = 0; trial < numTrials; trial++) {
+  for(unsigned int trial = 0; trial < trial_count; trial++) {
     VectorNd q = VectorNd::Random(obj.model.q_size);
     VectorNd qdot = VectorNd::Random(obj.model.q_size);
     VectorNd tau = VectorNd::Random(obj.model.q_size);
@@ -80,7 +82,7 @@ void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials,
 
     FD::ForwardDynamics(
           fd_model,
-          fd_d_model,
+          &fd_d_model,
           q, q_dirs,
           qdot, qdot_dirs,
           tau, tau_dirs,
@@ -93,10 +95,10 @@ void ForwardDynamicsADTestTemplate(T & obj, unsigned int numTrials,
           fd_model, fd_d_model);
 
     CHECK_ARRAY_CLOSE(ad_qddot.data(), fd_qddot.data(), obj.model.q_size,
-                      CHECK_ARRAY_PREC);
+                      array_close_prec);
 
     CHECK_ARRAY_CLOSE(fd_dqddot.data(), ad_dqddot.data(),
-                      fd_dqddot.cols() * fd_dqddot.rows(), CHECK_ARRAY_PREC);
+                      fd_dqddot.cols() * fd_dqddot.rows(), array_close_prec);
   }
 }
 
@@ -123,7 +125,10 @@ TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpForwardDynamicsADTest){
 // -----------------------------------------------------------------------------
 
 template<typename T>
-void InverseDynamicsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-5) {
+void InverseDynamicsADTestTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
   Model ad_model      = obj.model;
   Model fd_model      = obj.model;
   ADModel ad_d_model = obj.ad_model;
@@ -134,7 +139,7 @@ void InverseDynamicsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-5) {
   VectorNd & tau   = obj.tau;
   unsigned ndirs = ad_model.qdot_size;
 
-  for (unsigned trial = 0; trial < 10; trial++) {
+  for (unsigned trial = 0; trial < trial_count; trial++) {
     q.setRandom();
     qdot.setRandom();
     qddot.setRandom();
@@ -185,136 +190,148 @@ void InverseDynamicsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-5) {
 
     checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
 
-    CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), CHECK_ARRAY_PREC);
-    CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), CHECK_ARRAY_PREC);
+    CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), array_close_prec);
+    CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), array_close_prec);
   }
 }
 
 TEST_FIXTURE(CartPendulum, CartPendulumInverseDynamicsADTest){
-  InverseDynamicsADTestTemplate<CartPendulum>(*this);
+  InverseDynamicsADTestTemplate<CartPendulum>(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE(Arm2DofX, Arm2DofXInverseDynamicsADTest) {
-  InverseDynamicsADTestTemplate(*this, 1e-5);
+  InverseDynamicsADTestTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE(Arm2DofZ, Arm2DofZInverseDynamicsADTest) {
-  InverseDynamicsADTestTemplate(*this, 1e-5);
+  InverseDynamicsADTestTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpInverseDynamicsADTest) {
-  InverseDynamicsADTestTemplate(*this, 1e-5);
+  InverseDynamicsADTestTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZYpInverseDynamicsADTest) {
-    InverseDynamicsADTestTemplate(*this, 1e-5);
+  InverseDynamicsADTestTemplate(*this, 10, 1e-5);
 }
 
 // -----------------------------------------------------------------------------
 
 template<typename T>
-void NonlinearEffectsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-7) {
-  Model & model      = obj.model;
-  ADModel & ad_model = obj.ad_model;
+void NonlinearEffectsADTestTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
+  Model ad_model      = obj.model;
+  Model fd_model      = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
   VectorNd & q     = obj.q;
   VectorNd & qdot  = obj.qdot;
   VectorNd & tau   = obj.tau;
 
-  for(unsigned int i = 0; i < model.qdot_size; i++) {
-      q[i]     = (i+1)*(0.897878435);
-      qdot[i]  = (i+1)*(0.27563682);
+  unsigned ndirs = ad_model.qdot_size;
+
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    q.setRandom();
+    qdot.setRandom();
+
+    MatrixNd q_dirs     = MatrixNd::Random (ad_model.qdot_size, ad_model.qdot_size);
+    MatrixNd qdot_dirs  = MatrixNd::Random (ad_model.qdot_size, ad_model.qdot_size);
+
+    VectorNd tau_nom (tau);
+    VectorNd ad_d_tau_nom (tau);
+    VectorNd fd_d_tau_nom (tau);
+    MatrixNd ad_tau_der = MatrixNd::Zero(ad_model.qdot_size, ad_model.qdot_size);
+    MatrixNd fd_tau_der = MatrixNd::Zero(ad_model.qdot_size, ad_model.qdot_size);
+
+    NonlinearEffects(ad_model, q, qdot, tau_nom);
+
+    AD::NonlinearEffects(ad_model, ad_d_model, q, q_dirs,
+        qdot, qdot_dirs, ad_d_tau_nom, ad_tau_der);
+
+    FD::NonlinearEffects(fd_model, &fd_d_model, q, q_dirs, qdot, qdot_dirs,
+        fd_d_tau_nom, fd_tau_der);
+
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+
+    CHECK_ARRAY_CLOSE (tau_nom.data(), ad_d_tau_nom.data(), tau_nom.rows(), array_close_prec);
+    CHECK_ARRAY_CLOSE (tau_nom.data(), fd_d_tau_nom.data(), tau_nom.rows(), array_close_prec);
+    CHECK_ARRAY_CLOSE (fd_tau_der.data(), ad_tau_der.data(),
+                       fd_tau_der.cols() * fd_tau_der.rows(), array_close_prec);
   }
-
-  MatrixNd q_dirs     = MatrixNd::Identity (model.qdot_size, model.qdot_size);
-  MatrixNd qdot_dirs  = MatrixNd::Identity (model.qdot_size, model.qdot_size);
-
-  VectorNd tau_nom (tau);
-  VectorNd ad_tau_nom (tau);
-  VectorNd fd_tau_nom (tau);
-  MatrixNd ad_tau_der = MatrixNd::Zero(model.qdot_size, model.qdot_size);
-  MatrixNd fd_tau_der = MatrixNd::Zero(model.qdot_size, model.qdot_size);
-
-  NonlinearEffects(model, q, qdot, tau_nom);
-
-  AD::NonlinearEffects(model, ad_model, q, q_dirs,
-      qdot, qdot_dirs, ad_tau_nom, ad_tau_der);
-
-  FD::NonlinearEffects(model, q, q_dirs, qdot, qdot_dirs,
-      fd_tau_nom, fd_tau_der);
-
-  CHECK_ARRAY_CLOSE (tau_nom.data(), ad_tau_nom.data(), tau_nom.rows(), CHECK_ARRAY_PREC);
-  CHECK_ARRAY_CLOSE (tau_nom.data(), fd_tau_nom.data(), tau_nom.rows(), CHECK_ARRAY_PREC);
-  CHECK_ARRAY_CLOSE (fd_tau_der.data(), ad_tau_der.data(),
-                     fd_tau_der.cols() * fd_tau_der.rows(), CHECK_ARRAY_PREC);
 }
 
 TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsADTest) {
-    NonlinearEffectsADTestTemplate(*this);
+  NonlinearEffectsADTestTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsADTest) {
-    NonlinearEffectsADTestTemplate(*this, 1e-6);
+  NonlinearEffectsADTestTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsADTest) {
-    NonlinearEffectsADTestTemplate(*this, 1e-6);
+  NonlinearEffectsADTestTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsADTest) {
-    NonlinearEffectsADTestTemplate(*this, 1e-5);
+  NonlinearEffectsADTestTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsADTest) {
-    NonlinearEffectsADTestTemplate(*this, 1e-5);
+  NonlinearEffectsADTestTemplate(*this, 10, 1e-5);
 }
 
 // -----------------------------------------------------------------------------
 
 template<typename T>
-void CompositeRigidBodyAlgorithmADTestTemplate(T & obj) {
-    Model & model = obj.model;
-
-    MatrixNd q_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
-
-    MatrixNd H = MatrixNd::Zero(model.q_size,model.q_size);
-    std::vector<MatrixNd> fd_out;
-    std::vector<MatrixNd> ad_out(q_dirs.cols(),MatrixNd::Zero(model.q_size,model.q_size));
+void CompositeRigidBodyAlgorithmADTestTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
+  Model & model = obj.model;
+  for (unsigned i = 0; i < trial_count; i++) {
+    MatrixNd q_dirs = MatrixNd::Random (model.qdot_size, model.qdot_size);
+    MatrixNd H = MatrixNd::Random(model.q_size,model.q_size);
+    vector<MatrixNd> fd_out(q_dirs.cols());
+    vector<MatrixNd> ad_out(q_dirs.cols(),MatrixNd::Zero(model.q_size,model.q_size));
     ADModel ad_model(model);
 
     VectorNd q = VectorNd::Random(model.qdot_size);
-    RigidBodyDynamics::FD::CompositeRigidBodyAlgorithm(model, q, q_dirs, fd_out);
-    RigidBodyDynamics::AD::CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, H, ad_out);
+    FD::CompositeRigidBodyAlgorithm(model, q, q_dirs, fd_out);
+    AD::CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, H, ad_out);
 
     MatrixNd inertia_test = MatrixNd::Zero(q.size(),q.size());
     CompositeRigidBodyAlgorithm(model, q, inertia_test, true);
     for (size_t nIdx = 0; nIdx < fd_out.size(); nIdx++) {
-        // cout << "Dir " << nIdx << endl;
-        // cout << "fd_CRBA: " << endl << fd_out[nIdx] << std::endl << std::endl;
-        // cout << "ad_CRBA: " << endl << ad_out[nIdx] << std::endl << std::endl;
-        // cout << "ad_CRBA error (fd,ad)" << endl << (fd_out[nIdx] - ad_out[nIdx]) << std::endl;
-        CHECK_ARRAY_CLOSE (inertia_test.data(), H.data(), model.q_size*model.q_size, TEST_PREC);
-        CHECK_ARRAY_CLOSE (fd_out[nIdx].data(), ad_out[nIdx].data(), model.q_size*model.q_size, 1e-7);
+      CHECK_ARRAY_CLOSE (inertia_test.data(), H.data(),
+                         model.q_size * model.q_size,
+                         array_close_prec);
+      CHECK_ARRAY_CLOSE (fd_out[nIdx].data(), ad_out[nIdx].data(),
+                         model.q_size * model.q_size,
+                         array_close_prec);
     }
+  }
 }
 
-//TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmADTest) {
-//    CompositeRigidBodyAlgorithmADTestTemplate(*this);
-//}
+TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmADTest) {
+  CompositeRigidBodyAlgorithmADTestTemplate(*this, 10, 1e-5);
+}
 
-//TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmADTest) {
-//    CompositeRigidBodyAlgorithmADTestTemplate(*this);
-//}
+TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmADTest) {
+  CompositeRigidBodyAlgorithmADTestTemplate(*this, 10, 1e-5);
+}
 
-//TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmADTest) {
-//    CompositeRigidBodyAlgorithmADTestTemplate(*this);
-//}
+TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmADTest) {
+  CompositeRigidBodyAlgorithmADTestTemplate(*this, 10, 1e-5);
+}
 
-//TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmADTest) {
-//    CompositeRigidBodyAlgorithmADTestTemplate(*this);
-//}
+TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmADTest) {
+  CompositeRigidBodyAlgorithmADTestTemplate(*this, 10, 1e-5);
+}
 
-//TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmADTest) {
-//    CompositeRigidBodyAlgorithmADTestTemplate(*this);
-//}
+TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmADTest) {
+  CompositeRigidBodyAlgorithmADTestTemplate(*this, 10, 1e-5);
+}
 
 // -----------------------------------------------------------------------------

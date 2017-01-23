@@ -10,6 +10,7 @@
 
 #include <iostream>
 
+using std::cout;
 using std::cerr;
 using std::endl;
 using std::vector;
@@ -487,15 +488,17 @@ void NonlinearEffects (
     const VectorNd & qdot,
     const MatrixNd & qdot_dirs,
     VectorNd & tau,
-    MatrixNd & ad_tau
-) {
+    MatrixNd & ad_tau) {
 	unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == ad_tau.cols());
 
   LOG << "-------- " << __func__ << " --------" << std::endl;
 
-  SpatialVector spatial_gravity (0., 0., 0., -model.gravity[0], -model.gravity[1], -model.gravity[2]);
+  SpatialVector spatial_gravity (0., 0., 0.,
+      -model.gravity[0],
+      -model.gravity[1],
+      -model.gravity[2]);
 
   // Reset the velocity of the root body
   // derivative code
@@ -522,22 +525,36 @@ void NonlinearEffects (
       // nominal code
       model.v[i] = model.v_J[i];
 
-      // derivative code
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        ad_model.a[i][idir] = ad_model.X_lambda[i][idir].apply (spatial_gravity);
-      }
-      // nominal code
-      model.a[i] = model.X_lambda[i].apply(spatial_gravity);
+//      // derivative code
+//      for (unsigned idir = 0; idir < ndirs; idir++) {
+//        ad_model.a[i][idir] = ad_model.X_lambda[i][idir].apply (spatial_gravity);
+//      }
+//      // nominal code
+//      model.a[i] = model.X_lambda[i].apply(spatial_gravity);
+
+      applySTSV(ndirs,
+                model.X_lambda[i], ad_model.X_lambda[i],
+                spatial_gravity,
+                model.a[i], ad_model.a[i]);
     }	else {
-      // derivative code
+//      // derivative code
+//      for (unsigned idir = 0; idir < ndirs; idir++) {
+//        ad_model.v[i][idir] =
+//            ad_model.X_lambda[i][idir].apply (model.v[lambda])
+//            + model.X_lambda[i].apply(ad_model.v[lambda][idir])
+//            + ad_model.v_J[i][idir];
+//      }
+//      // nominal code
+//      model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
+
+      applySTSV(ndirs,
+                model.X_lambda[i], ad_model.X_lambda[i],
+                model.v[lambda], ad_model.v[lambda],
+                model.v[i], ad_model.v[i]);
       for (unsigned idir = 0; idir < ndirs; idir++) {
-        ad_model.v[i][idir] =
-            ad_model.X_lambda[i][idir].apply (model.v[lambda])
-            + model.X_lambda[i].apply(ad_model.v[lambda][idir])
-            + ad_model.v_J[i][idir];
+        ad_model.v[i][idir] += ad_model.v_J[i][idir];
       }
-      // nominal code
-      model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
+      model.v[i] += model.v_J[i];
 
       // derivative code
 			for (unsigned idir = 0; idir < ndirs; idir++) {
@@ -548,15 +565,26 @@ void NonlinearEffects (
       // nominal code
       model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
 
-      // derivative code
-			for (unsigned idir = 0; idir < ndirs; idir++) {
-        ad_model.a[i][idir] =
-            ad_model.X_lambda[i][idir].apply(model.a[lambda])
-            + model.X_lambda[i].apply(ad_model.a[lambda][idir])
-            + ad_model.c[i][idir];
+//      // derivative code
+//			for (unsigned idir = 0; idir < ndirs; idir++) {
+//        ad_model.a[i][idir] =
+//            ad_model.X_lambda[i][idir].apply(model.a[lambda])
+//            + model.X_lambda[i].apply(ad_model.a[lambda][idir])
+//            + ad_model.c[i][idir];
+//      }
+//      // nominal code
+//      model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
+
+
+      applySTSV(ndirs,
+                model.X_lambda[i], ad_model.X_lambda[i],
+                model.a[lambda], ad_model.a[lambda],
+                model.a[i], ad_model.a[i]);
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.a[i][idir] += ad_model.c[i][idir];
       }
-      // nominal code
-      model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
+      model.a[i] += model.c[i];
+
     }
 
     if (!model.mBodies[i].mIsVirtual) {
@@ -580,15 +608,20 @@ void NonlinearEffects (
 
   for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
     if (model.mJoints[i].mDoFCount == 3) {
-      cerr << "Multi-dof not supported." << endl;
+      cerr << __FILE__ << " " << __LINE__ << ":"
+           << "Multi-DoF joint not supported." << endl;
       abort();
       // nominal code
       tau.block<3,1>(model.mJoints[i].q_index, 0) = model.multdof3_S[i].transpose() * model.f[i];
+    } else if (model.mJoints[i].mJointType == JointTypeCustom) {
+      cerr << __FILE__ << " " << __LINE__ << ":"
+           << " Custom joint not supported." << endl;
+      abort();
     } else {
       int q_index = model.mJoints[i].q_index;
       // derivative code
-			for (unsigned idir = 0; idir < ndirs; idir++) {
-				ad_tau(q_index, idir) = model.S[i].dot(ad_model.f[i][idir]);
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_tau(q_index, idir) = model.S[i].dot(ad_model.f[i][idir]);
       }
       // nominal code
       tau[q_index] = model.S[i].dot(model.f[i]);
@@ -596,14 +629,10 @@ void NonlinearEffects (
 
     unsigned lambda = model.lambda[i];
     if (lambda != 0) {
-      // derivative code
-			for (unsigned idir = 0; idir < ndirs; idir++) {
-        ad_model.f[lambda][idir] +=
-            ad_model.X_lambda[i][idir].applyTranspose (model.f[i])
-            + model.X_lambda[i].applyTranspose(ad_model.f[i][idir]);
-      }
-      // nominal code
-      model.f[lambda] += model.X_lambda[i].applyTranspose(model.f[i]);
+      addApplyTransposeSTSV(ndirs, 1.0,
+                            model.X_lambda[i], ad_model.X_lambda[i],
+                            model.f[i], ad_model.f[i],
+                            model.f[lambda], ad_model.f[lambda]);
     }
   }
 }
@@ -616,16 +645,17 @@ void CompositeRigidBodyAlgorithm (
 	const MatrixNd &q_dirs,
 	MatrixNd &H,
 	std::vector<MatrixNd> &H_ad,
-	bool update_kinematics
-) {
-	LOG << "-------- " << __func__ << " --------" << std::endl;
+	bool update_kinematics) {
 
-	assert (H.rows() == model.dof_count && H.cols() == model.dof_count);
+  for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
+    assert( model.mJoints[i].mJointType != JointTypeCustom);
+    assert( model.mJoints[i].mDoFCount == 1);
+  }
+  assert (H.rows() == model.dof_count && H.cols() == model.dof_count);
+
 
 	size_t ndirs = q_dirs.cols();
 	ad_model.resize_directions(ndirs);
-
-	assert (H.rows() == model.dof_count && H.cols() == model.dof_count);
 
   for (unsigned int i = 1; i < model.mBodies.size(); i++) {
     if (update_kinematics) {
@@ -644,40 +674,12 @@ void CompositeRigidBodyAlgorithm (
     model.Ic[i] = model.I[i];
   }
 
-	for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
-		/// TODO: Try to speed up by using the following code
-		///  instead of the uncommented one one below
-		///  maybe a derivative version of applyTranspose can also be found to speed
-		///  things up
-//		unsigned lambda_i = model.lambda[i];
-//		if (lambda_i != 0) {
-//			// derivative evaluation
-//			SpatialMatrix X_lambda_i = model.X_lambda[i].toMatrix();
-//			SpatialMatrix X_lambda_i_T = X_lambda_i.transpose();
-
-//			for(unsigned idir = 0; idir < ndirs; idir++) {
-//				ad_model.Ic[lambda_i][idir] = ad_model.Ic[lambda_i][idir]
-//					+ X_lambda_i_T * ad_model.Ic[i][idir] * X_lambda_i
-//					+ ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix() * X_lambda_i
-//					+ X_lambda_i_T * model.Ic[i].toMatrix()*ad_model.X_lambda[i][idir];
-//			}
-//			// nominal evaluation
-//			model.Ic[lambda_i] = model.Ic[lambda_i] + model.X_lambda[i].applyTranspose(model.Ic[i]);
-//		}
-
-		if (model.lambda[i] != 0) {
-			// derivative evaluation
-//			for(size_t idir = 0; idir < ndirs; idir++) {
-//				ad_model.Ic[model.lambda[i]][idir] = ad_model.Ic[model.lambda[i]][idir]
-//          + model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir].toMatrix() * model.X_lambda[i].toMatrix()
-//					+ ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix()*model.X_lambda[i].toMatrix()
-//					+ model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix()*ad_model.X_lambda[i][idir];
-//			}
-
+  for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
+    if (model.lambda[i] != 0) {
       // derivative evaluation
       SpatialRigidBodyInertia         summand;
       vector<SpatialRigidBodyInertia> summand_res(ndirs);
-      applyTransposeAD(
+      applyTransposeSTSI(
             ndirs,
             model.X_lambda[i],
             ad_model.X_lambda[i],
@@ -686,19 +688,15 @@ void CompositeRigidBodyAlgorithm (
             summand,
             summand_res
             );
-
       for (unsigned idir = 0; idir < ndirs; idir++) {
         ad_model.Ic[model.lambda[i]][idir] = ad_model.Ic[model.lambda[i]][idir] + summand_res[idir];
       }
-
-
-			// nominal evaluation
-			model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + model.X_lambda[i].applyTranspose(model.Ic[i]);
-		}
+      // nominal evaluation
+      model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + model.X_lambda[i].applyTranspose(model.Ic[i]);
+    }
 
 		unsigned int dof_index_i = model.mJoints[i].q_index;
 
-		assert( model.mJoints[i].mDoFCount == 1);
 		// if (model.mJoints[i].mDoFCount == 3) {
 		//  Matrix63 F_63 = model.Ic[i].toMatrix() * model.multdof3_S[i];
 		//  H.block<3,3>(dof_index_i, dof_index_i) = model.multdof3_S[i].toMatrixTranspose() * F_63;
@@ -754,7 +752,6 @@ void CompositeRigidBodyAlgorithm (
 			j = model.lambda[j];
 			dof_index_j = model.mJoints[j].q_index;
 
-			assert(model.mJoints[j].mDoFCount == 1);
 			// if (model.mJoints[j].mDoFCount == 3) {
 			//   Vector3d H_temp2 = (F.transpose() * model.multdof3_S[j]).transpose();
 			//   H.block<1,3>(dof_index_i,dof_index_j) = H_temp2.transpose();
