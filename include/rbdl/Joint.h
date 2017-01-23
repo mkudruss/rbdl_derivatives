@@ -122,7 +122,7 @@ struct Model;
  * Singularities in the models arise when a joint has three rotational
  * degrees of freedom and the rotations are described by Euler- or
  * Cardan-angles. The singularities present in these rotation
- * parametrizations (e.g. for ZYX Euler-angles for rotations where a 
+ * parametrizations (e.g. for ZYX Euler-angles for rotations where a
  * +/- 90 degrees rotation around the Y-axis) may cause problems in
  * dynamics calculations, such as a rank-deficit joint-space inertia matrix
  * or exploding accelerations in the forward dynamics calculations.
@@ -153,12 +153,12 @@ struct Model;
  * the joint is appended to \f$\mathbf{q}\f$. E.g. for a model with the joints:
  * TX, Spherical, TY, Spherical, the values of \f$\mathbf{q},\mathbf{\bar{q}},\mathbf{\bar{\bar{q}}},\mathbf{\tau}\f$ are:
  *
- 
+
  \f{eqnarray*}
         \mathbf{q} &=& ( q_{tx}, q_{q1,x}, q_{q1,y}, q_{q1,z}, q_{ty}, q_{q2,x}, q_{q2,y}, q_{q2,z}, q_{q1,w}, q_{q2,w})^T \\
   \mathbf{\bar{q}} &=& ( \dot{q}_{tx}, \omega_{1,x}, \omega_{1,y}, \omega_{1,z}, \dot{q}_{ty}, \omega_{2,x}, \omega_{2,y}, \omega_{2,z} )^T \\
   \mathbf{\bar{\bar{q}}} &=& ( \ddot{q}_{tx}, \dot{\omega}_{1,x}, \dot{\omega}_{1,y}, \dot{\omega}_{1,z}, \ddot{q}_{ty}, \dot{\omega}_{2,x}, \dot{\omega}_{2,y}, \dot{\omega}_{2,z} )^T \\
-  \mathbf{\tau} &=& ( \tau_{tx}, \tau_{1,x}, \tau_{1,y}, \tau_{1,z}, \tau_{ty}, \tau_{2,x}, \tau_{2,y}, \tau_{2,z} )^T 
+  \mathbf{\tau} &=& ( \tau_{tx}, \tau_{1,x}, \tau_{1,y}, \tau_{1,z}, \tau_{ty}, \tau_{2,x}, \tau_{2,y}, \tau_{2,z} )^T
   \f}
 
   * \subsection spherical_integration Numerical Integration of Quaternions
@@ -210,13 +210,17 @@ struct RBDL_DLLAPI Joint {
     mJointAxes (NULL),
     mJointType (JointTypeUndefined),
     mDoFCount (0),
-    q_index (0) {};
+    custom_joint_index (-1),
+    q_index (0)
+  {};
+
   Joint (JointType type) :
     mJointAxes (NULL),
     mJointType (type),
     mDoFCount (0),
     custom_joint_index(-1),
-    q_index (0) {
+    q_index (0)
+  {
       if (type == JointTypeRevoluteX) {
         mDoFCount = 1;
         mJointAxes = new Math::SpatialVector[mDoFCount];
@@ -278,10 +282,10 @@ struct RBDL_DLLAPI Joint {
         //This constructor cannot be used for a JointTypeCustom because
         //we have no idea what mDoFCount is.
         std::cerr << "Error: Invalid use of Joint constructor Joint(JointType"
-                  << " type). Only allowed when type != JointTypeCustom" 
+                  << " type). Only allowed when type != JointTypeCustom"
                   << std::endl;
         assert(0);
-        abort();                  
+        abort();
       } else if (type != JointTypeFixed && type != JointTypeFloatingBase) {
         std::cerr << "Error: Invalid use of Joint constructor Joint(JointType type). Only allowed when type == JointTypeFixed or JointTypeSpherical." << std::endl;
         assert (0);
@@ -294,26 +298,27 @@ struct RBDL_DLLAPI Joint {
       mDoFCount (0),
       custom_joint_index(-1),
       q_index (0) {
-     if (type == JointTypeCustom) {        
+     if (type == JointTypeCustom) {
         mDoFCount   = degreesOfFreedom;
         mJointAxes  = new Math::SpatialVector[mDoFCount];
         for(unsigned int i = 0; i < mDoFCount; ++i){
           mJointAxes[i] = Math::SpatialVector (0., 0., 0., 0., 0., 0.);
-        }        
+        }
       } else {
         std::cerr << "Error: Invalid use of Joint constructor Joint(JointType"
                   << " type, int degreesOfFreedom). Only allowed when "
-                  << "type  == JointTypeCustom." 
+                  << "type  == JointTypeCustom."
                   << std::endl;
         assert (0);
         abort();
       }
-    }  
+    }
   Joint (const Joint &joint) :
     mJointType (joint.mJointType),
     mDoFCount (joint.mDoFCount),
-    q_index (joint.q_index),
-    custom_joint_index(joint.custom_joint_index) {
+    custom_joint_index(joint.custom_joint_index),
+    q_index (joint.q_index)
+  {
       mJointAxes = new Math::SpatialVector[mDoFCount];
 
       for (unsigned int i = 0; i < mDoFCount; i++)
@@ -373,8 +378,8 @@ struct RBDL_DLLAPI Joint {
       // make sure we have a unit axis
       mJointAxes[0].set (
           joint_axis[0],
-          joint_axis[1], 
-          joint_axis[2], 
+          joint_axis[1],
+          joint_axis[2],
           0., 0., 0.
           );
 
@@ -614,14 +619,14 @@ struct RBDL_DLLAPI Joint {
 
   /// \brief The spatial axes of the joint
   Math::SpatialVector* mJointAxes;
-  /// \brief Type of joint 
+  /// \brief Type of joint
   JointType mJointType;
   /// \brief Number of degrees of freedom of the joint. Note: CustomJoints
   // have here a value of 0 and their actual numbers of degrees of freedom
   // can be obtained using the CustomJoint structure.
   unsigned int mDoFCount;
-  unsigned int q_index;
   unsigned int custom_joint_index;
+  unsigned int q_index;
 };
 
 /** \brief Computes all variables for a joint model
@@ -656,7 +661,7 @@ void jcalc_X_lambda_S (
     );
 
 struct RBDL_DLLAPI CustomJoint {
-  CustomJoint() 
+  CustomJoint()
   { }
   virtual ~CustomJoint() {};
 

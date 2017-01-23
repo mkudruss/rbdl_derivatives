@@ -93,7 +93,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
 
     std::cout << "FD HTOT = " << std::endl;
     std::vector<SpatialVector> fd_htot(ndirs);
-    for (int i =0; i < ndirs; i++) {
+    for (unsigned int i =0; i < ndirs; i++) {
       fd_htot[i] = (fd_htot_h[i + 1] - fd_htot_h[i]) / h;
       std::cout << fd_htot[i].transpose() << std::endl;
     }
@@ -103,7 +103,7 @@ RBDL_DLLAPI double CalcPotentialEnergy (
         Model & model,
         VectorNd const & q,
         MatrixNd const & q_dirs,
-        MatrixNd & fd_pote) {   
+        MatrixNd & fd_pote) {
     unsigned int ndirs = q_dirs.cols();
     double h = sqrt(1e-16);
 
