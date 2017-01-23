@@ -332,7 +332,6 @@ TEST(CheckApplyTransposeSTSV) {
     for (; idir < ndirs; idir++) {
       sm_dirs[idir](idir - 12u) = 1.0;
     }
-
     AD::applyTransposeSTSV(
           ndirs,
           st, st_dirs,
@@ -381,6 +380,8 @@ inline void FDaddApplyAdjointSTSV (
 }
 
 TEST(CheckAddApplyAdjointSTSV) {
+  std::uniform_real_distribution<> dist(-2.0, 2.0);
+  std::default_random_engine gen;
   for (int i = 0; i < 100; i++){
     unsigned ndirs = 18;
     Matrix3d E = Matrix3d::Random();
@@ -390,11 +391,14 @@ TEST(CheckAddApplyAdjointSTSV) {
     vector<SpatialTransform> st_dirs(ndirs, SpatialTransform::Zero());
     vector<SpatialVector> sv_dirs(ndirs, SpatialVector::Zero());
 
-    SpatialVector ad_res = SpatialVector::Zero();
-    vector<SpatialVector> ad_res_dirs(ndirs, SpatialVector::Zero());
+    SpatialVector ad_res = SpatialVector::Random();
+    vector<SpatialVector> ad_res_dirs(ndirs);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_res_dirs[idir].setRandom();
+    }
 
-    SpatialVector fd_res = SpatialVector::Zero();
-    vector<SpatialVector> fd_res_dirs(ndirs, SpatialVector::Zero());
+    SpatialVector fd_res = ad_res;
+    vector<SpatialVector> fd_res_dirs = ad_res_dirs;
 
     unsigned idir = 0;
     for (; idir < 9u; idir++) {
@@ -407,23 +411,25 @@ TEST(CheckAddApplyAdjointSTSV) {
       sv_dirs[idir](idir - 12u) = 1.0;
     }
 
+    double dscal = dist(gen);
+
     AD::addApplyAdjointSTSV(
           ndirs,
-          -1.0,
+          dscal,
           st, st_dirs,
           sv, sv_dirs,
           ad_res, ad_res_dirs);
 
     FDaddApplyAdjointSTSV(
           ndirs,
-          -1.0,
+          dscal,
           st, st_dirs,
           sv, sv_dirs,
           fd_res, fd_res_dirs);
 
     CHECK_ARRAY_CLOSE(ad_res.data(), fd_res.data(), 6, 1e-7);
     for (unsigned idir = 0; idir < ndirs; idir++) {
-      CHECK_ARRAY_CLOSE(ad_res_dirs[idir].data(), fd_res_dirs[idir].data(), 6, 1e-7);
+      CHECK_ARRAY_CLOSE(ad_res_dirs[idir].data(), fd_res_dirs[idir].data(), 6, 1e-6);
     }
   }
 }

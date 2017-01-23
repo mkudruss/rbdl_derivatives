@@ -48,7 +48,7 @@ RBDL_DLLAPI void InverseDynamics (
     const Math::VectorNd &QDot,
     const Math::VectorNd &QDDot,
     Math::VectorNd &Tau,
-    std::vector<Math::SpatialVector> *f_ext = NULL
+    std::vector<Math::SpatialVector> const *f_ext = NULL
     );
 
 /** \brief Computes the coriolis forces

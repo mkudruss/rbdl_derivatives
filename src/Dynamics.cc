@@ -29,7 +29,7 @@ RBDL_DLLAPI void InverseDynamics (
     const VectorNd &QDot,
     const VectorNd &QDDot,
     VectorNd &Tau,
-    std::vector<SpatialVector> *f_ext) {
+    std::vector<SpatialVector> const * f_ext) {
   LOG << "-------- " << __func__ << " --------" << std::endl;
 
   // Reset the velocity of the root body
@@ -91,7 +91,7 @@ RBDL_DLLAPI void InverseDynamics (
         Tau.block<3,1>(model.mJoints[i].q_index, 0)
           = model.multdof3_S[i].transpose() * model.f[i];
       }
-    } else if (model.mJoints[i].mJointType == JointTypeCustom) {  
+    } else if (model.mJoints[i].mJointType == JointTypeCustom) {
       unsigned int k = model.mJoints[i].custom_joint_index;
       Tau.block(model.mJoints[i].q_index,0,
           model.mCustomJoints[k]->mDoFCount, 1)

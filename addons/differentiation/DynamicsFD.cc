@@ -71,6 +71,7 @@ void ForwardDynamics(
 RBDL_DLLAPI
 void InverseDynamics(
 	Model& model,
+  ADModel * fd_model,
 	const Math::VectorNd& q,
 	const Math::MatrixNd& q_dirs,
 	const Math::VectorNd& qdot,
@@ -79,9 +80,9 @@ void InverseDynamics(
 	const Math::MatrixNd& qddot_dirs,
 	Math::VectorNd& tau,
 	Math::MatrixNd& fd_tau,
-	std::vector<Math::SpatialVector> *f_ext
+  vector<SpatialVector> const * f_ext,
+  vector<vector<SpatialVector>> const * f_ext_dirs
 ) {
-
 	assert(q_dirs.cols() == qdot_dirs.cols() &&
 		q_dirs.cols() == qddot_dirs.cols() &&
 		   "q_dirs, qdot_dirs, qddot_dirs have different dimensions");
@@ -101,17 +102,36 @@ void InverseDynamics(
 	VectorNd qdot_dir(qdot);
 	VectorNd qddot_dir(qddot);
 
-	for (unsigned int i = 0; i < ndirs; i++ ){
-			q_dir = q_dirs.block(0,i, model.q_size, 1);
-			qdot_dir = qdot_dirs.block(0,i, model.q_size, 1);
-			qddot_dir = qddot_dirs.block(0,i, model.q_size, 1);
-			InverseDynamics(model,         q + h*q_dir,
-										qdot + h*qdot_dir,
-									   qddot + h*qddot_dir,
-												 hd_tau,  f_ext);
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model * modelh;
+    if (fd_model) {
+      modelh = new Model(model);
+    } else {
+      modelh = &model;
+    }
 
-		fd_tau.block(0,i,hd_tau.rows(),1) = (hd_tau - tau) / h;
-	}
+    vector<SpatialVector> f_exth_;
+    if (f_ext) {
+      f_exth_.resize(f_ext->size());
+      for (unsigned i = 0; i < f_ext->size(); i++) {
+        f_exth_[i] = (*f_ext)[i] + h * (*f_ext_dirs)[i][idir];
+      }
+    }
+    vector<SpatialVector> const * f_exth = f_ext ? &f_exth_ : NULL;
+
+    q_dir = q_dirs.block(0,idir, model.q_size, 1);
+    qdot_dir = qdot_dirs.block(0,idir, model.q_size, 1);
+    qddot_dir = qddot_dirs.block(0,idir, model.q_size, 1);
+    InverseDynamics(*modelh, q + h*q_dir,
+                    qdot + h*qdot_dir,
+                    qddot + h*qddot_dir,
+                    hd_tau,  f_exth);
+    fd_tau.block(0,idir,hd_tau.rows(),1) = (hd_tau - tau) / h;
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
+  }
 }
 
 RBDL_DLLAPI

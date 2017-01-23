@@ -281,24 +281,41 @@ void ForwardDynamics (Model& model,
 
 RBDL_DLLAPI
 void InverseDynamics(
-	Model& model,
-	ADModel &ad_model,
-	const Math::VectorNd& q,
-	const Math::MatrixNd& q_dirs,
-	const Math::VectorNd& qdot,
-	const Math::MatrixNd& qdot_dirs,
-	const Math::VectorNd& qddot,
-	const Math::MatrixNd& qddot_dirs,
-	Math::VectorNd& tau,
-	Math::MatrixNd& ad_tau,
-  std::vector<Math::SpatialVector> *f_ext) {
-	model.v[0].setZero();
+    Model& model,
+    ADModel &ad_model,
+    const VectorNd& q,
+    const MatrixNd& q_dirs,
+    const VectorNd& qdot,
+    const MatrixNd& qdot_dirs,
+    const VectorNd& qddot,
+    const MatrixNd& qddot_dirs,
+    VectorNd& tau,
+    MatrixNd& ad_tau,
+    vector<SpatialVector> const * f_ext,
+    vector<vector<SpatialVector>> const * f_ext_dirs) {
+  assert((f_ext == NULL) == (f_ext_dirs == NULL));
+
+  unsigned ndirs = q_dirs.cols();
+  assert(ndirs == qdot_dirs.cols());
+  assert(ndirs == qddot_dirs.cols());
+  if (f_ext) {
+    for (unsigned i = 0; i < f_ext_dirs->size(); i++) {
+      assert(ndirs == (*f_ext_dirs)[i].size());
+    }
+  }
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_model.v[0][idir].setZero();
+  }
+  model.v[0].setZero();
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_model.a[0][idir].setZero();
+  }
 	model.a[0].set (0., 0., 0.,
 			-model.gravity[0],
 			-model.gravity[1],
 			-model.gravity[2]);
-
-	unsigned int ndirs = q_dirs.cols();
 
 	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
 		unsigned int lambda = model.lambda[i];
@@ -309,12 +326,6 @@ void InverseDynamics(
 		// nominal evaluation
 		// NOTE joints are already calculated in ad_jcalc
 		// jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
-
-		// Done in ad_jcalc
-		// FIXME this is right?
-		// for(unsigned int j = 0; j < ndirs; j++) {
-		//  ad_model.X_lambda[i][j] = ad_model.X_J[i][j] * model.X_T[i].toMatrix();
-		// }
 
 		if (lambda != 0) {
 			// derivative evaluation
@@ -337,15 +348,6 @@ void InverseDynamics(
 			model.X_base[i] = model.X_lambda[i];
 		}
 
-//    // derivative evaluation
-//    for(unsigned int j = 0; j < ndirs; j++) {
-//      ad_model.v[i][j] = ad_model.X_lambda[i][j].apply(model.v[lambda])
-//        + model.X_lambda[i].apply (ad_model.v[lambda][j])
-//        + ad_model.v_J[i][j];
-//    }
-//		// nominal evaluation
-//		model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
-
     applySTSV(ndirs,
               model.X_lambda[i], ad_model.X_lambda[i],
               model.v[lambda], ad_model.v[lambda],
@@ -355,103 +357,113 @@ void InverseDynamics(
     }
     model.v[i] += model.v_J[i];
 
+    // derivative evaluation
+    for(unsigned idir = 0; idir < ndirs; idir++) {
+      ad_model.c[i][idir] = ad_model.c_J[i][idir]
+          + crossm(ad_model.v[i][idir],model.v_J[i])
+          + crossm(model.v[i],ad_model.v_J[i][idir]);
+    }
+    // nominal evaluation
+    model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
 
-		// derivative evaluation
-		for(unsigned int j = 0; j < ndirs; j++) {
-			ad_model.c[i][j] = ad_model.c_J[i][j]
-				+ crossm(ad_model.v[i][j],model.v_J[i])
-				+ crossm(model.v[i],ad_model.v_J[i][j]);
-		}
-		// nominal evaluation
-		model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
-
-		if (model.mJoints[i].mDoFCount == 3) {
-			cerr << "Multi-dof not supported." << endl;
-			abort();
-			// nominal evaluation
-			model.a[i] = model.X_lambda[i].apply(model.a[lambda])
-				+ model.c[i]
-				+ model.multdof3_S[i] * Vector3d (qddot[q_index], qddot[q_index + 1], qddot[q_index + 2]);
-		} else {
-//			// derivative evaluation
-//			for(unsigned int j = 0; j < ndirs; j++) {
-//        ad_model.a[i][j] =
-//            ad_model.X_lambda[i][j].apply(model.a[lambda])
-//						+ model.X_lambda[i].apply(ad_model.a[lambda][j])
-//						+ ad_model.c[i][j]
-//						+ model.S[i] * qddot_dirs(q_index,j);
-//			}
-//			// nominal evaluation
-//			model.a[i] = model.X_lambda[i].apply(model.a[lambda])
-//					+ model.c[i] + model.S[i] * qddot[q_index];
-      applySTSV(ndirs,
-                model.X_lambda[i], ad_model.X_lambda[i],
-                model.a[lambda], ad_model.a[lambda],
-                model.a[i], ad_model.a[i]);
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        ad_model.a[i][idir] += ad_model.c[i][idir] + model.S[i] * qddot_dirs(q_index, idir);
+    if(model.mJoints[i].mJointType != JointTypeCustom) {
+      if (model.mJoints[i].mDoFCount == 1) {
+        applySTSV(ndirs,
+                  model.X_lambda[i], ad_model.X_lambda[i],
+                  model.a[lambda], ad_model.a[lambda],
+                  model.a[i], ad_model.a[i]);
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          ad_model.a[i][idir] += ad_model.c[i][idir] + model.S[i] * qddot_dirs(q_index, idir);
+        }
+        model.a[i] += model.c[i] + model.S[i] * qddot(q_index);
+      } else {
+        cerr << __FILE__ << " " << __LINE__ << ":"
+             << " Multi-DoF joint not supported." << endl;
+        abort();
+        // nominal evaluation
+        model.a[i] = model.X_lambda[i].apply(model.a[lambda])
+            + model.c[i]
+            + model.multdof3_S[i] * Vector3d (qddot[q_index], qddot[q_index + 1], qddot[q_index + 2]);
       }
-      model.a[i] += model.c[i] + model.S[i] * qddot(q_index);
-		}
+    } else {
+      cerr << __FILE__ << " " << __LINE__ << ":"
+           << " Custom joint not supported." << endl;
+      abort();
+      // nominal evaluation
+      unsigned int k = model.mJoints[i].custom_joint_index;
+      VectorNd customJointQDDot(model.mCustomJoints[k]->mDoFCount);
+      for(int z=0; z<model.mCustomJoints[k]->mDoFCount; ++z){
+        customJointQDDot[z] = qddot[q_index+z];
+      }
+      model.a[i] =  model.X_lambda[i].apply(model.a[lambda])
+        + model.c[i]
+        + model.mCustomJoints[k]->S * customJointQDDot;
+    }
 
 		if (!model.mBodies[i].mIsVirtual) {
-			// derivative evaluation
-			for(unsigned int j = 0; j < ndirs; j++) {
-				ad_model.f[i][j] = model.I[i] * ad_model.a[i][j]
-					+ crossf(ad_model.v[i][j],model.I[i] * model.v[i])
-					+ crossf(model.v[i],model.I[i] * ad_model.v[i][j]);
-			}
-			// nominal evaluation
-			model.f[i] = model.I[i] * model.a[i] + crossf(model.v[i],model.I[i] * model.v[i]);
+      // derivative evaluation
+      for(unsigned int j = 0; j < ndirs; j++) {
+        ad_model.f[i][j] = model.I[i] * ad_model.a[i][j]
+          + crossf(ad_model.v[i][j],model.I[i] * model.v[i])
+          + crossf(model.v[i],model.I[i] * ad_model.v[i][j]);
+      }
+      // nominal evaluation
+      model.f[i] = model.I[i] * model.a[i]
+          + crossf(model.v[i],model.I[i] * model.v[i]);
 		} else {
 			// derivative evaluation
-			for(unsigned int j = 0; j < ndirs; j++) {
-				ad_model.f[i][j].setZero();
+      for(unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.f[i][idir].setZero();
 			}
 			// nominal evaluation
 			model.f[i].setZero();
 		}
+  }
 
-    if (f_ext != NULL && (*f_ext)[i] != SpatialVector::Zero()) {
-			// derivative evaluation
-			for(unsigned int j = 0; j < ndirs; j++) {
-        SpatialMatrix ad_X_base_force(ad_model.X_base[i][j].toMatrix());
-				ad_X_base_force.block<3,3>(3,0) = Matrix3d::Zero();
-        ad_X_base_force.block<3,3>(0,3) = ad_model.X_base[i][j].toMatrix().block<3,3>(3,0);
-				ad_model.f[i][j] -= ad_X_base_force * (*f_ext)[i];
-			}
-			// nominal evaluation
-			model.f[i] -= model.X_base[i].toMatrixAdjoint() * (*f_ext)[i];
-		}
-	}
+  if (f_ext != NULL) {
+    for (unsigned int i = 1; i < model.mBodies.size(); i++) {
+      unsigned lambda = model.lambda[i];
+      mulSTST(model.X_lambda[i], ad_model.X_lambda[i],
+              model.X_base[lambda], ad_model.X_base[lambda],
+              model.X_base[i], ad_model.X_base[i]);
+      addApplyAdjointSTSV(ndirs,
+                          -1.0,
+                          model.X_base[i], ad_model.X_base[i],
+                          (*f_ext)[i], (*f_ext_dirs)[i],
+                          model.f[i], ad_model.f[i]);
+    }
+  }
 
-	for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
-		if (model.mJoints[i].mDoFCount == 3) {
-			cerr << "Multi-dof not supported." << endl;
-			abort();
-			// nominal evaluation
-			tau.block<3,1>(model.mJoints[i].q_index, 0) = model.multdof3_S[i].transpose() * model.f[i];
-		} else {
-			// derivative evaluation
-			for(unsigned j = 0; j < ndirs; j++) {
-				ad_tau(model.mJoints[i].q_index, j) = model.S[i].dot(ad_model.f[i][j]);
-			}
-			// nominal evaluation
-			tau[model.mJoints[i].q_index] = model.S[i].dot(model.f[i]);
-		}
+  for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
+    if(model.mJoints[i].mJointType != JointTypeCustom){
+      if (model.mJoints[i].mDoFCount == 1) {
+        // derivative evaluation
+        for(unsigned idir = 0; idir < ndirs; idir++) {
+          ad_tau(model.mJoints[i].q_index, idir)
+              = model.S[i].dot(ad_model.f[i][idir]);
+        }
+        // nominal evaluation
+        tau[model.mJoints[i].q_index] = model.S[i].dot(model.f[i]);
+      } else if (model.mJoints[i].mDoFCount == 3) {
+        cerr << __FILE__ << " " << __LINE__ << ":"
+             << "Multi-DoF joint not supported." << endl;
+        abort();
+        // nominal
+        tau.block<3,1>(model.mJoints[i].q_index, 0)
+          = model.multdof3_S[i].transpose() * model.f[i];
+      }
+    } else if (model.mJoints[i].mJointType == JointTypeCustom) {
+      cerr << __FILE__ << " " << __LINE__ << ":"
+           << " Custom joint not supported." << endl;
+      abort();
+      // nominal
+      unsigned int k = model.mJoints[i].custom_joint_index;
+      tau.block(model.mJoints[i].q_index,0,
+          model.mCustomJoints[k]->mDoFCount, 1)
+        = model.mCustomJoints[k]->S.transpose() * model.f[i];
+    }
 
-		if (model.lambda[i] != 0) {
-//			// derivative evaluation
-//			for(unsigned int j = 0; j < ndirs; j++) {
-//        ad_model.f[model.lambda[i]][j] =
-//            ad_model.f[model.lambda[i]][j]
-//            + ad_model.X_lambda[i][j].applyTranspose (model.f[i])
-//            + model.X_lambda[i].applyTranspose(ad_model.f[i][j]);
-//			}
-//			// nominal evaluation
-//			model.f[model.lambda[i]] = model.f[model.lambda[i]]
-//				+ model.X_lambda[i].applyTranspose(model.f[i]);
-
+    if (model.lambda[i] != 0) {
       SpatialVector summand;
       vector<SpatialVector> ad_summand(ndirs);
       applyTransposeSTSV(ndirs,
@@ -462,8 +474,8 @@ void InverseDynamics(
         ad_model.f[model.lambda[i]][idir] += ad_summand[idir];
       }
       model.f[model.lambda[i]] += summand;
-		}
-	}
+    }
+  }
 }
 
 RBDL_DLLAPI

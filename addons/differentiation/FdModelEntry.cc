@@ -61,6 +61,9 @@ void computeFDEntry(
   for (unsigned i = 0; i < model.d.rows(); i++) {
     fd_model.d(i, idir) = (modelh.d(i) - model.d(i)) / h;
   }
+  for (unsigned i = 0; i < model.f.size(); i++) {
+    fd_model.f[i][idir] = (modelh.f[i] - model.f[i]) / h;
+  }
 
 }
 

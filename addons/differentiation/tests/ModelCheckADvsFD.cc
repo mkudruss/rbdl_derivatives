@@ -189,7 +189,24 @@ void checkModelsADvsFD(
   CHECK_ARRAY_CLOSE(ad_model.u.data(), fd_model.u.data(), ad_model.u.rows(), 1e-7);
   // derivative check
   CHECK_ARRAY_CLOSE(ad_d_model.u.data(), fd_d_model.u.data(), ad_d_model.u.cols() * ad_model.u.rows(), 1e-6);
+
+  // nominal check
+  CHECK_EQUAL(ad_model.f.size(), fd_model.f.size());
+  for (unsigned i = 0; i < ad_model.f.size(); i++) {
+    CHECK_ARRAY_CLOSE(ad_model.f[i].data(), fd_model.f[i].data(), 6, 1e-7);
+  }
+  // derivative check
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    for (unsigned i = 0; i < ad_model.f.size(); i++) {
+      CHECK_ARRAY_CLOSE(ad_d_model.f[i][idir].data(), fd_d_model.f[i][idir].data(), 6, 5e-5);
+    }
+  }
 }
+
+//cout << endl << i << "," << idir << endl;
+//cout << "AD.f = " << ad_d_model.f[i][idir].transpose() << endl;
+//cout << "FD.f = " << fd_d_model.f[i][idir].transpose() << endl;
+//cout << "norm = " << (fd_d_model.f[i][idir] - ad_d_model.f[i][idir]).norm() << endl;
 
 // -----------------------------------------------------------------------------
 } //namespace RigidBodyDynamics

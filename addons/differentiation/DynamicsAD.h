@@ -57,8 +57,8 @@ void InverseDynamics(
     const Math::MatrixNd& qddot_dirs,
     Math::VectorNd& tau,
     Math::MatrixNd& ad_tau,
-    std::vector<Math::SpatialVector> *f_ext
-    );
+    std::vector<Math::SpatialVector> const * f_ext = NULL,
+    std::vector<std::vector<Math::SpatialVector>> const * f_ext_dirs = NULL);
 
 RBDL_DLLAPI
 void NonlinearEffects (Model & model,

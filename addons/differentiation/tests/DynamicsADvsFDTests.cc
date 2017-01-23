@@ -123,75 +123,92 @@ TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpForwardDynamicsADTest){
 // -----------------------------------------------------------------------------
 
 template<typename T>
-void InverseDynamicsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-7) {
-  Model & model      = obj.model;
-  ADModel & ad_model = obj.ad_model;
+void InverseDynamicsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-5) {
+  Model ad_model      = obj.model;
+  Model fd_model      = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
   VectorNd & q     = obj.q;
   VectorNd & qdot  = obj.qdot;
   VectorNd & qddot = obj.qddot;
   VectorNd & tau   = obj.tau;
+  unsigned ndirs = ad_model.qdot_size;
 
-  for(unsigned int i = 0; i < model.qdot_size; i++) {
-    q[i] = (i+1)*(0.897878435);
-    qdot[i] = (i+1)*(0.27563682);
-    qddot[i] = (i+1)*(0.06565644564455);
+  for (unsigned trial = 0; trial < 10; trial++) {
+    q.setRandom();
+    qdot.setRandom();
+    qddot.setRandom();
+
+    MatrixNd q_dirs 	= MatrixNd::Random (ad_model.qdot_size, ad_model.qdot_size);
+    MatrixNd qdot_dirs 	= MatrixNd::Random (ad_model.qdot_size, ad_model.qdot_size);
+    MatrixNd qddot_dirs = MatrixNd::Random (ad_model.qdot_size, ad_model.qdot_size);
+
+    std::vector<SpatialVector> f_ext (
+          ad_model.mBodies.size(),
+          SpatialVector::Zero());
+
+    vector<vector<SpatialVector>> f_ext_dirs (
+          obj.model.mBodies.size(),
+          vector<SpatialVector>(
+            ndirs,
+            SpatialVector::Zero()));
+
+    for (unsigned i = 0; i < f_ext.size(); i++) {
+      f_ext[i].setRandom();
+    }
+    for (unsigned i = 0; i < f_ext.size(); i++) {
+      for (unsigned idir = 0; idir < f_ext_dirs[i].size(); idir++) {
+        f_ext_dirs[i][idir].setRandom();
+      }
+    }
+
+    VectorNd tau_ref (tau);
+
+    MatrixNd ad_tau  = MatrixNd::Random(ad_model.qdot_size, ad_model.qdot_size);
+    MatrixNd fd_tau  = MatrixNd::Random(ad_model.qdot_size, ad_model.qdot_size);
+
+    AD::InverseDynamics(
+          ad_model, ad_d_model,
+          q, q_dirs,
+          qdot, qdot_dirs,
+          qddot, qddot_dirs,
+          tau, ad_tau,
+          &f_ext, &f_ext_dirs);
+
+    FD::InverseDynamics(
+          fd_model, &fd_d_model,
+          q, q_dirs,
+          qdot, qdot_dirs,
+          qddot, qddot_dirs,
+          tau_ref, fd_tau,
+          &f_ext, &f_ext_dirs);
+
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+
+    CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), CHECK_ARRAY_PREC);
+    CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), CHECK_ARRAY_PREC);
   }
-
-  MatrixNd q_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
-  MatrixNd qdot_dirs 	= MatrixNd::Identity (model.qdot_size, model.qdot_size);
-  MatrixNd qddot_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
-
-  std::vector<SpatialVector> f_ext (
-        model.mBodies.size(),
-        SpatialVector::Zero());
-
-  VectorNd tau_ref (tau);
-
-  MatrixNd ad_tau  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
-  MatrixNd fd_tau  = MatrixNd::Zero(model.qdot_size, model.qdot_size);
-
-  RigidBodyDynamics::AD::InverseDynamics(
-        model, ad_model,
-        q, q_dirs,
-        qdot, qdot_dirs,
-        qddot, qddot_dirs,
-        tau, ad_tau,
-        &f_ext
-        );
-
-  RigidBodyDynamics::FD::InverseDynamics(
-        model,
-        q, q_dirs,
-        qdot, qdot_dirs,
-        qddot, qddot_dirs,
-        tau_ref, fd_tau,
-        &f_ext
-        );
-
-  // NOTE: 1e-8 is not enough to make test pass
-  CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), CHECK_ARRAY_PREC);
-  CHECK_ARRAY_CLOSE (fd_tau.data(), ad_tau.data(), fd_tau.cols()*fd_tau.rows(), CHECK_ARRAY_PREC);
 }
 
 TEST_FIXTURE(CartPendulum, CartPendulumInverseDynamicsADTest){
   InverseDynamicsADTestTemplate<CartPendulum>(*this);
 }
 
-//TEST_FIXTURE(Arm2DofX, Arm2DofXInverseDynamicsADTest) {
-//  InverseDynamicsADTestTemplate(*this, 1e-6);
-//}
+TEST_FIXTURE(Arm2DofX, Arm2DofXInverseDynamicsADTest) {
+  InverseDynamicsADTestTemplate(*this, 1e-5);
+}
 
-//TEST_FIXTURE(Arm2DofZ, Arm2DofZInverseDynamicsADTest) {
-//  InverseDynamicsADTestTemplate(*this, 1e-6);
-//}
+TEST_FIXTURE(Arm2DofZ, Arm2DofZInverseDynamicsADTest) {
+  InverseDynamicsADTestTemplate(*this, 1e-5);
+}
 
-//TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpInverseDynamicsADTest) {
-//  InverseDynamicsADTestTemplate(*this, 1e-5);
-//}
+TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpInverseDynamicsADTest) {
+  InverseDynamicsADTestTemplate(*this, 1e-5);
+}
 
-//TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZYpInverseDynamicsADTest) {
-//    InverseDynamicsADTestTemplate(*this, 1e-6);
-//}
+TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZYpInverseDynamicsADTest) {
+    InverseDynamicsADTestTemplate(*this, 1e-5);
+}
 
 // -----------------------------------------------------------------------------
 
@@ -219,10 +236,10 @@ void NonlinearEffectsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-7) {
 
   NonlinearEffects(model, q, qdot, tau_nom);
 
-  RigidBodyDynamics::AD::NonlinearEffects(model, ad_model, q, q_dirs,
+  AD::NonlinearEffects(model, ad_model, q, q_dirs,
       qdot, qdot_dirs, ad_tau_nom, ad_tau_der);
 
-  RigidBodyDynamics::FD::NonlinearEffects(model, q, q_dirs, qdot, qdot_dirs,
+  FD::NonlinearEffects(model, q, q_dirs, qdot, qdot_dirs,
       fd_tau_nom, fd_tau_der);
 
   CHECK_ARRAY_CLOSE (tau_nom.data(), ad_tau_nom.data(), tau_nom.rows(), CHECK_ARRAY_PREC);
@@ -231,25 +248,25 @@ void NonlinearEffectsADTestTemplate(T & obj, double CHECK_ARRAY_PREC = 1e-7) {
                      fd_tau_der.cols() * fd_tau_der.rows(), CHECK_ARRAY_PREC);
 }
 
-//TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsADTest) {
-//    NonlinearEffectsADTestTemplate(*this);
-//}
+TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsADTest) {
+    NonlinearEffectsADTestTemplate(*this);
+}
 
-//TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsADTest) {
-//    NonlinearEffectsADTestTemplate(*this, 1e-6);
-//}
+TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsADTest) {
+    NonlinearEffectsADTestTemplate(*this, 1e-6);
+}
 
-//TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsADTest) {
-//    NonlinearEffectsADTestTemplate(*this, 1e-6);
-//}
+TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsADTest) {
+    NonlinearEffectsADTestTemplate(*this, 1e-6);
+}
 
-//TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsADTest) {
-//    NonlinearEffectsADTestTemplate(*this, 1e-5);
-//}
+TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsADTest) {
+    NonlinearEffectsADTestTemplate(*this, 1e-5);
+}
 
-//TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsADTest) {
-//    NonlinearEffectsADTestTemplate(*this, 1e-5);
-//}
+TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsADTest) {
+    NonlinearEffectsADTestTemplate(*this, 1e-5);
+}
 
 // -----------------------------------------------------------------------------
 
