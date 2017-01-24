@@ -135,11 +135,13 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
       abort();
     }
 
-    mulSTST(model.X_J[i], ad_model.X_J[i],
+    mulSTST(ndirs,
+            model.X_J[i], ad_model.X_J[i],
             model.X_T[i], // model.X_T is constant
             model.X_lambda[i], ad_model.X_lambda[i]);
 
-    mulSTST(model.X_lambda[i], ad_model.X_lambda[i],
+    mulSTST(ndirs,
+            model.X_lambda[i], ad_model.X_lambda[i],
             model.X_base[lambda], ad_model.X_base[lambda],
             model.X_base[i], ad_model.X_base[i]);
   }
@@ -304,7 +306,8 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 //			}
 //			// nominal evaluation
 //			model.X_lambda[i] = model.X_J[i] * model.X_T[i];
-      mulSTST(model.X_J[i], ad_model.X_J[i],
+      mulSTST(ndirs,
+              model.X_J[i], ad_model.X_J[i],
               model.X_T[i],
               model.X_lambda[i], ad_model.X_lambda[i]);
 
@@ -318,9 +321,10 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 //				// nominal evaluation
 //				model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 
-        mulSTST (model.X_lambda[i], ad_model.X_lambda[i],
-                 model.X_base[lambda], ad_model.X_base[lambda],
-                 model.X_base[i], ad_model.X_base[i]);
+        mulSTST(ndirs,
+                model.X_lambda[i], ad_model.X_lambda[i],
+                model.X_base[lambda], ad_model.X_base[lambda],
+                model.X_base[i], ad_model.X_base[i]);
 
       } else {
 				// derivative evaluation
@@ -459,12 +463,14 @@ RBDL_DLLAPI void UpdateKinematics (
     // nominal + derivative evaluation
     jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
 
-    mulSTST(model.X_J[i], ad_model.X_J[i],
+    mulSTST(ndirs,
+            model.X_J[i], ad_model.X_J[i],
             model.X_T[i],
             model.X_lambda[i], ad_model.X_lambda[i]);
 
     if (lambda != 0) {
-      mulSTST (model.X_lambda[i], ad_model.X_lambda[i],
+      mulSTST (ndirs,
+               model.X_lambda[i], ad_model.X_lambda[i],
                model.X_base[lambda], ad_model.X_base[lambda],
                model.X_base[i], ad_model.X_base[i]);
 

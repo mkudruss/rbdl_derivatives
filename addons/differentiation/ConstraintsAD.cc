@@ -196,9 +196,10 @@ void CalcContactSystemVariables (
 //          + model.X_lambda[i] /*.toMatrix()*/ * ad_model.X_base[lambda][idir];
 //    }
 
-    mulSTST (model.X_lambda[i], ad_model.X_lambda[i],
-            model.X_base[lambda], ad_model.X_base[lambda],
-            model.X_base[i], ad_model.X_base[i]);
+    mulSTST (ndirs,
+             model.X_lambda[i], ad_model.X_lambda[i],
+             model.X_base[lambda], ad_model.X_base[lambda],
+             model.X_base[i], ad_model.X_base[i]);
 
     // nominal evaluation
     model.X_base[i] = model.X_lambda[i] * model.X_base[model.lambda[i]];

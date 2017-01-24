@@ -62,7 +62,8 @@ void ForwardDynamics (Model& model,
 //			}
 //			// nominal evaluation
 //			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-      mulSTST(model.X_lambda[i], ad_model.X_lambda[i],
+      mulSTST(ndirs,
+              model.X_lambda[i], ad_model.X_lambda[i],
               model.X_base[lambda], ad_model.X_base[lambda],
               model.X_base[i], ad_model.X_base[i]);
 
@@ -335,7 +336,8 @@ void InverseDynamics(
 //					+ model.X_lambda[i].toMatrix() * ad_model.X_base[i][j];
 //			}
 
-      mulSTST(model.X_lambda[i], ad_model.X_lambda[i],
+      mulSTST(ndirs,
+              model.X_lambda[i], ad_model.X_lambda[i],
               model.X_base[lambda], ad_model.X_base[lambda],
               model.X_base[i], ad_model.X_base[i]);
 			// nominal evaluation
@@ -424,7 +426,8 @@ void InverseDynamics(
   if (f_ext != NULL) {
     for (unsigned int i = 1; i < model.mBodies.size(); i++) {
       unsigned lambda = model.lambda[i];
-      mulSTST(model.X_lambda[i], ad_model.X_lambda[i],
+      mulSTST(ndirs,
+              model.X_lambda[i], ad_model.X_lambda[i],
               model.X_base[lambda], ad_model.X_base[lambda],
               model.X_base[i], ad_model.X_base[i]);
       addApplyAdjointSTSV(ndirs,

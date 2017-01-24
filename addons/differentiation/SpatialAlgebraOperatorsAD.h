@@ -24,16 +24,16 @@ using namespace RigidBodyDynamics::Math;
  * @param res_dirs d(A * B)
  */
 inline void mulSTST(
+    unsigned ndirs,
     SpatialTransform const & lhs,
     std::vector<SpatialTransform> const & lhs_dirs,
     SpatialTransform const & rhs,
     std::vector<SpatialTransform> const & rhs_dirs,
     SpatialTransform & res,
     std::vector<SpatialTransform> & res_dirs) {
-  unsigned const ndirs = lhs_dirs.size();
-
-  assert(ndirs == rhs_dirs.size());
-  assert(ndirs == res_dirs.size());
+  assert(ndirs <= lhs_dirs.size());
+  assert(ndirs <= rhs_dirs.size());
+  assert(ndirs <= res_dirs.size());
 
   // derivative code
   for (unsigned idir = 0; idir < ndirs; idir++) {
@@ -59,13 +59,14 @@ inline void mulSTST(
  * @param res_dirs d(A * B)
  */
 inline void mulSTST(
+    unsigned ndirs,
     SpatialTransform const & lhs,
     std::vector<SpatialTransform> const & lhs_dirs,
     SpatialTransform const & rhs,
     SpatialTransform & res,
     std::vector<SpatialTransform> & res_dirs) {
-  unsigned const ndirs = lhs_dirs.size();
-  assert(ndirs == res_dirs.size());
+  assert(ndirs <= lhs_dirs.size());
+  assert(ndirs <= res_dirs.size());
 
   // derivative code
   for (unsigned idir = 0; idir < ndirs; idir++) {
