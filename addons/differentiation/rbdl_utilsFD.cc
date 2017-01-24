@@ -10,9 +10,6 @@ namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
 namespace Utils {
 
-extern RBDL_DLLAPI int fd_index ;
-extern RBDL_DLLAPI std::vector<Math::SpatialVector> fd_htot_h;
-
 // -----------------------------------------------------------------------------
 namespace FD {
 // -----------------------------------------------------------------------------
@@ -34,8 +31,8 @@ RBDL_DLLAPI void CalcCenterOfMass (
     Vector3d * angular_momentum,
     MatrixNd * fd_angular_momentum) {
   size_t ndirs = q_dirs.cols();
-  assert(ndirs == qdot_dirs.cols());
-  assert(ndirs == fd_com.cols());
+  assert(ndirs == static_cast<unsigned>(qdot_dirs.cols()));
+  assert(ndirs == static_cast<unsigned>(fd_com.cols()));
 
   if (com_velocity) {
     assert(q_dirs.cols() == fd_com_velocity->cols());
@@ -44,18 +41,15 @@ RBDL_DLLAPI void CalcCenterOfMass (
     assert(q_dirs.cols() == fd_angular_momentum->cols());
   }
 
-  double h = sqrt(1e-16);
-
-  fd_index = 0;
+  double h = 1e-8;
 
   RigidBodyDynamics::Utils::CalcCenterOfMass(model, q, qdot, mass, com,
-                                             com_velocity, angular_momentum, true);
+      com_velocity, angular_momentum, true);
 
   VectorNd q_dir(q);
   VectorNd qdot_dir(qdot);
 
   for (size_t i = 0; i < ndirs; i++ ) {
-    fd_index++;
     Model * modelh;
     if (fd_model) {
       modelh = new Model(model);

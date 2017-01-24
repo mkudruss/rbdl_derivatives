@@ -20,18 +20,19 @@ namespace FD {
 
 RBDL_DLLAPI
 void ForwardDynamics(
-    Model & model,
-    ADModel * fd_model,
-    const VectorNd& q,
-    const MatrixNd& q_dirs,
-    const VectorNd& qdot,
-    const MatrixNd& qdot_dirs,
-    const VectorNd& tau,
-    const MatrixNd& tau_dirs,
-    VectorNd& qddot,
-    MatrixNd& fd_qddot,
-    vector<SpatialVector> const * f_ext,
-    vector<vector<SpatialVector>> const * f_ext_dirs) {
+    Model &model,
+    ADModel *fd_model,
+    const VectorNd &q,
+    const MatrixNd &q_dirs,
+    const VectorNd &qdot,
+    const MatrixNd &qdot_dirs,
+    const VectorNd &tau,
+    const MatrixNd &tau_dirs,
+    VectorNd &qddot,
+    MatrixNd &fd_qddot,
+    vector<SpatialVector> const *f_ext,
+    vector<vector<SpatialVector>> const *f_ext_dirs
+) {
   assert((f_ext == NULL) == (f_ext_dirs == NULL));
 
   assert(q_dirs.cols() == qdot_dirs.cols()
@@ -78,18 +79,19 @@ void ForwardDynamics(
 
 RBDL_DLLAPI
 void InverseDynamics(
-    Model& model,
-    ADModel * fd_model,
-    const Math::VectorNd& q,
-    const Math::MatrixNd& q_dirs,
-    const Math::VectorNd& qdot,
-    const Math::MatrixNd& qdot_dirs,
-    const Math::VectorNd& qddot,
-    const Math::MatrixNd& qddot_dirs,
-    Math::VectorNd& tau,
-    Math::MatrixNd& fd_tau,
-    vector<SpatialVector> const * f_ext,
-    vector<vector<SpatialVector>> const * f_ext_dirs) {
+    Model &model,
+    ADModel *fd_model,
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    const Math::VectorNd &qdot,
+    const Math::MatrixNd &qdot_dirs,
+    const Math::VectorNd &qddot,
+    const Math::MatrixNd &qddot_dirs,
+    Math::VectorNd &tau,
+    Math::MatrixNd &fd_tau,
+    vector<SpatialVector> const *f_ext,
+    vector<vector<SpatialVector>> const *f_ext_dirs
+) {
   assert(q_dirs.cols() == qdot_dirs.cols() &&
          q_dirs.cols() == qddot_dirs.cols() &&
          "q_dirs, qdot_dirs, qddot_dirs have different dimensions");
@@ -146,14 +148,14 @@ void InverseDynamics(
 
 RBDL_DLLAPI
 void NonlinearEffects (
-    Model & model,
-    ADModel * fd_model,
-    const Math::VectorNd & q,
-    const Math::MatrixNd & q_dirs,
-    const Math::VectorNd & qdot,
-    const Math::MatrixNd & qdot_dirs,
-    Math::VectorNd & tau,
-    Math::MatrixNd & fd_tau
+    Model &model,
+    ADModel *fd_model,
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    const Math::VectorNd &qdot,
+    const Math::MatrixNd &qdot_dirs,
+    Math::VectorNd &tau,
+    Math::MatrixNd &fd_tau
     ) {
   unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
@@ -181,22 +183,24 @@ void NonlinearEffects (
 }
 
 RBDL_DLLAPI
-void CompositeRigidBodyAlgorithm (Model &model,
-    ADModel * fd_model,
+void CompositeRigidBodyAlgorithm (
+    Model &model,
+    ADModel *fd_model,
     const VectorNd &q,
     const MatrixNd &q_dirs,
     MatrixNd &H,
-    vector<MatrixNd> &fd_H) {
+    vector<MatrixNd> &fd_H
+) {
   unsigned int ndirs = q_dirs.cols();
   assert(ndirs == fd_H.size());
 
-  MatrixNd inertia_ref = MatrixNd::Zero(q.size(),q.size());
+  H = MatrixNd::Zero(q.size(),q.size());
   MatrixNd inertia_fd = MatrixNd::Zero(q.size(),q.size());
 
-  CompositeRigidBodyAlgorithm(model, q, inertia_ref, true);
+  CompositeRigidBodyAlgorithm(model, q, H, true);
   double h = 1.0e-8;
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    Model * modelh;
+    Model *modelh;
     if (fd_model) {
       modelh = new Model(model);
     } else {
@@ -204,13 +208,12 @@ void CompositeRigidBodyAlgorithm (Model &model,
     }
     VectorNd q_dir = q_dirs.col(idir);
     CompositeRigidBodyAlgorithm(*modelh, q+h*q_dir, inertia_fd, true);
-    fd_H[idir] = (inertia_fd - inertia_ref) / h;
+    fd_H[idir] = (inertia_fd - H) / h;
     if (fd_model) {
       computeFDEntry(model, *modelh, h, idir, *fd_model);
       delete modelh;
     }
   }
-  H = inertia_ref;
 }
 
 // -----------------------------------------------------------------------------

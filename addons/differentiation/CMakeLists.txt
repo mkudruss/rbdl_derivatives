@@ -7,6 +7,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-long-long")
 LIST( APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake )
 
 INCLUDE_DIRECTORIES (
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rbdl
 	${CMAKE_CURRENT_BINARY_DIR}/include/rbdl
 )
 
@@ -23,9 +24,9 @@ SET (CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # define add-on sources
 SET ( DIFFERENTIATION_SOURCES
 	ModelAD.cc
-  FdModelEntry.cc
-  ConstraintsAD.cc
-  ContactsFD.cc
+	FdModelEntry.cc
+	ConstraintsAD.cc
+	ContactsFD.cc
 	KinematicsAD.cc
 	KinematicsFD.cc
 	DynamicsAD.cc

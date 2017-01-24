@@ -150,10 +150,6 @@ RBDL_DLLAPI std::string GetNamedBodyOriginsOverview (Model &model) {
   return result.str();
 }
 
-#warning "Below is debug code which has to be removed"
-RBDL_DLLAPI int fd_index = 0;
-RBDL_DLLAPI vector<SpatialVector> fd_htot_h (100);
-
 RBDL_DLLAPI void CalcCenterOfMass (
     Model &model, 
     const Math::VectorNd &q, 
@@ -185,8 +181,6 @@ RBDL_DLLAPI void CalcCenterOfMass (
       htot = htot + model.X_lambda[i].applyTranspose (model.hc[i]);
     }
   }
-
-  fd_htot_h[fd_index] = htot;
 
   mass = Itot.m;
   com = Itot.h / mass;

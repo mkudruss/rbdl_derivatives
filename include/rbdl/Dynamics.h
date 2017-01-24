@@ -142,7 +142,7 @@ RBDL_DLLAPI void ForwardDynamicsLagrangian (
     Math::LinearSolver linear_solver = Math::LinearSolverColPivHouseholderQR,
     std::vector<Math::SpatialVector> *f_ext = NULL,
     Math::MatrixNd *H = NULL,
-    Math::VectorNd *C = NULL	
+    Math::VectorNd *C = NULL
     );
 
 /** \brief Computes the effect of multiplying the inverse of the joint
@@ -156,7 +156,7 @@ RBDL_DLLAPI void ForwardDynamicsLagrangian (
  * \param update_kinematics whether the kinematics should be updated (safer, but at a higher computational cost)
  *
  * This function uses a reduced version of the Articulated %Body Algorithm
- * to compute 
+ * to compute
  *
  *   \f$ \ddot{q} = M(q)^{-1} ( -N(q, \dot{q}) + \tau)\f$
  *
