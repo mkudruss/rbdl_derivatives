@@ -1,4 +1,4 @@
-#include "ContactsAD.h"
+#include "ConstraintsAD.h"
 #include "DynamicsAD.h"
 #include "SpatialAlgebraOperatorsAD.h"
 
@@ -64,7 +64,7 @@ void CalcContactJacobian(
   ConstraintSet::ConstraintType prev_constraint_type
     = ConstraintSet::ConstraintTypeLast;
   unsigned int prev_body_id_1 = 0;
-  unsigned int prev_body_id_2 = 0;
+  // unsigned int prev_body_id_2 = 0;
   SpatialTransform prev_body_X_1;
   SpatialTransform prev_body_X_2;
 
