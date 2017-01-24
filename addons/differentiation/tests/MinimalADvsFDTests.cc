@@ -14,82 +14,94 @@ using namespace RigidBodyDynamics;
 using namespace RigidBodyDynamics::Math;
 using namespace RigidBodyDynamics::Utils;
 
-const double TEST_PREC = 1.0e-12;
-
 // -----------------------------------------------------------------------------
 
 template <typename T>
-void CalcBodyToBaseCoordinatesSingleFuncTemplate(T & obj, unsigned int id_ee) {
-    Model model = obj.model;
-    VectorNd q = obj.q;
+void CalcBodyToBaseCoordinatesSingleFuncTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec,
+    unsigned id_ee) {
+  Model model = obj.model;
+  VectorNd q = obj.q;
+  Vector3d point_body_coordinates;
 
-    q[0] = 0.3;
-    q[1] = -0.2;
-    Vector3d point_body_coordinates (0.1, 3.2, 4.2);
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    q.setRandom();
+    point_body_coordinates.setRandom();
 
-    Vector3d point_single_func = CalcBodyToBaseCoordinatesSingleFunc (model, q, id_ee, point_body_coordinates);
-    Vector3d point_default = CalcBodyToBaseCoordinates (model, q, id_ee, point_body_coordinates);
+    Vector3d point_single_func =
+        CalcBodyToBaseCoordinatesSingleFunc (model, q, id_ee, point_body_coordinates);
+    Vector3d point_default =
+        CalcBodyToBaseCoordinates (model, q, id_ee, point_body_coordinates);
 
-    CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, TEST_PREC);
+    CHECK_ARRAY_CLOSE (point_default.data(), point_single_func.data(), 3, array_close_prec);
+  }
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseCoordinatesSingleFunc) {
-    CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_pendulum);
+  CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, 10, 1e-6, id_pendulum);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcBodyToBaseCoordinatesSingleFunc) {
-    CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_proximal);
+  CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, 10, 1e-6, id_proximal);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcBodyToBaseCoordinatesSingleFunc) {
-    CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_proximal);
+  CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, 10, 1e-6, id_proximal);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBodyToBaseCoordinatesSingleFunc) {
-    CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_proximal);
+  CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, 10, 1e-6, id_proximal);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyToBaseCoordinatesSingleFunc) {
-    CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, id_proximal);
+  CalcBodyToBaseCoordinatesSingleFuncTemplate(*this, 10, 1e-6, id_proximal);
 }
 
 // -----------------------------------------------------------------------------
 
 template<typename T>
-void JacobianADSimpleTemplate(T & obj, unsigned int id_ee) {
-    Model & model = obj.model;
-    ADModel & ad_model = obj.ad_model;
+void JacobianADSimpleTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec,
+    unsigned int id_ee) {
+  Model & model = obj.model;
+  ADModel & ad_model = obj.ad_model;
 
-    MatrixNd jacobian_ad = MatrixNd::Zero(3, model.qdot_size);
-    MatrixNd jacobian_ref = MatrixNd::Zero(3, model.qdot_size);
-    MatrixNd jacobian_fd = MatrixNd::Zero(3, model.qdot_size);
+  MatrixNd jacobian_ad = MatrixNd::Zero(3, model.qdot_size);
+  MatrixNd jacobian_ref = MatrixNd::Zero(3, model.qdot_size);
+  MatrixNd jacobian_fd = MatrixNd::Zero(3, model.qdot_size);
 
-    VectorNd q = VectorNd::Random(model.dof_count);
-    Vector3d body_point = Vector3d (1.0, 2.0, 3.0);
-    int nTrials = 0;
-    do {
-        CalcPointJacobian (model, q, id_ee, body_point, jacobian_ref);
+  VectorNd q = VectorNd::Random(model.dof_count);
+  Vector3d body_point = Vector3d (1.0, 2.0, 3.0);
+  unsigned trial = 0;
+  do {
+    CalcPointJacobian (model, q, id_ee, body_point, jacobian_ref);
 
-        MatrixNd q_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
-        Vector3d base_point_standard = CalcBodyToBaseCoordinates (model, q, id_ee, body_point);
-        Vector3d base_point_ad = RigidBodyDynamics::AD::CalcBodyToBaseCoordinatesSingleFunc (model, ad_model, q, q_dirs, id_ee, body_point, jacobian_ad);
-        Vector3d base_point_fd = RigidBodyDynamics::FD::CalcBodyToBaseCoordinatesSingleFunc (model, q, q_dirs, id_ee, body_point, jacobian_fd);
+    MatrixNd q_dirs = MatrixNd::Identity (model.qdot_size, model.qdot_size);
+    Vector3d base_point_standard = CalcBodyToBaseCoordinates (model, q, id_ee, body_point);
+    Vector3d base_point_ad = AD::CalcBodyToBaseCoordinatesSingleFunc (model, ad_model, q, q_dirs, id_ee, body_point, jacobian_ad);
+    Vector3d base_point_fd = FD::CalcBodyToBaseCoordinatesSingleFunc (model, q, q_dirs, id_ee, body_point, jacobian_fd);
 
-        CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model.qdot_size, TEST_PREC);
-        CHECK_ARRAY_CLOSE (base_point_standard.data(), base_point_ad.data(), 3, TEST_PREC);
-        CHECK_ARRAY_CLOSE (base_point_standard.data(), base_point_fd.data(), 3, TEST_PREC);
-        CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_fd.data(), 3 * model.qdot_size, 1e-6);
-        body_point = Vector3d::Random(3);
-    } while (nTrials++ < 10);
+    CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_ad.data(), 3 * model.qdot_size, array_close_prec);
+    CHECK_ARRAY_CLOSE (base_point_standard.data(), base_point_ad.data(), 3, array_close_prec);
+    CHECK_ARRAY_CLOSE (base_point_standard.data(), base_point_fd.data(), 3, array_close_prec);
+    CHECK_ARRAY_CLOSE (jacobian_ref.data(), jacobian_fd.data(), 3 * model.qdot_size, array_close_prec);
+
+    q.setRandom();
+    body_point.setRandom();
+  } while (trial++ < trial_count);
 }
 
-//TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
-//    JacobianADSimpleTemplate(*this, id_pendulum);
-//}
+TEST_FIXTURE ( CartPendulum, CartPendulumJacobianADSimple ) {
+  JacobianADSimpleTemplate(*this, 10, 1e-6, id_pendulum);
+}
 
-//TEST_FIXTURE ( Arm2DofX, Arm2DofXJacobianADSimple) {
-//    JacobianADSimpleTemplate(*this, id_proximal);
-//}
+TEST_FIXTURE ( Arm2DofX, Arm2DofXJacobianADSimple) {
+  JacobianADSimpleTemplate(*this, 10, 1e-6, id_proximal);
+}
 
 //TEST_FIXTURE ( Arm2DofZ, Arm2DofZJacobianADSimple) {
 //    JacobianADSimpleTemplate(*this, id_proximal);
