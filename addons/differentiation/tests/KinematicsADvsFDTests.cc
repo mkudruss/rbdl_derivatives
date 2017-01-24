@@ -417,9 +417,12 @@ void CalcPointAccelerationTemplate(
       CHECK_ARRAY_CLOSE(fd_a_dirs.data(), ad_a_dirs.data(),
                         3 * ndirs, array_close_prec);
     }
-    q   = VectorNd::Random(nq);
-    qd  = VectorNd::Random(nq);
-    qdd = VectorNd::Random(nq);
+    q.setRandom();
+    qd.setRandom();
+    qdd.setRandom();
+    q_dirs.setRandom();
+    qd_dirs.setRandom();
+    qdd_dirs.setRandom();
   } while(trial++ < trial_count);
 }
 

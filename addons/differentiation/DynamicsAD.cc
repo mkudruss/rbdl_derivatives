@@ -484,8 +484,8 @@ void InverseDynamics(
 
 RBDL_DLLAPI
 void NonlinearEffects (
-    Model & model,
-    ADModel & ad_model,
+    Model &model,
+    ADModel &ad_model,
     const VectorNd & q,
     const MatrixNd & q_dirs,
     const VectorNd & qdot,
@@ -494,7 +494,7 @@ void NonlinearEffects (
     MatrixNd & ad_tau) {
 	unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
-  assert(ndirs == ad_tau.cols());
+  assert(ndirs <= ad_tau.cols());
 
   LOG << "-------- " << __func__ << " --------" << std::endl;
 
@@ -522,34 +522,17 @@ void NonlinearEffects (
     unsigned lambda = model.lambda[i];
     if (lambda == 0) {
       // derivative code
-			for (unsigned idir = 0; idir < ndirs; idir++) {
+      for (unsigned idir = 0; idir < ndirs; idir++) {
         ad_model.v[i][idir] = ad_model.v_J[i][idir];
       }
       // nominal code
       model.v[i] = model.v_J[i];
 
-//      // derivative code
-//      for (unsigned idir = 0; idir < ndirs; idir++) {
-//        ad_model.a[i][idir] = ad_model.X_lambda[i][idir].apply (spatial_gravity);
-//      }
-//      // nominal code
-//      model.a[i] = model.X_lambda[i].apply(spatial_gravity);
-
       applySTSV(ndirs,
                 model.X_lambda[i], ad_model.X_lambda[i],
                 spatial_gravity,
                 model.a[i], ad_model.a[i]);
-    }	else {
-//      // derivative code
-//      for (unsigned idir = 0; idir < ndirs; idir++) {
-//        ad_model.v[i][idir] =
-//            ad_model.X_lambda[i][idir].apply (model.v[lambda])
-//            + model.X_lambda[i].apply(ad_model.v[lambda][idir])
-//            + ad_model.v_J[i][idir];
-//      }
-//      // nominal code
-//      model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
-
+    } else {
       applySTSV(ndirs,
                 model.X_lambda[i], ad_model.X_lambda[i],
                 model.v[lambda], ad_model.v[lambda],
@@ -559,25 +542,12 @@ void NonlinearEffects (
       }
       model.v[i] += model.v_J[i];
 
-      // derivative code
-			for (unsigned idir = 0; idir < ndirs; idir++) {
+      for (unsigned idir = 0; idir < ndirs; idir++) {
         ad_model.c[i][idir] = ad_model.c_J[i][idir]
             + crossm(ad_model.v[i][idir],model.v_J[i])
             + crossm(model.v[i], ad_model.v_J[i][idir]);
       }
-      // nominal code
       model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
-
-//      // derivative code
-//			for (unsigned idir = 0; idir < ndirs; idir++) {
-//        ad_model.a[i][idir] =
-//            ad_model.X_lambda[i][idir].apply(model.a[lambda])
-//            + model.X_lambda[i].apply(ad_model.a[lambda][idir])
-//            + ad_model.c[i][idir];
-//      }
-//      // nominal code
-//      model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
-
 
       applySTSV(ndirs,
                 model.X_lambda[i], ad_model.X_lambda[i],
@@ -592,7 +562,7 @@ void NonlinearEffects (
 
     if (!model.mBodies[i].mIsVirtual) {
       // derivative code
-			for (unsigned idir = 0; idir < ndirs; idir++) {
+      for (unsigned idir = 0; idir < ndirs; idir++) {
         ad_model.f[i][idir] = model.I[i] * ad_model.a[i][idir]
             + crossf(ad_model.v[i][idir], model.I[i] * model.v[i])
             + crossf(model.v[i], model.I[i] * ad_model.v[i][idir]);
@@ -601,7 +571,7 @@ void NonlinearEffects (
       model.f[i] = model.I[i] * model.a[i] + crossf(model.v[i],model.I[i] * model.v[i]);
     } else {
       // derivative code
-			for (unsigned idir = 0; idir < ndirs; idir++) {
+      for (unsigned idir = 0; idir < ndirs; idir++) {
         ad_model.f[i][idir].setZero();
       }
       // nominal code
@@ -640,8 +610,7 @@ void NonlinearEffects (
   }
 }
 
-RBDL_DLLAPI
-void CompositeRigidBodyAlgorithm (
+RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
 	Model &model,
 	ADModel &ad_model,
 	const VectorNd &q,
@@ -697,53 +666,45 @@ void CompositeRigidBodyAlgorithm (
       model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + model.X_lambda[i].applyTranspose(model.Ic[i]);
     }
 
-		unsigned int dof_index_i = model.mJoints[i].q_index;
+    unsigned int dof_index_i = model.mJoints[i].q_index;
 
-		// derivative evaluation
+    // derivative evaluation
     for (unsigned idir = 0; idir < ndirs; idir++) {
       ad_model.F[i][idir] = ad_model.Ic[i][idir] * model.S[i];
-		}
-		// nominal evaluation
-		SpatialVector F = model.Ic[i] * model.S[i];
+    }
+    // nominal evaluation
+    SpatialVector F = model.Ic[i] * model.S[i];
 
-		// derivative evaluation
-		for (unsigned j = 0; j < ndirs; j++) {
-			H_ad[j](dof_index_i, dof_index_i) = model.S[i].dot(ad_model.F[i][j]);
-		}
-		// nominal evaluation
-		H(dof_index_i, dof_index_i) = model.S[i].dot(F);
+    // derivative evaluation
+    for (unsigned j = 0; j < ndirs; j++) {
+      H_ad[j](dof_index_i, dof_index_i) = model.S[i].dot(ad_model.F[i][j]);
+    }
+    // nominal evaluation
+    H(dof_index_i, dof_index_i) = model.S[i].dot(F);
 
-		unsigned int j = i;
-		unsigned int dof_index_j = dof_index_i;
+    unsigned int j = i;
+    unsigned int dof_index_j = dof_index_i;
 
-		while (model.lambda[j] != 0) {
-			// derivative evaluation
+    while (model.lambda[j] != 0) {
+      // derivative evaluation
       applyTransposeSTSV(ndirs,
                          model.X_lambda[j], ad_model.X_lambda[j],
                          F, ad_model.F[i],
                          F, ad_model.F[i]);
 
-//      for (size_t idir = 0; idir < ndirs; idir++) {
-//        ad_model.F[i][idir] =
-//            ad_model.X_lambda[j][idir].applyTranspose (F)
-//            + model.X_lambda[j].applyTranspose (ad_model.F[i][idir]);
-//			}
-//			// nominal evaluation
-//			F = model.X_lambda[j].applyTranspose(F);
+      j = model.lambda[j];
+      dof_index_j = model.mJoints[j].q_index;
 
-			j = model.lambda[j];
-			dof_index_j = model.mJoints[j].q_index;
-
-				// derivative evaluation
-				for (unsigned idir = 0; idir < ndirs; idir++) {
-					H_ad[idir](dof_index_i,dof_index_j) = ad_model.F[i][idir].dot(model.S[j]);
-					H_ad[idir](dof_index_j,dof_index_i) = H_ad[idir](dof_index_i,dof_index_j);
-				}
-				// nominal evaluation
-				H(dof_index_i,dof_index_j) = F.dot(model.S[j]);
-				H(dof_index_j,dof_index_i) = H(dof_index_i,dof_index_j);
-		}
-	}
+      // derivative evaluation
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        H_ad[idir](dof_index_i,dof_index_j) = ad_model.F[i][idir].dot(model.S[j]);
+        H_ad[idir](dof_index_j,dof_index_i) = H_ad[idir](dof_index_i,dof_index_j);
+      }
+      // nominal evaluation
+      H(dof_index_i,dof_index_j) = F.dot(model.S[j]);
+      H(dof_index_j,dof_index_i) = H(dof_index_i,dof_index_j);
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------

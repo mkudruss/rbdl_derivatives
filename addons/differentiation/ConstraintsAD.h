@@ -50,15 +50,17 @@ void CalcContactJacobian(
 		bool update_kinematics = true
 		);
 
-/*
-RBDL_DLLAPI
-void CalcContactSystemVariables (
-				Model &model,
-				const Math::VectorNd &Q,
-				const Math::VectorNd &QDot,
-				const Math::VectorNd &Tau,
-				ConstraintSet &CS
-				); */
+RBDL_DLLAPI void CalcContactSystemVariables (
+    Model &model,
+    ADModel &ad_model,
+    const Math::VectorNd  &q,
+    const Math::MatrixNd  &q_dirs,
+    const Math::VectorNd  &qdot,
+    const Math::MatrixNd  &qdot_dirs,
+    const Math::VectorNd  &tau,
+    const Math::MatrixNd  &tau_dirs,
+    ConstraintSet   &CS,
+    ADConstraintSet &ad_CS);
 
 RBDL_DLLAPI
 void ForwardDynamicsContactsDirect (

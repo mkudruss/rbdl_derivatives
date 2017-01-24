@@ -226,9 +226,9 @@ void NonlinearEffectsADTestTemplate(
   Model fd_model      = obj.model;
   ADModel ad_d_model = obj.ad_model;
   ADModel fd_d_model = obj.ad_model;
-  VectorNd & q     = obj.q;
-  VectorNd & qdot  = obj.qdot;
-  VectorNd & tau   = obj.tau;
+  VectorNd q(obj.model.dof_count);
+  VectorNd qdot(obj.model.dof_count);
+  VectorNd tau(obj.model.dof_count);
 
   unsigned ndirs = ad_model.qdot_size;
 
@@ -247,16 +247,17 @@ void NonlinearEffectsADTestTemplate(
 
     NonlinearEffects(ad_model, q, qdot, tau_nom);
 
-    AD::NonlinearEffects(ad_model, ad_d_model, q, q_dirs,
-        qdot, qdot_dirs, ad_d_tau_nom, ad_tau_der);
+    AD::NonlinearEffects(ad_model, ad_d_model, q, q_dirs, qdot, qdot_dirs,
+                         ad_d_tau_nom, ad_tau_der);
 
     FD::NonlinearEffects(fd_model, &fd_d_model, q, q_dirs, qdot, qdot_dirs,
-        fd_d_tau_nom, fd_tau_der);
+                         fd_d_tau_nom, fd_tau_der);
 
     checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
 
     CHECK_ARRAY_CLOSE (tau_nom.data(), ad_d_tau_nom.data(), tau_nom.rows(), array_close_prec);
     CHECK_ARRAY_CLOSE (tau_nom.data(), fd_d_tau_nom.data(), tau_nom.rows(), array_close_prec);
+
     CHECK_ARRAY_CLOSE (fd_tau_der.data(), ad_tau_der.data(),
                        fd_tau_der.cols() * fd_tau_der.rows(), array_close_prec);
   }
@@ -279,6 +280,15 @@ TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsADTest) {
 }
 
 TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsADTest) {
+  NonlinearEffectsADTestTemplate(*this, 10, 1e-5);
+}
+
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFNonlinearEffectsADTest) {
+  // add contacts and bind them to constraint set
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+  constraint_set.Bind (model);
+  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
   NonlinearEffectsADTestTemplate(*this, 10, 1e-5);
 }
 

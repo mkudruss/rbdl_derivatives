@@ -19,6 +19,8 @@
 #include "JointAD.h"
 #include "ModelAD.h"
 
+#include "SpatialAlgebraOperatorsAD.h"
+
 
 using std::cerr;
 using std::endl;
@@ -39,10 +41,9 @@ RBDL_DLLAPI void jcalc (
     const MatrixNd &q_dirs,
     const VectorNd &qdot,
     const MatrixNd &qdot_dirs) {
-  unsigned int ndirs = q_dirs.cols();
-  ad_model.resize_directions(ndirs);
-
+  unsigned const ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
+  ad_model.resize_directions(ndirs);
 
   // exception if we calculate it for the root body
   assert (joint_id > 0);
@@ -75,8 +76,8 @@ RBDL_DLLAPI void jcalc (
       /// => shorten that!
       AD::Xroty(
             q[model.mJoints[joint_id].q_index],
-          q_dirs(model.mJoints[joint_id].q_index, idir),
-          ad_model.X_J[joint_id][idir]);
+            q_dirs(model.mJoints[joint_id].q_index, idir),
+            ad_model.X_J[joint_id][idir]);
       //            ad_model.X_J[joint_id][idir] = Math::AD::Xroty(
       //								q[model.mJoints[joint_id].q_index],
       //								q_dirs(model.mJoints[joint_id].q_index, idir));
@@ -154,12 +155,10 @@ RBDL_DLLAPI void jcalc (
     abort();
   }
 
-  // derivative code
-  for (unsigned int idir = 0; idir < ndirs; ++idir) {
-    ad_model.X_lambda[joint_id][idir] = ad_model.X_J[joint_id][idir] * model.X_T[joint_id];
-  }
-  // nominal code
-  model.X_lambda[joint_id] = model.X_J[joint_id] * model.X_T[joint_id];
+  mulSTST(ndirs,
+          model.X_J[joint_id], ad_model.X_J[joint_id],
+          model.X_T[joint_id],
+          model.X_lambda[joint_id], ad_model.X_lambda[joint_id]);
 }
 
 

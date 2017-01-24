@@ -15,26 +15,38 @@ namespace RigidBodyDynamics {
 namespace FD {
 // -----------------------------------------------------------------------------
 
+RBDL_DLLAPI void CalcConstrainedSystemVariables (
+    Model &model,
+    ADModel *fd_model, // NULL means execution without fd_model update
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    const Math::VectorNd &qdot,
+    const Math::MatrixNd &qdot_dirs,
+    const Math::VectorNd &tau,
+    const Math::MatrixNd &tau_dirs,
+    ConstraintSet   &cs,
+    ADConstraintSet &fd_CS);
+
 RBDL_DLLAPI
-void ForwardDynamicsContactsDirect (
-    Model   & model,
-    ADModel * ad_model,
-    const Math::VectorNd & q,
-    const Math::MatrixNd & q_dirs,
-    const Math::VectorNd & qdot,
-    const Math::MatrixNd & qdot_dirs,
-    const Math::VectorNd & tau,
-    const Math::MatrixNd & tau_dirs,
-    ConstraintSet   & cs,
-    ADConstraintSet & ad_cs,
-    Math::VectorNd  & qddot,
-    Math::MatrixNd  & ad_qddot
+void ForwardDynamicsContactsDirect(
+    Model   &model,
+    ADModel *fd_model, // NULL means execution without fd_model update
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    const Math::VectorNd &qdot,
+    const Math::MatrixNd &qdot_dirs,
+    const Math::VectorNd &tau,
+    const Math::MatrixNd &tau_dirs,
+    ConstraintSet   &cs,
+    ADConstraintSet &fd_cs,
+    Math::VectorNd  &qddot,
+    Math::MatrixNd  &fd_qddot
     );
 
 RBDL_DLLAPI
 void CalcConstraintsJacobian (
     Model &model,
-    ADModel * fd_model, // NULL means execution without fd_model update
+    ADModel *fd_model, // NULL means execution without fd_model update
     const Math::VectorNd &q,
     const Math::MatrixNd &q_dirs,
     ConstraintSet &CS,
@@ -44,8 +56,8 @@ void CalcConstraintsJacobian (
 
 RBDL_DLLAPI
 void ComputeConstraintImpulsesDirect (
-    Model & model,
-    ADModel * fd_model,
+    Model &model,
+    ADModel *fd_model,// NULL means execution without fd_model update
     const Math::VectorNd & q,
     const Math::MatrixNd & q_dirs,
     const Math::VectorNd & qdot_minus,

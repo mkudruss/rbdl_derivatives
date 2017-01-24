@@ -266,11 +266,19 @@ void checkConstraintSetsADvsFD (
                       fd_cs.Gi.rows() * fd_cs.Gi.cols(),
                       1e-6);
   }
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.C.rows(), fd_cs.C.rows());
+  CHECK_ARRAY_CLOSE(ad_cs.C.data(), fd_cs.C.data(), ad_cs.C.rows(), 1e-6);
+  // derivative check
+  CHECK_EQUAL(ad_d_cs.C.rows(), fd_d_cs.C.rows());
+  CHECK_EQUAL(ad_d_cs.C.cols(), fd_d_cs.C.cols());
+  CHECK_ARRAY_CLOSE(ad_d_cs.C.data(), fd_d_cs.C.data(),
+                    ad_d_cs.C.rows() * ad_d_cs.C.cols(), 1e-6);
 }
-
-
 
 // -----------------------------------------------------------------------------
 } //namespace RigidBodyDynamics
 // -----------------------------------------------------------------------------
+
 

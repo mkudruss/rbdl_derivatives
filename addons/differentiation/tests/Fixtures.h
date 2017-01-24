@@ -387,9 +387,8 @@ struct FixedBase6DoF {
         using namespace RigidBodyDynamics::Math;
 
         ClearLogOutput();
-        model = new Model;
 
-        model->gravity = Vector3d  (0., -9.81, 0.);
+        model.gravity = Vector3d  (0., -9.81, 0.);
 
         /* 3 DoF (rot.) joint at base
          * 3 DoF (rot.) joint child origin
@@ -410,7 +409,7 @@ struct FixedBase6DoF {
                 Vector3d (0., 0., 0.)
                 );
         joint_base_rot_z = Joint ( SpatialVector (0., 0., 1., 0., 0., 0.));
-        base_rot_z_id = model->AddBody (0, Xtrans (Vector3d (0., 0., 0.)), joint_base_rot_z, base_rot_z);
+        base_rot_z_id = model.AddBody (0, Xtrans (Vector3d (0., 0., 0.)), joint_base_rot_z, base_rot_z);
 
         base_rot_y = Body (
                 0.,
@@ -418,7 +417,7 @@ struct FixedBase6DoF {
                 Vector3d (0., 0., 0.)
                 );
         joint_base_rot_y = Joint ( SpatialVector (0., 1., 0., 0., 0., 0.));
-        base_rot_y_id = model->AppendBody (Xtrans (Vector3d (0., 0., 0.)), joint_base_rot_y, base_rot_y);
+        base_rot_y_id = model.AppendBody (Xtrans (Vector3d (0., 0., 0.)), joint_base_rot_y, base_rot_y);
 
         base_rot_x = Body (
                 1.,
@@ -426,7 +425,7 @@ struct FixedBase6DoF {
                 Vector3d (1., 1., 1.)
                 );
         joint_base_rot_x = Joint ( SpatialVector (1., 0., 0., 0., 0., 0.));
-        base_rot_x_id = model->AddBody (base_rot_y_id, Xtrans (Vector3d (0., 0., 0.)), joint_base_rot_x, base_rot_x);
+        base_rot_x_id = model.AddBody (base_rot_y_id, Xtrans (Vector3d (0., 0., 0.)), joint_base_rot_x, base_rot_x);
 
         // child body (3 DoF)
         child_rot_z = Body (
@@ -435,7 +434,7 @@ struct FixedBase6DoF {
                 Vector3d (0., 0., 0.)
                 );
         joint_child_rot_z = Joint ( SpatialVector (0., 0., 1., 0., 0., 0.));
-        child_rot_z_id = model->AddBody (base_rot_x_id, Xtrans (Vector3d (1., 0., 0.)), joint_child_rot_z, child_rot_z);
+        child_rot_z_id = model.AddBody (base_rot_x_id, Xtrans (Vector3d (1., 0., 0.)), joint_child_rot_z, child_rot_z);
 
         child_rot_y = Body (
                 0.,
@@ -443,7 +442,7 @@ struct FixedBase6DoF {
                 Vector3d (0., 0., 0.)
                 );
         joint_child_rot_y = Joint ( SpatialVector (0., 1., 0., 0., 0., 0.));
-        child_rot_y_id = model->AddBody (child_rot_z_id, Xtrans (Vector3d (0., 0., 0.)), joint_child_rot_y, child_rot_y);
+        child_rot_y_id = model.AddBody (child_rot_z_id, Xtrans (Vector3d (0., 0., 0.)), joint_child_rot_y, child_rot_y);
 
         child_rot_x = Body (
                 1.,
@@ -451,25 +450,26 @@ struct FixedBase6DoF {
                 Vector3d (1., 1., 1.)
                 );
         joint_child_rot_x = Joint ( SpatialVector (1., 0., 0., 0., 0., 0.));
-        child_rot_x_id = model->AddBody (child_rot_y_id, Xtrans (Vector3d (0., 0., 0.)), joint_child_rot_x, child_rot_x);
+        child_rot_x_id = model.AddBody (child_rot_y_id, Xtrans (Vector3d (0., 0., 0.)), joint_child_rot_x, child_rot_x);
 
-        Q = VectorNd::Constant (model->mBodies.size() - 1, 0.);
-        QDot = VectorNd::Constant (model->mBodies.size() - 1, 0.);
-        QDDot = VectorNd::Constant (model->mBodies.size() - 1, 0.);
-        Tau = VectorNd::Constant (model->mBodies.size() - 1, 0.);
+        Q = VectorNd::Constant (model.mBodies.size() - 1, 0.);
+        QDot = VectorNd::Constant (model.mBodies.size() - 1, 0.);
+        QDDot = VectorNd::Constant (model.mBodies.size() - 1, 0.);
+        Tau = VectorNd::Constant (model.mBodies.size() - 1, 0.);
 
         contact_body_id = child_rot_x_id;
         contact_point = Vector3d  (0.5, 0.5, 0.);
         contact_normal = Vector3d  (0., 1., 0.);
 
         ClearLogOutput();
-        ad_model = new ADModel(*model);
+        ad_model = ADModel(model);
     }
 
     ~FixedBase6DoF () {
     }
-    RigidBodyDynamics::Model *model;
-    ADModel *ad_model;
+
+    RigidBodyDynamics::Model model;
+    ADModel ad_model;
 
     unsigned int base_rot_z_id, base_rot_y_id, base_rot_x_id,
         child_rot_z_id, child_rot_y_id, child_rot_x_id,

@@ -27,10 +27,10 @@ void CalcContactJacobianTemplate(
     T & obj,
     unsigned trial_count,
     double array_close_prec) {
-  Model   ad_model = *(obj.model);
-  Model   fd_model = *(obj.model);
-  ADModel ad_d_model = *(obj.ad_model);
-  ADModel fd_d_model = *(obj.ad_model);
+  Model   ad_model   = obj.model;
+  Model   fd_model   = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
 
   ConstraintSet ad_cs = obj.constraint_set;
   ConstraintSet fd_cs = obj.constraint_set;
@@ -42,10 +42,9 @@ void CalcContactJacobianTemplate(
   unsigned const ndirs = nq;
   bool update_kinematics = true;
 
+  VectorNd q = VectorNd::Zero(nq);
+  MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
   for (unsigned trial = 0; trial < trial_count; trial++) {
-    VectorNd q = VectorNd::Zero(nq);
-    MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
-
     // set up no output quantities
     MatrixNd G = MatrixNd::Zero (3, nq);
     MatrixNd G_ad = MatrixNd::Zero (3, nq);
@@ -87,6 +86,8 @@ void CalcContactJacobianTemplate(
             ad_d_G[idir].size(),
             array_close_prec);
     }
+    q.setRandom();
+    q_dirs.setRandom();
   }
 }
 
@@ -94,10 +95,63 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobian) {
     // add contacts and bind them to constraint set
     constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
     constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
-    constraint_set.Bind (*model);
-    ad_constraint_set = ADConstraintSet(constraint_set, model->dof_count);
+    constraint_set.Bind (model);
+    ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
     CalcContactJacobianTemplate(*this, 10, 1e-5);
 }
+
+// -----------------------------------------------------------------------------
+
+template <typename T>
+void CalcContactSystemVariablesTemplate(
+    T & obj,
+    unsigned trial_count) {
+  Model   model      = obj.model;
+  Model   ad_model   = obj.model;
+  Model   fd_model   = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
+
+  ConstraintSet cs = obj.constraint_set;
+  ConstraintSet ad_cs = obj.constraint_set;
+  ConstraintSet fd_cs = obj.constraint_set;
+  ADConstraintSet ad_d_cs = obj.ad_constraint_set;
+  ADConstraintSet fd_d_cs = obj.ad_constraint_set;
+
+  // set up input quantities
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
+
+  VectorNd q = VectorNd::Zero(nq);
+  MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+  VectorNd qd = VectorNd::Zero(nq);
+  MatrixNd qd_dirs = MatrixNd::Identity(nq, nq);
+  VectorNd tau = VectorNd::Zero(nq);
+  MatrixNd tau_dirs = MatrixNd::Identity(nq, nq);
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    CalcConstrainedSystemVariables(model, q, qd, tau, cs);
+
+    AD::CalcContactSystemVariables(ad_model, ad_d_model,
+                                   q, q_dirs, qd, qd_dirs,
+                                   tau, tau_dirs, ad_cs, ad_d_cs);
+
+    FD::CalcConstrainedSystemVariables(fd_model, &fd_d_model,
+                                       q, q_dirs, qd, qd_dirs,
+                                       tau, tau_dirs, fd_cs, fd_d_cs);
+
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+    checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
+  }
+}
+
+//TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactSystemVariables) {
+//  // add contacts and bind them to constraint set
+//  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+//  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+//  constraint_set.Bind (model);
+//  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
+//  CalcContactSystemVariablesTemplate(*this, 10);
+//}
 
 // -----------------------------------------------------------------------------
 
@@ -121,7 +175,6 @@ void ForwardDynamicsConstraintsDirectTemplate(
   // set up input quantities
   int const nq = ad_model.dof_count;
   unsigned const ndirs = nq;
-  bool update_kinematics = true;
 
   for (unsigned trial = 0; trial < trial_count; trial++) {
     VectorNd q = VectorNd::Random(nq);
@@ -147,13 +200,13 @@ void ForwardDynamicsConstraintsDirectTemplate(
           ad_cs, ad_d_cs,
           ad_qdd, ad_qdd_dirs);
 
-//    FD::ForwardDynamicsContactsDirect(
-//          fd_model, &fd_d_model,
-//          q, q_dirs,
-//          qd, qd_dirs,
-//          tau, tau_dirs,
-//          fd_cs, fd_d_cs,
-//          fd_qdd, fd_qdd_dirs);
+    FD::ForwardDynamicsContactsDirect(
+          fd_model, &fd_d_model,
+          q, q_dirs,
+          qd, qd_dirs,
+          tau, tau_dirs,
+          fd_cs, fd_d_cs,
+          fd_qdd, fd_qdd_dirs);
 
     checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
     checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
@@ -278,11 +331,11 @@ void ComputeContactImpulsesDirectTestTemplate(
     T & obj,
     unsigned trial_count,
     double const array_close_prec) {
-  Model   model    = *(obj.model);
-  Model   ad_model    = *(obj.model);
-  Model   fd_model    = *(obj.model);
-  ADModel ad_d_model = *(obj.ad_model);
-  ADModel fd_d_model = *(obj.ad_model);
+  Model   model      = obj.model;
+  Model   ad_model   = obj.model;
+  Model   fd_model   = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
 
   ConstraintSet   cs      = obj.constraint_set;
   ConstraintSet   ad_cs   = obj.constraint_set;
@@ -333,8 +386,8 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFComputeContactImpulsesDirectTest) {
         contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (
         contact_body_id, Vector3d (0., 1., 0.), contact_normal);
-  constraint_set.Bind (*model);
-  ad_constraint_set = ADConstraintSet(constraint_set, model->dof_count);
+  constraint_set.Bind (model);
+  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
   ComputeContactImpulsesDirectTestTemplate(*this, 5, 1e-5);
 }
 

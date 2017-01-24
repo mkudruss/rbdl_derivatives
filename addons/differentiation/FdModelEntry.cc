@@ -5,11 +5,11 @@ namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
 
 void computeFDEntry(
-    Model const & model,
-    Model const & modelh,
+    Model const &model,
+    Model const &modelh,
     double h,
     int idir,
-    ADModel & fd_model) {
+    ADModel &fd_model) {
 
   for (unsigned i = 0; i < model.X_lambda.size(); i++) {
     fd_model.X_lambda[i][idir].E = (modelh.X_lambda[i].E - model.X_lambda[i].E) / h;

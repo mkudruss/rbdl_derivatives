@@ -189,9 +189,8 @@ void CompositeRigidBodyAlgorithm (
     const VectorNd &q,
     const MatrixNd &q_dirs,
     MatrixNd &H,
-    vector<MatrixNd> &fd_H
-) {
-  unsigned int ndirs = q_dirs.cols();
+    vector<MatrixNd> &fd_H) {
+  unsigned const ndirs = q_dirs.cols();
   assert(ndirs == fd_H.size());
 
   H = MatrixNd::Zero(q.size(),q.size());
@@ -200,11 +199,9 @@ void CompositeRigidBodyAlgorithm (
   CompositeRigidBodyAlgorithm(model, q, H, true);
   double h = 1.0e-8;
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    Model *modelh;
+    Model *modelh = &model;
     if (fd_model) {
       modelh = new Model(model);
-    } else {
-      modelh = &model;
     }
     VectorNd q_dir = q_dirs.col(idir);
     CompositeRigidBodyAlgorithm(*modelh, q+h*q_dir, inertia_fd, true);
@@ -217,7 +214,7 @@ void CompositeRigidBodyAlgorithm (
 }
 
 // -----------------------------------------------------------------------------
-} /* FD */
+} // namespace FD
 // -----------------------------------------------------------------------------
-} /* RigidBodyDynamics */
+} // namespace RigidBodyDynamics
 // -----------------------------------------------------------------------------

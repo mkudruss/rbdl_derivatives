@@ -155,17 +155,16 @@ void CalcContactJacobian(
 
 RBDL_DLLAPI
 void CalcContactSystemVariables (
-    Model & model,
-    ADModel & ad_model,
-    const VectorNd  & q,
-    const MatrixNd  & q_dirs,
-    const VectorNd  & qdot,
-    const MatrixNd  & qdot_dirs,
-    const VectorNd  & tau,
-    const MatrixNd  & tau_dirs,
-    ConstraintSet   & CS,
-    ADConstraintSet & ad_CS
-) {
+    Model &model,
+    ADModel &ad_model,
+    const VectorNd  &q,
+    const MatrixNd  &q_dirs,
+    const VectorNd  &qdot,
+    const MatrixNd  &qdot_dirs,
+    const VectorNd  &tau,
+    const MatrixNd  &tau_dirs,
+    ConstraintSet   &CS,
+    ADConstraintSet &ad_CS) {
   int ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == tau_dirs.cols());
@@ -187,7 +186,7 @@ void CalcContactSystemVariables (
 //    for (int idir = 0; idir < ndirs; idir++) {
 //      ad_model.X_base[i][idir] =
 //          ad_model.X_lambda[i][idir] * model.X_base[lambda] //.toMatrix()
-//          + model.X_lambda[i] /*.toMatrix()*/ * ad_model.X_base[lambda][idir];
+//          + model.X_lambda[i] .toMatrix() * ad_model.X_base[lambda][idir];
 //    }
 
     mulSTST (ndirs,
@@ -234,6 +233,8 @@ void CalcContactSystemVariables (
     CS.gamma[i] = CS.acceleration[i] - CS.normal[i].dot(gamma_i);
   }
   /// TODO: Implement derivative of for loop, esp. CalcPointAcceleration
+  ///
+  ///
 }
 
 RBDL_DLLAPI
