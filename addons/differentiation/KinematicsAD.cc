@@ -95,141 +95,91 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
   assert (out.rows() == 3 && out.cols() == model.qdot_size);
   unsigned int ndirs = q_dirs.cols();
 
-  // Update the kinematics
-  VectorNd QDot_zero (VectorNd::Zero (model.q_size));
-  MatrixNd fd_out (MatrixNd::Zero (3, model.q_size));
-
   ad_model.resize_directions(ndirs);
 
-  std::vector<MatrixNd> ad_X_J_i (ndirs, MatrixNd::Zero (6,6));
-  std::vector<std::vector<MatrixNd> > fd_X_J (model.mBodies.size(), ad_X_J_i);
-  // ad_X_J[3][5] gives for body 3 the 5th direction
-
-  std::vector<MatrixNd> ad_X_lambda_i (ndirs, MatrixNd::Zero (6,6));
-  std::vector<std::vector<MatrixNd> > fd_X_lambda (model.mBodies.size(), ad_X_lambda_i);
-  // ad_X_lambda[3][5] gives for body 3 the 5th direction
-
-  std::vector<MatrixNd> ad_X_base_i (ndirs, MatrixNd::Zero (6,6));
-  std::vector<std::vector<MatrixNd> > fd_X_base (model.mBodies.size(), ad_X_base_i);
-  // ad_X_base[3][5] gives for body 3 the 5th direction
-
-  for (unsigned int i = 1; i < model.mBodies.size(); i++) {
-    unsigned int lambda = model.lambda[i];
-    // Calculate joint dependent variables
+  for (unsigned i = 1; i < model.mBodies.size(); i++) {
+    unsigned lambda = model.lambda[i];
 
     if (model.mJoints[i].mJointType == JointTypeRevoluteX) {
-      for (unsigned int j = 0; j < ndirs; j++) {
-        AD::Xrotx (
-              q[model.mJoints[i].q_index],
-            q_dirs(i-1, j),
-            ad_model.X_J[i][j]);
-        //				ad_model.X_J[i][j] = Math::AD::Xrotx (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        AD::Xrotx (q[model.mJoints[i].q_index],
+                   q_dirs(i - 1, idir),
+                   ad_model.X_J[i][idir]);
       }
       model.X_J[i] = Math::Xrotx (q[model.mJoints[i].q_index]);
     } else if (model.mJoints[i].mJointType == JointTypeRevoluteY) {
-      for (unsigned int j = 0; j < ndirs; j++) {
-        AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j), ad_model.X_J[i][j]);
-        // ad_model.X_J[i][j] = Math::AD::Xroty (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        AD::Xroty (q[model.mJoints[i].q_index],
+                   q_dirs(i - 1, idir),
+                   ad_model.X_J[i][idir]);
       }
       model.X_J[i] = Math::Xroty (q[model.mJoints[i].q_index]);
     } else if (model.mJoints[i].mJointType == JointTypeRevoluteZ) {
-      for (unsigned int j = 0; j < ndirs; j++) {
-        AD::Xrotz (
-              q[model.mJoints[i].q_index],
-            q_dirs(i-1,j),
-            ad_model.X_J[i][j]);
-        // ad_model.X_J[i][j] = Math::AD::Xrotz (q[model.mJoints[i].q_index], q_dirs(i-1,j));
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        AD::Xrotz (q[model.mJoints[i].q_index],
+                   q_dirs(i - 1, idir),
+                   ad_model.X_J[i][idir]);
       }
       model.X_J[i] = Math::Xrotz (q[model.mJoints[i].q_index]);
-    } else if (model.mJoints[i].mDoFCount == 1) {
-      for (unsigned int j = 0; j < ndirs; j++) {
-        ad_model.X_J[i][j] = AD::Xtrans (
+    } else if (model.mJoints[i].mDoFCount == 1
+      && model.mJoints[i].mJointType != JointTypeCustom) {
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.X_J[i][idir] = AD::Xtrans (
               model.S[i].block<3,1>(3,0) * q[model.mJoints[i].q_index],
-            model.S[i].block<3,1>(3,0) * q_dirs(i-1, j));
+              model.S[i].block<3,1>(3,0) * q_dirs(i - 1, idir));
       }
       model.X_J[i] = Math::Xtrans (model.S[i].block<3,1>(3,0) * q[model.mJoints[i].q_index]);
-      //            } else if (model.S[i] == SpatialVector (0., 0., 0., 1., 0., 0.)) {
-      //            for (unsigned int j = 0; j < ndirs; j++) {
-      //                ad_model.X_J[i][j] = Math::AD::Xtrans (
-      //                    Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index],
-      //                    Vector3d (q_dirs(i-1, j), 0., 0.)
-      //                );
-      //            }
-      //            model.X_J[i] = Xtrans (Vector3d (1., 0., 0.) * q[model.mJoints[i].q_index]);
     } else {
       cerr << __FILE__ << " " << __LINE__ << ": "
-           << "Unsupported joint! Only RotX, RotY, RotZ and TransX supported!" << endl;
+           << "Unsupported joint! Only RotX/Y/Z and TransX/Y/Z supported!" << endl;
       abort();
     }
-
-    //    // derivative
-    //    for (unsigned int idir = 0; idir < ndirs; idir++) {
-    //      ad_model.X_lambda[i][idir] = ad_model.X_J[i][idir] * model.X_T[i].toMatrix();
-    //    }
-    //    // nominal
-    //    model.X_lambda[i] = model.X_J[i] * model.X_T[i];
 
     mulSTST(model.X_J[i], ad_model.X_J[i],
             model.X_T[i], // model.X_T is constant
             model.X_lambda[i], ad_model.X_lambda[i]);
-
-    //    for (unsigned int idir = 0; idir < ndirs; idir++) {
-    //      ad_model.X_base[i][idir] = ad_model.X_lambda[i][idir] * model.X_base[lambda].toMatrix() + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idir];
-    //    }
-    //    model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 
     mulSTST(model.X_lambda[i], ad_model.X_lambda[i],
             model.X_base[lambda], ad_model.X_base[lambda],
             model.X_base[i], ad_model.X_base[i]);
   }
 
-  for (unsigned int j = 0; j < ndirs; j++) {
-    //		SpatialMatrix X_base_ib = model.X_base[body_id].toMatrix();
+  // derivative evaluation
+  for (unsigned j = 0; j < ndirs; j++) {
     Matrix3d ad_E = ad_model.X_base[body_id][j].E;
     Vector3d ad_r = ad_model.X_base[body_id][j].r;
-    //        AD::r_from_Matrix(X_base_ib, ad_model.X_base[body_id][j]);
-
     out.block<3,1>(0,j) = ad_r + ad_E.transpose() * point_body_coordinates;
   }
-
+  // nominal evaluation
   Matrix3d body_rotation = model.X_base[body_id].E;
   Vector3d body_position = model.X_base[body_id].r;
-
-//  Matrix3d body_rotation = AD::E_from_Matrix(model.X_base[body_id].toMatrix());
-//  Vector3d body_position = AD::r_from_Matrix(model.X_base[body_id].toMatrix());
-
   return body_position + body_rotation.transpose() * point_body_coordinates;
 }
 
-RBDL_DLLAPI
-Vector3d CalcBodyToBaseCoordinates (
-		Model &model,
-		ADModel &ad_model,
-		const VectorNd &Q,
-		const MatrixNd &Q_dirs,
-		unsigned int body_id,
-		const Vector3d &point_body_coordinates,
-		Math::MatrixNd & ad_body_to_base_coordinates,
-		bool update_kinematics
-		) {
-	unsigned int ndirs = Q_dirs.cols();
+RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinates (
+    Model &model,
+    ADModel &ad_model,
+    const VectorNd &Q,
+    const MatrixNd &Q_dirs,
+    unsigned int body_id,
+    const Vector3d &point_body_coordinates,
+    Math::MatrixNd & ad_body_to_base_coordinates,
+    bool update_kinematics
+    ) {
+  unsigned ndirs = Q_dirs.cols();
 
-	std::vector<Matrix3d> ad_body_rotation (ndirs, Matrix3d::Zero());
-	std::vector<Vector3d> ad_body_position (ndirs, Vector3d::Zero());
+  vector<Matrix3d> ad_body_rotation (ndirs, Matrix3d::Zero());
+  vector<Vector3d> ad_body_position (ndirs, Vector3d::Zero());
 
-	// update the Kinematics if necessary
-	if (update_kinematics) {
-		// derivative evaluation
-		AD::UpdateKinematicsCustom (
-					model, ad_model,
-					&Q, &Q_dirs,
-					NULL, NULL,
-					NULL, NULL
-					);
-		// nominal evaluation
-		// NOTE: nominal evaluation is already done in AD::UpdateKinematicsCustom
-		// UpdateKinematicsCustom (model, &Q, NULL, NULL);
-	}
+  if (update_kinematics) {
+    // nominal + derivative evaluation
+    AD::UpdateKinematicsCustom (
+          model, ad_model,
+          &Q, &Q_dirs,
+          NULL, NULL,
+          NULL, NULL
+          );
+  }
 
   if (body_id >= model.fixed_body_discriminator) {
     cerr << __FILE__ << " " << __LINE__

@@ -145,23 +145,23 @@ void ComputeContactImpulsesNullSpace (
 
 RBDL_DLLAPI
 void SolveContactSystemDirect (
-		const Math::MatrixNd &H,
-		const std::vector<Math::MatrixNd> & H_dirs,
-		const Math::MatrixNd &G,
-		const std::vector<Math::MatrixNd> & G_dirs,
-		const Math::VectorNd & c,
-		const Math::MatrixNd & c_dirs,
-		const Math::VectorNd & gamma,
-		const Math::MatrixNd & gamma_dirs,
-		Math::MatrixNd & A,
-		std::vector<Math::MatrixNd> & A_dirs,
-		Math::VectorNd & b,
-		Math::MatrixNd & b_dirs,
-		Math::VectorNd & x,
-		Math::MatrixNd & x_ad,
-		Math::LinearSolver & linear_solver,
-		int ndirs
-		);
+    const Math::MatrixNd &H,
+    const std::vector<Math::MatrixNd> & H_dirs,
+    const Math::MatrixNd &G,
+    const std::vector<Math::MatrixNd> & G_dirs,
+    const Math::VectorNd & c,
+    const Math::MatrixNd & c_dirs,
+    const Math::VectorNd & gamma,
+    const Math::MatrixNd & gamma_dirs,
+    Math::MatrixNd & A,
+    std::vector<Math::MatrixNd> & A_dirs,
+    Math::VectorNd & b,
+    Math::MatrixNd & b_dirs,
+    Math::VectorNd & x,
+    Math::MatrixNd & x_ad,
+    Math::LinearSolver & linear_solver,
+    unsigned ndirs
+    );
 
 /*
 RBDL_DLLAPI

@@ -356,8 +356,7 @@ void SolveContactSystemDirect (
     VectorNd & x,
     MatrixNd & x_ad,
     LinearSolver & linear_solver,
-    int ndirs
-) {
+    unsigned ndirs) {
   assert(ndirs <= H_dirs.size());
   assert(ndirs <= G_dirs.size());
   assert(ndirs <= c_dirs.cols());
@@ -367,13 +366,13 @@ void SolveContactSystemDirect (
   assert(ndirs <= x_ad.cols());
 
   // derivative construction
-  for (int i = 0; i < ndirs; i++) {
-    A_dirs[i].block(0, 0, c.rows(), c.rows())            = H_dirs[i];
-    A_dirs[i].block(0, c.rows(), c.rows(), gamma.rows()) =
-        G_dirs[i].transpose();
-    A_dirs[i].block(c.rows(), 0, gamma.rows(), c.rows()) = G_dirs[i];
-    b_dirs.block(0, i, c.rows(), 1)                      = c_dirs.col(i);
-    b_dirs.block(c.rows(), i, gamma.rows(), 1)           = gamma_dirs.col(i);
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    A_dirs[idir].block(0, 0, c.rows(), c.rows())            = H_dirs[idir];
+    A_dirs[idir].block(0, c.rows(), c.rows(), gamma.rows()) =
+        G_dirs[idir].transpose();
+    A_dirs[idir].block(c.rows(), 0, gamma.rows(), c.rows()) = G_dirs[idir];
+    b_dirs.block(0, idir, c.rows(), 1)                      = c_dirs.col(idir);
+    b_dirs.block(c.rows(), idir, gamma.rows(), 1)           = gamma_dirs.col(idir);
   }
   // nominal construction
   //    Build the system: Copy H
@@ -400,8 +399,8 @@ void SolveContactSystemDirect (
         // nominal code
         x = A_LU.solve(b);
         // derivative code
-        for (int i = 0; i < ndirs; i++) {
-          x_ad.col(i) = A_LU.solve(b_dirs.col(i) - A_dirs[i] * x);
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          x_ad.col(idir) = A_LU.solve(b_dirs.col(idir) - A_dirs[idir] * x);
         }
       }
 #endif
@@ -413,8 +412,8 @@ void SolveContactSystemDirect (
         // nominal code
         x = A_CPQR.solve(b);
         // derivative code
-        for (int i = 0; i < ndirs; i++) {
-          x_ad.col(i) = A_CPQR.solve(b_dirs.col(i) - A_dirs[i] * x);
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          x_ad.col(idir) = A_CPQR.solve(b_dirs.col(idir) - A_dirs[idir] * x);
         }
       }
       break;
@@ -424,8 +423,8 @@ void SolveContactSystemDirect (
         // nominal evaluation
         x = A_QR.solve(b);
         // derivative evaluation
-        for (int i = 0; i < ndirs; i++) {
-          x_ad.col(i) = A_QR.solve(b_dirs.col(i) - A_dirs[i] * x);
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          x_ad.col(idir) = A_QR.solve(b_dirs.col(idir) - A_dirs[idir] * x);
         }
       }
       break;
