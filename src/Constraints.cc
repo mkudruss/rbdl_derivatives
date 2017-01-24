@@ -925,7 +925,7 @@ void ComputeConstraintImpulsesDirect (
   for (unsigned int i = 0; i < model.dof_count; i++)
     QDotPlus[i] = CS.x[i];
 
-  // Copy back constraint impulses 
+  // Copy back constraint impulses
   for (unsigned int i = 0; i < CS.size(); i++) {
     CS.impulse[i] = CS.x[model.dof_count + i];
   }

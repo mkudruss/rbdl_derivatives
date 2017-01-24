@@ -14,6 +14,8 @@ using namespace RigidBodyDynamics::Math;
 
 /**
  * @brief mulSTST for ST A and ST B compute A * B
+ *        save against &lhs == &res, &rhs == &res,
+ *                     &res_dirs == &lhs_dirs, &res_dirs == &rhs_dirs
  * @param lhs A
  * @param lhs_dirs dA
  * @param rhs B
@@ -35,20 +37,21 @@ inline void mulSTST(
 
   // derivative code
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    res_dirs[idir].E = lhs.E * rhs_dirs[idir].E + lhs_dirs[idir].E * rhs.E;
     res_dirs[idir].r =
         rhs_dirs[idir].r
         + rhs.E.transpose() * lhs_dirs[idir].r
         + rhs_dirs[idir].E.transpose() * lhs.r;
+    res_dirs[idir].E = lhs.E * rhs_dirs[idir].E + lhs_dirs[idir].E * rhs.E;
   }
 
   // nominal code
-  res.E = lhs.E * rhs.E;
   res.r = rhs.r + rhs.E.transpose() * lhs.r;
+  res.E = lhs.E * rhs.E;
 }
 
 /**
- * @brief mulSTST for ST A and ST B compute A * B if B is constant (dB = 0)
+ * @brief mulSTST for ST A and ST B compute A * B if B is constant (dB = 0),
+ *        save against &lhs == &res, &rhs == &res, &res_dirs == &lhs_dirs
  * @param lhs A
  * @param lhs_dirs dA
  * @param rhs B
@@ -62,13 +65,12 @@ inline void mulSTST(
     SpatialTransform & res,
     std::vector<SpatialTransform> & res_dirs) {
   unsigned const ndirs = lhs_dirs.size();
-
   assert(ndirs == res_dirs.size());
 
   // derivative code
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    res_dirs[idir].E = lhs_dirs[idir].E * rhs.E;
     res_dirs[idir].r = rhs.E.transpose() * lhs_dirs[idir].r;
+    res_dirs[idir].E = lhs_dirs[idir].E * rhs.E;
   }
 
   // nominal code

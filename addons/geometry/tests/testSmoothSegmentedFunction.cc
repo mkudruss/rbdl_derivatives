@@ -343,7 +343,7 @@ TEST(SmoothSegmentedFunctionProperties)
   for(int i=0; i < 4; ++i){
     p0 = SegmentedQuinticBezierToolkit::
           calcQuinticBezierCornerControlPoints(  x[i],  y[i],  dydx[i],
-                                               x[i+1],y[i+1],dydx[i+1],c);             
+                                               x[i+1],y[i+1],dydx[i+1],c);
     mX.col(i)  = p0.col(0);
     mY.col(i)  = p0.col(1);
   }
@@ -363,7 +363,7 @@ TEST(SmoothSegmentedFunctionProperties)
     dydxErr[i] = testCurve.calcDerivative(x[i],1) - dydx[i];
 
     CHECK( abs(yErr[i])    < TOL_SMALL );
-    CHECK( abs(dydxErr[i]) < TOL_SMALL );    
+    CHECK( abs(dydxErr[i]) < TOL_SMALL );
   }  
 
   //3. Test derivatives for numerical consistency

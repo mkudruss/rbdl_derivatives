@@ -27,7 +27,7 @@ namespace FD {
 // -----------------------------------------------------------------------------
 
 RBDL_DLLAPI
-void ForwardDynamics(
+void ForwardDynamics (
     Model &model,
     ADModel *fd_model, // NULL means execution without fd_model update
     const Math::VectorNd &q,
@@ -42,7 +42,7 @@ void ForwardDynamics(
     std::vector<std::vector<Math::SpatialVector>> const *f_ext_dirs = NULL);
 
 RBDL_DLLAPI
-void InverseDynamics(
+void InverseDynamics (
     Model &model,
     ADModel *fd_model, // NULL means execution without fd_model update
     const Math::VectorNd &q,
@@ -70,7 +70,7 @@ void NonlinearEffects (
 RBDL_DLLAPI
 void CompositeRigidBodyAlgorithm (
     Model &model,
-    ADModel *fd_model, // NULL means execution without fd_model update
+    ADModel *fd_model,
     const Math::VectorNd &q,
     const Math::MatrixNd &q_dirs,
     Math::MatrixNd &H,

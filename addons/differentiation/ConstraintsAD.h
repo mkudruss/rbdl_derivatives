@@ -16,7 +16,8 @@ namespace RigidBodyDynamics {
 struct ADConstraintSet {
 	int ndirs;
 
-	std::vector<Math::MatrixNd> G;
+  std::vector<Math::MatrixNd> G;
+  std::vector<Math::MatrixNd> Gi;
 	std::vector<Math::MatrixNd> A;
 	std::vector<Math::MatrixNd> H;
 	Math::MatrixNd              b;
@@ -42,7 +43,7 @@ void CalcContactJacobian(
 		ADModel & ad_model,
 		const Math::VectorNd & q,
 		const Math::MatrixNd & q_dirs,
-		const ConstraintSet  & CS,
+    ConstraintSet  & CS,
 		ADConstraintSet & ad_CS,
 		Math::MatrixNd  & G,
 		std::vector<Math::MatrixNd> & G_dirs,
@@ -61,19 +62,19 @@ void CalcContactSystemVariables (
 
 RBDL_DLLAPI
 void ForwardDynamicsContactsDirect (
-		ADModel & ad_model,
-		Model   & model,
-		const Math::VectorNd & q,
-		const Math::MatrixNd & q_dirs,
-		const Math::VectorNd & qdot,
-		const Math::MatrixNd & qdot_dirs,
-		const Math::VectorNd & tau,
-		const Math::MatrixNd & tau_dirs,
-		ConstraintSet   & CS,
-		ADConstraintSet & ad_CS,
-		Math::VectorNd  & qddot,
-		Math::MatrixNd  & ad_qddot
-		);
+    Model   & model,
+    ADModel & ad_model,
+    const Math::VectorNd & q,
+    const Math::MatrixNd & q_dirs,
+    const Math::VectorNd & qdot,
+    const Math::MatrixNd & qdot_dirs,
+    const Math::VectorNd & tau,
+    const Math::MatrixNd & tau_dirs,
+    ConstraintSet   & CS,
+    ADConstraintSet & ad_CS,
+    Math::VectorNd  & qddot,
+    Math::MatrixNd  & ad_qddot
+    );
 
 /*
 RBDL_DLLAPI
@@ -144,23 +145,23 @@ void ComputeContactImpulsesNullSpace (
 
 RBDL_DLLAPI
 void SolveContactSystemDirect (
-		const Math::MatrixNd &H,
-		const std::vector<Math::MatrixNd> & H_dirs,
-		const Math::MatrixNd &G,
-		const std::vector<Math::MatrixNd> & G_dirs,
-		const Math::VectorNd & c,
-		const Math::MatrixNd & c_dirs,
-		const Math::VectorNd & gamma,
-		const Math::MatrixNd & gamma_dirs,
-		Math::MatrixNd & A,
-		std::vector<Math::MatrixNd> & A_dirs,
-		Math::VectorNd & b,
-		Math::MatrixNd & b_dirs,
-		Math::VectorNd & x,
-		Math::MatrixNd & x_ad,
-		Math::LinearSolver & linear_solver,
-		int ndirs
-		);
+    const Math::MatrixNd &H,
+    const std::vector<Math::MatrixNd> & H_dirs,
+    const Math::MatrixNd &G,
+    const std::vector<Math::MatrixNd> & G_dirs,
+    const Math::VectorNd & c,
+    const Math::MatrixNd & c_dirs,
+    const Math::VectorNd & gamma,
+    const Math::MatrixNd & gamma_dirs,
+    Math::MatrixNd & A,
+    std::vector<Math::MatrixNd> & A_dirs,
+    Math::VectorNd & b,
+    Math::MatrixNd & b_dirs,
+    Math::VectorNd & x,
+    Math::MatrixNd & x_ad,
+    Math::LinearSolver & linear_solver,
+    unsigned ndirs
+    );
 
 /*
 RBDL_DLLAPI

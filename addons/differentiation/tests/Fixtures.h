@@ -1,7 +1,7 @@
 #include "rbdl/rbdl.h"
 
 #include "ModelAD.h"
-#include "ContactsAD.h"
+#include "ConstraintsAD.h"
 
 struct CartPendulum {
     CartPendulum () {

@@ -16,12 +16,11 @@ using namespace RigidBodyDynamics::Utils;
 
 const double TEST_PREC = 1.0e-12;
 
-// -----------------------------------------------------------------------------
-
 using std::cout;
 using std::endl;
 using std::vector;
 
+// -----------------------------------------------------------------------------
 
 SpatialRigidBodyInertia operator* (
     double s,
@@ -123,7 +122,7 @@ TEST(CheckApplyTranspose) {
   std::uniform_real_distribution<> dist(0.0, 1.0);
   std::default_random_engine gen;
 
-  for (int i = 0; i < 100; i++){
+  for (int trial = 0; trial < 100; trial++){
     Matrix3d E = Matrix3d::Random();
     Vector3d r = Vector3d::Random();
 
@@ -141,10 +140,6 @@ TEST(CheckApplyTranspose) {
                 Ixz, Iyz, Izz);
     SpatialTransform        st(E, r);
     SpatialRigidBodyInertia srbi(m, h, I);
-
-    // SpatialRigidBodyInertia m1 = st.applyTranspose(srbi);
-    // SpatialMatrix           m1a = m1.toMatrix();
-    // SpatialMatrix           m2 = st.toMatrixTranspose() * srbi.toMatrix() * st.toMatrix();
 
     unsigned const ndirs = 22;
 
@@ -243,11 +238,11 @@ TEST(CheckApplySTSV) {
     vector<SpatialTransform> st_dirs(ndirs, SpatialTransform::Zero());
     vector<SpatialVector> sv_dirs(ndirs, SpatialVector::Zero());
 
-    SpatialVector ad_res = SpatialVector::Zero();
-    vector<SpatialVector> ad_res_dirs(ndirs, SpatialVector::Zero());
+    SpatialVector ad_res = SpatialVector::Random();
+    vector<SpatialVector> ad_res_dirs(ndirs, SpatialVector::Random());
 
-    SpatialVector fd_res = SpatialVector::Zero();
-    vector<SpatialVector> fd_res_dirs(ndirs, SpatialVector::Zero());
+    SpatialVector fd_res = ad_res;
+    vector<SpatialVector> fd_res_dirs = ad_res_dirs;
 
     unsigned idir = 0;
     for (; idir < 9u; idir++) {
@@ -436,7 +431,7 @@ TEST(CheckAddApplyAdjointSTSV) {
 
 // -----------------------------------------------------------------------------
 
-inline void FDadd_sqrFormSTSM_noalias(
+inline void FDaddSqrFormSTSM_noalias(
     unsigned ndirs,
     SpatialTransform const & st,
     std::vector<SpatialTransform> const & st_dirs,
@@ -463,8 +458,8 @@ inline void FDadd_sqrFormSTSM_noalias(
   }
 }
 
-TEST(CheckAdd_sqrFormSTSM_noalias) {
-  for (int i = 0; i < 100; i++){
+TEST(CheckAddSqrFormSTSM_noalias) {
+  for (unsigned trial = 0; trial < 100; trial++){
     unsigned ndirs = 48;
     Matrix3d E = Matrix3d::Random();
     Vector3d r = Vector3d::Random();
@@ -496,7 +491,7 @@ TEST(CheckAdd_sqrFormSTSM_noalias) {
           sm, sm_dirs,
           ad_res, ad_res_dirs);
 
-    FDadd_sqrFormSTSM_noalias(
+    FDaddSqrFormSTSM_noalias(
           ndirs,
           st, st_dirs,
           sm, sm_dirs,
@@ -508,6 +503,8 @@ TEST(CheckAdd_sqrFormSTSM_noalias) {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 
@@ -570,60 +567,53 @@ void CalcPotentialEnergyADTestTemplate(T & obj) {
 // -----------------------------------------------------------------------------
 
 template <typename T>
-void CalcKineticEnergyADTestTemplate(T & obj) {
+void CalcKineticEnergyADTestTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
   Model & model = obj.model;
   ADModel & ad_model = obj.ad_model;
   VectorNd & q = obj.q;
   VectorNd & qdot = obj.qdot;
 
-  q[0] = 0.3;
-  q[1] = -0.2;
-  qdot[0] = .1;
-  qdot[1] = -.15;
-
   int nrows = model.dof_count;
   int ndirs = 2 * model.dof_count;
 
-  MatrixNd q_dirs = MatrixNd::Zero(nrows, ndirs);
-  MatrixNd qdot_dirs = MatrixNd::Zero(nrows, ndirs);
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    q.setRandom();
+    qdot.setRandom();
+    MatrixNd q_dirs = MatrixNd::Random(nrows, ndirs);
+    MatrixNd qdot_dirs = MatrixNd::Random(nrows, ndirs);
 
-  q_dirs.block(0, 0, nrows, model.dof_count)
-      = MatrixNd::Identity(nrows, model.dof_count);
-  q_dirs.block(0, model.dof_count, nrows, model.dof_count)
-      = MatrixNd::Zero(nrows, model.dof_count);
-  qdot_dirs.block(0, 0, nrows, model.dof_count)
-      = MatrixNd::Zero(nrows, model.dof_count);
-  qdot_dirs.block(0, model.dof_count, nrows, model.dof_count)
-      = MatrixNd::Identity(nrows, model.dof_count);
+    MatrixNd fd_kine = MatrixNd::Zero(1, ndirs);
+    Utils::FD::CalcKineticEnergy(model, q, q_dirs, qdot, qdot_dirs, fd_kine);
 
-  MatrixNd fd_kine = MatrixNd::Zero(1, ndirs);
-  Utils::FD::CalcKineticEnergy(model, q, q_dirs, qdot, qdot_dirs, fd_kine);
+    MatrixNd ad_kine = MatrixNd::Zero(1, ndirs);
+    AD::CalcKineticEnergy(model, ad_model, q, q_dirs, qdot, qdot_dirs, ad_kine, true);
 
-  MatrixNd ad_kine = MatrixNd::Zero(1, ndirs);
-  AD::CalcKineticEnergy(model, ad_model, q, q_dirs, qdot, qdot_dirs, ad_kine, true);
-
-  CHECK_ARRAY_CLOSE(fd_kine.data(), ad_kine.data(), 1 * ndirs, 1e-6);
+    CHECK_ARRAY_CLOSE(fd_kine.data(), ad_kine.data(), 1 * ndirs, array_close_prec);
+  }
 }
 
-//TEST_FIXTURE ( CartPendulum, CartPendulumCalcKineticEnergyADTest) {
-//  CalcKineticEnergyADTestTemplate(*this);
-//}
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcKineticEnergyADTest) {
+  CalcKineticEnergyADTestTemplate(*this, 10, 1e-5);
+}
 
-//TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcKineticEnergyADTest) {
-//  CalcKineticEnergyADTestTemplate(*this);
-//}
+TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcKineticEnergyADTest) {
+  CalcKineticEnergyADTestTemplate(*this, 10, 1e-5);
+}
 
-//TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcKineticEnergyADTest) {
-//  CalcKineticEnergyADTestTemplate(*this);
-//}
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcKineticEnergyADTest) {
+  CalcKineticEnergyADTestTemplate(*this, 10, 1e-5);
+}
 
-//TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcKineticEnergyADTest) {
-//  CalcKineticEnergyADTestTemplate(*this);
-//}
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcKineticEnergyADTest) {
+  CalcKineticEnergyADTestTemplate(*this, 10, 1e-5);
+}
 
-//TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcKineticEnergyADTest) {
-//  CalcKineticEnergyADTestTemplate(*this);
-//}
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcKineticEnergyADTest) {
+  CalcKineticEnergyADTestTemplate(*this, 10, 1e-5);
+}
 
 // -----------------------------------------------------------------------------
 

@@ -244,8 +244,8 @@ RBDL_DLLAPI double CalcKineticEnergy (
   assert(1 == ad_kine.rows());
 
   if (update_kinematics) {
-    RigidBodyDynamics::AD::UpdateKinematicsCustom(model, ad_model,
-                                                  &q, &q_dirs, &qdot, &qdot_dirs, 0, 0);
+    AD::UpdateKinematicsCustom(model, ad_model,
+        &q, &q_dirs, &qdot, &qdot_dirs, 0, 0);
   }
 
   ad_kine.setZero();

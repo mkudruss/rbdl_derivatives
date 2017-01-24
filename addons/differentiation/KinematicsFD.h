@@ -18,8 +18,9 @@ RBDL_DLLAPI Math::Vector3d CalcBodyToBaseCoordinatesSingleFunc (
 		const Math::Vector3d &point_body_coordinates,
 		Math::MatrixNd &out);
 
-RBDL_DLLAPI Math::Vector3d CalcBodyToBaseCoordinates (Model &model,
-    ADModel &ad_model,
+RBDL_DLLAPI Math::Vector3d CalcBodyToBaseCoordinates (
+    Model & model,
+    ADModel * fd_model,
     const Math::VectorNd &q,
     const Math::MatrixNd &q_dirs,
     unsigned int body_id,
@@ -28,6 +29,7 @@ RBDL_DLLAPI Math::Vector3d CalcBodyToBaseCoordinates (Model &model,
 
 RBDL_DLLAPI Math::Vector3d CalcBaseToBodyCoordinates (
     Model & model,
+    ADModel * fd_model,
     Math::VectorNd const & q,
     Math::MatrixNd const & q_dirs,
     unsigned body_id,
@@ -66,16 +68,15 @@ RBDL_DLLAPI Math::Vector3d CalcPointAcceleration (
 
 RBDL_DLLAPI
 void CalcPointJacobian (
-        Model &model,
-        ADModel &ad_model,
-        Math::VectorNd const &Q,
-        Math::MatrixNd const &Q_dirs,
-        unsigned int body_id,
-        Math::Vector3d const &point_position,
-        Math::MatrixNd &G,
-        std::vector<Math::MatrixNd> &G_dirs,
-        bool update_kinematics = true
-        );
+    Model &model,
+    ADModel &ad_model,
+    Math::VectorNd const &q,
+    Math::MatrixNd const &q_dirs,
+    unsigned int body_id,
+    Math::Vector3d const &point_position,
+    Math::MatrixNd &G,
+    std::vector<Math::MatrixNd> &G_dirs,
+    bool update_kinematics = true);
 
 RBDL_DLLAPI
 void UpdateKinematicsCustom (

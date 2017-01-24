@@ -22,7 +22,9 @@ const double TEST_PREC = 1.0e-8;
 // -----------------------------------------------------------------------------
 
 template<typename T>
-void UpdateKinematicsCustomTemplate(T & obj) {
+void UpdateKinematicsCustomTemplate(
+    T & obj,
+    unsigned trial_count) {
   Model   ad_model = obj.model;
   Model   fd_model = obj.model;
   ADModel ad_d_model = obj.ad_model;
@@ -31,221 +33,222 @@ void UpdateKinematicsCustomTemplate(T & obj) {
   int const nq = obj.model.dof_count;
   unsigned ndirs = 3 * nq;
 
-  VectorNd q    = VectorNd::Random(nq);
-  VectorNd qd   = VectorNd::Random(nq);
-  VectorNd qdd  = VectorNd::Random(nq);
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    VectorNd q    = VectorNd::Random(nq);
+    VectorNd qd   = VectorNd::Random(nq);
+    VectorNd qdd  = VectorNd::Random(nq);
 
-  MatrixNd q_dirs(nq, ndirs);
-  MatrixNd qd_dirs(nq, ndirs);
-  MatrixNd qdd_dirs(nq, ndirs);
+    MatrixNd q_dirs = MatrixNd::Random(nq, ndirs);
+    MatrixNd qd_dirs = MatrixNd::Random(nq, ndirs);
+    MatrixNd qdd_dirs = MatrixNd::Random(nq, ndirs);
 
-  q_dirs.setZero();
-  qd_dirs.setZero();
-  qdd_dirs.setZero();
+    AD::UpdateKinematicsCustom(ad_model, ad_d_model, &q, &q_dirs, &qd, &qd_dirs, &qdd, &qdd_dirs);
 
-  for (int i = 0; i < nq; i++) {
-    q_dirs(i, i) = 1.0;
-    qd_dirs(i, nq + i) = 1.0;
-    qdd_dirs(i, 2 * nq + i) = 1.0;
+    FD::UpdateKinematicsCustom(fd_model, fd_d_model, q, q_dirs, qd, qd_dirs, qdd, qdd_dirs);
+
+    checkModelsADvsFD(
+          ndirs,
+          ad_model, ad_d_model,
+          fd_model, fd_d_model);
   }
-
-  AD::UpdateKinematicsCustom(ad_model, ad_d_model, &q, &q_dirs, &qd, &qd_dirs, &qdd, &qdd_dirs);
-
-  FD::UpdateKinematicsCustom(fd_model, fd_d_model, q, q_dirs, qd, qd_dirs, qdd, qdd_dirs);
-
-  checkModelsADvsFD(
-        ndirs,
-        ad_model, ad_d_model,
-        fd_model, fd_d_model);
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumUpdateKinematicsCustom) {
-  UpdateKinematicsCustomTemplate(*this);
+  UpdateKinematicsCustomTemplate(*this, 10);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXUpdateKinematicsCustom) {
-  UpdateKinematicsCustomTemplate(*this);
+  UpdateKinematicsCustomTemplate(*this, 10);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZUpdateKinematicsCustom) {
-  UpdateKinematicsCustomTemplate(*this);
+  UpdateKinematicsCustomTemplate(*this, 10);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpUpdateKinematicsCustom) {
-  UpdateKinematicsCustomTemplate(*this);
+  UpdateKinematicsCustomTemplate(*this, 10);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpUpdateKinematicsCustom) {
-  UpdateKinematicsCustomTemplate(*this);
+  UpdateKinematicsCustomTemplate(*this, 10);
 }
 
 // -----------------------------------------------------------------------------
 
 template <typename T>
-void CalcPointVelocityTemplate(T & obj) {
-    Model   & model = obj.model;
-    ADModel & ad_model = obj.ad_model;
+void CalcPointVelocityTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
+  Model   model = obj.model;
+  ADModel ad_model = obj.ad_model;
 
-    // set up input quantities
-    int const nq = model.dof_count;
-    int const ndirs = 2 * nq;
+  // set up input quantities
+  int const nq = model.dof_count;
+  unsigned const ndirs = 2 * nq;
 
+  for (unsigned trial = 0; trial < trial_count; trial++) {
     Vector3d point_position = Vector3d::Random();
-
     VectorNd q    = VectorNd::Random(nq);
+    MatrixNd q_dirs = MatrixNd::Random(nq, ndirs);
     VectorNd qdot = VectorNd::Random(nq);
-
-    MatrixNd q_dirs(nq, 2 * nq);
-    q_dirs.setZero();
-    q_dirs.block(0, 0, nq, nq) = MatrixNd::Identity(nq, nq);
-
-    MatrixNd qdot_dirs(nq, 2 * nq);
-    qdot_dirs.setZero();
-    qdot_dirs.block(0, nq, nq, nq) = MatrixNd::Identity(nq, nq);
+    MatrixNd qdot_dirs = MatrixNd::Random(nq, ndirs);
 
     // set up no output quantities
     Vector3d G    = Vector3d::Zero ();
-    Vector3d G_ad = Vector3d::Zero ();
-    Vector3d G_fd = Vector3d::Zero ();
+    Vector3d ad_G = Vector3d::Zero ();
+    Vector3d fd_G = Vector3d::Zero ();
 
     // set up derivative output quantities
-    MatrixNd derivative_ad (3, ndirs);
-    MatrixNd derivative_fd (3, ndirs);
+    MatrixNd ad_G_dirs (3, ndirs);
+    MatrixNd fd_G_dirs (3, ndirs);
 
     for (unsigned i = 1; i < model.mBodies.size(); i++) {
-        unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
-        // call nominal version
-        G = CalcPointVelocity (
+      unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
+      // call nominal version
+      G = CalcPointVelocity (
             model, q, qdot, body_id, point_position, true);
 
-        // call FD version
-        G_fd = FD::CalcPointVelocity (model, q, q_dirs, qdot, qdot_dirs,
-            body_id, point_position, derivative_fd);
+      // call FD version
+      fd_G = FD::CalcPointVelocity (model, q, q_dirs, qdot, qdot_dirs,
+                                    body_id, point_position, fd_G_dirs);
 
-        // call AD version
-        G_ad = AD::CalcPointVelocity (model, ad_model, q, q_dirs, qdot,
-            qdot_dirs, body_id, point_position, derivative_ad, true);
+      // call AD version
+      ad_G = AD::CalcPointVelocity (model, ad_model, q, q_dirs, qdot,
+                                    qdot_dirs, body_id, point_position,
+                                    ad_G_dirs, true);
 
-        // nominal check
-        CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
-        CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
-        CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
-
-        // derivative check
-        CHECK_ARRAY_CLOSE(derivative_ad.data(), derivative_fd.data(),
-                          3 * ndirs, TEST_PREC * 1e1);
+      // nominal check
+      CHECK_ARRAY_CLOSE(ad_G.data(), G.data(), G.size(), array_close_prec);
+      CHECK_ARRAY_CLOSE(fd_G.data(), G.data(), G.size(), array_close_prec);
+      CHECK_ARRAY_CLOSE(ad_G.data(), fd_G.data(), G.size(), array_close_prec);
+      // derivative check
+      CHECK_ARRAY_CLOSE(ad_G_dirs.data(), fd_G_dirs.data(),
+                        3 * ndirs, array_close_prec);
     }
+  }
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointVelocity) {
-  CalcPointVelocityTemplate(*this);
+  CalcPointVelocityTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointVelocity) {
-  CalcPointVelocityTemplate(*this);
+  CalcPointVelocityTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointVelocity) {
-  CalcPointVelocityTemplate(*this);
+  CalcPointVelocityTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointVelocity) {
-  CalcPointVelocityTemplate(*this);
+  CalcPointVelocityTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointVelocity) {
-  CalcPointVelocityTemplate(*this);
+  CalcPointVelocityTemplate(*this, 10, 1e-5);
 }
 
 // -----------------------------------------------------------------------------
 
 template <typename T>
-void CalcBaseToBodyCoordinatesTemplate(T & obj) {
-    Model   & model = obj.model;
-    ADModel & ad_model = obj.ad_model;
+void CalcBaseToBodyCoordinatesTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
+  Model   model = obj.model;
+  Model   ad_model = obj.model;
+  Model   fd_model = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
 
-    // set up input quantities
-    int const nq = model.dof_count;
-    int const ndirs = nq;
+  // set up input quantities
+  int const nq = model.dof_count;
+  unsigned const ndirs = nq;
+  bool update_kinematics = true;
 
-    bool update_kinematics = true;
-    Vector3d point_position = Vector3d::Zero();
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    Vector3d point_position = Vector3d::Random();
     MatrixNd point_position_dirs = MatrixNd::Random(3, ndirs);
 
-    VectorNd q = VectorNd::Zero(nq);
+    VectorNd q = VectorNd::Random(nq);
     MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
-
 
     // set up no output quantities
     Vector3d G    = Vector3d::Zero ();
-    Vector3d G_ad = Vector3d::Zero ();
-    Vector3d G_fd = Vector3d::Zero ();
+    Vector3d ad_G = Vector3d::Zero ();
+    Vector3d fd_G = Vector3d::Zero ();
 
     // set up derivative output quantities
-    MatrixNd derivative_ad (3, ndirs);
-    MatrixNd derivative_fd (3, ndirs);
+    MatrixNd ad_G_dirs (3, ndirs);
+    MatrixNd fd_G_dirs (3, ndirs);
 
     for (unsigned i = 1; i < model.mBodies.size(); i++) {
-        unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
-        // call nominal version
-        G = CalcBodyToBaseCoordinates (
-            model, q, body_id, point_position, update_kinematics
-        );
+      unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
 
-        // call FD version
-        G_fd = FD::CalcBaseToBodyCoordinates (
-            model, q, q_dirs, body_id, point_position, point_position_dirs,
-            derivative_fd);
+      G = CalcBaseToBodyCoordinates (
+            model, q, body_id, point_position, update_kinematics);
 
-        // call AD version
-        G_ad = AD::CalcBaseToBodyCoordinates (
-            model, ad_model, q, q_dirs, body_id, point_position,
-            point_position_dirs, derivative_ad, update_kinematics);
+      fd_G = FD::CalcBaseToBodyCoordinates (
+            fd_model, &fd_d_model, q, q_dirs, body_id, point_position,
+            point_position_dirs, fd_G_dirs);
 
-        // compare nominal results
-        CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
-        CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
-        CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
-        CHECK_ARRAY_CLOSE(derivative_ad.data(), derivative_fd.data(),
-                          3 * ndirs, TEST_PREC);
+      ad_G = AD::CalcBaseToBodyCoordinates (
+            ad_model, ad_d_model, q, q_dirs, body_id, point_position,
+            point_position_dirs, ad_G_dirs, update_kinematics);
+
+      checkModelsADvsFD(ndirs,
+                        ad_model, ad_d_model,
+                        fd_model, fd_d_model);
+
+      CHECK_ARRAY_CLOSE(ad_G.data(), G.data(), G.size(), array_close_prec);
+      CHECK_ARRAY_CLOSE(fd_G.data(), G.data(), G.size(), array_close_prec);
+      CHECK_ARRAY_CLOSE(ad_G_dirs.data(), fd_G_dirs.data(),
+                        3 * ndirs, array_close_prec);
     }
+  }
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcBaseToBodyCoordinates) {
-  CalcBaseToBodyCoordinatesTemplate(*this);
+  CalcBaseToBodyCoordinatesTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcBaseToBodyCoordinates) {
-  CalcBaseToBodyCoordinatesTemplate(*this);
+  CalcBaseToBodyCoordinatesTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcBaseToBodyCoordinates) {
-  CalcBaseToBodyCoordinatesTemplate(*this);
+  CalcBaseToBodyCoordinatesTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBaseToBodyCoordinates) {
-  CalcBaseToBodyCoordinatesTemplate(*this);
+  CalcBaseToBodyCoordinatesTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBaseToBodyCoordinates) {
-  CalcBaseToBodyCoordinatesTemplate(*this);
+  CalcBaseToBodyCoordinatesTemplate(*this, 10, 1e-5);
 }
 
 // -----------------------------------------------------------------------------
 
 template <typename T>
-void CalcBodyToBaseCoordinatesTemplate(T & obj) {
-    Model &model = obj.model;
-    ADModel &ad_model = obj.ad_model;
+void CalcBodyToBaseCoordinatesTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
+  Model ad_model = obj.model;
+  Model fd_model = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
 
-    // set up input quantities
-    int const nq = model.dof_count;
-    int const ndirs = nq;
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
 
+  for (unsigned trial = 0; trial < trial_count; trial++) {
     bool update_kinematics = true;
-    Vector3d point_position = Vector3d::Zero();
+    Vector3d point_position = Vector3d::Random();
 
-    VectorNd q = VectorNd::Zero(nq);
+    VectorNd q = VectorNd::Random(nq);
     MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
 
     // set up no output quantities
@@ -257,115 +260,126 @@ void CalcBodyToBaseCoordinatesTemplate(T & obj) {
     MatrixNd derivative_ad (3, ndirs);
     MatrixNd derivative_fd (3, ndirs);
 
-    for (unsigned i = 1; i < model.mBodies.size(); i++) {
-        unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
-        // call nominal version
-        G = CalcBodyToBaseCoordinates (
-            model, q, body_id, point_position, update_kinematics
-        );
+    for (unsigned i = 1; i < ad_model.mBodies.size(); i++) {
+      unsigned int body_id = ad_model.mBodyNameMap[ad_model.GetBodyName(i)];
+      // call nominal version
+      G = CalcBodyToBaseCoordinates (
+            ad_model, q, body_id, point_position, update_kinematics
+            );
 
-        // call FD version
-        G_fd = FD::CalcBodyToBaseCoordinates (
-            model, ad_model,
+      // call FD version
+      G_fd = FD::CalcBodyToBaseCoordinates (
+            fd_model, &fd_d_model,
             q, q_dirs,
             body_id,
             point_position,
             derivative_fd
-        );
+            );
 
-        // call AD version
-        G_ad = AD::CalcBodyToBaseCoordinates (
-            model, ad_model,
+      // call AD version
+      G_ad = AD::CalcBodyToBaseCoordinates (
+            ad_model, ad_d_model,
             q, q_dirs,
             body_id,
             point_position,
             derivative_ad,
             update_kinematics
-        );
+            );
 
-        // compare nominal results
-        CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
-        CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
-        CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
-        CHECK_ARRAY_CLOSE(derivative_ad.data(), derivative_fd.data(),
-                          3 * ndirs, TEST_PREC);
+      checkModelsADvsFD(ndirs,
+                        ad_model, ad_d_model,
+                        fd_model, fd_d_model);
+
+      CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), array_close_prec);
+      CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), array_close_prec);
+      CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), array_close_prec);
+
+      CHECK_ARRAY_CLOSE(derivative_ad.data(), derivative_fd.data(),
+                        3 * ndirs, array_close_prec);
     }
+  }
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyToBaseCoordinates) {
-  CalcBodyToBaseCoordinatesTemplate(*this);
+  CalcBodyToBaseCoordinatesTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcBodyToBaseCoordinates) {
-  CalcBodyToBaseCoordinatesTemplate(*this);
+  CalcBodyToBaseCoordinatesTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcBodyToBaseCoordinates) {
-  CalcBodyToBaseCoordinatesTemplate(*this);
+  CalcBodyToBaseCoordinatesTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBodyToBaseCoordinates) {
-  CalcBodyToBaseCoordinatesTemplate(*this);
+  CalcBodyToBaseCoordinatesTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyToBaseCoordinates) {
-  CalcBodyToBaseCoordinatesTemplate(*this);
+  CalcBodyToBaseCoordinatesTemplate(*this, 10, 1e-6);
 }
 
 // -----------------------------------------------------------------------------
 
 template <typename T>
-void CalcBodyWorldOrientationTemplate(T & obj) {
-    Model & model = obj.model;
-    ADModel & ad_model = obj.ad_model;
-    int const nq = model.dof_count;
+void CalcBodyWorldOrientationTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
+  Model & model = obj.model;
+  ADModel & ad_model = obj.ad_model;
+  int const nq = model.dof_count;
 
-    VectorNd q = VectorNd::Zero(nq);
-    MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+  VectorNd q = VectorNd::Zero(nq);
+  MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
 
-    int ndirs = nq;
-    vector<Matrix3d> ad_derivative(ndirs);
-    vector<Matrix3d> fd_derivative(ndirs);
+  int ndirs = nq;
+  vector<Matrix3d> ad_E_dirs(ndirs);
+  vector<Matrix3d> fd_E_dirs(ndirs);
 
-    int nTrials = 0;
-    do {
-        for (unsigned i = 1; i < model.mBodies.size(); i++) {
-            unsigned id = model.mBodyNameMap[model.GetBodyName(i)];
-            Matrix3d ad_E = AD::CalcBodyWorldOrientation(model, ad_model, q, q_dirs, id, ad_derivative);
-            Matrix3d fd_E = FD::CalcBodyWorldOrientation(model, q, q_dirs, id, fd_derivative);
-            CHECK_ARRAY_CLOSE(ad_E.data(), fd_E.data(), 9, 1e-6);
-            for (int idir = 0; idir < ndirs; idir++) {
-                CHECK_ARRAY_CLOSE(fd_derivative[idir].data(), ad_derivative[idir].data(), 9, 1e-6);
-            }
-        }
-        q = VectorNd::Random(nq);
-    } while(nTrials++ < 10);
+  unsigned trial = 0;
+  do {
+    for (unsigned i = 1; i < model.mBodies.size(); i++) {
+      unsigned id = model.mBodyNameMap[model.GetBodyName(i)];
+      Matrix3d ad_E = AD::CalcBodyWorldOrientation(model, ad_model, q, q_dirs, id, ad_E_dirs);
+      Matrix3d fd_E = FD::CalcBodyWorldOrientation(model, q, q_dirs, id, fd_E_dirs);
+      CHECK_ARRAY_CLOSE(ad_E.data(), fd_E.data(), 9, array_close_prec);
+      for (int idir = 0; idir < ndirs; idir++) {
+        CHECK_ARRAY_CLOSE(fd_E_dirs[idir].data(), ad_E_dirs[idir].data(), 9, array_close_prec);
+      }
+    }
+    q = VectorNd::Random(nq);
+  } while(trial++ < trial_count);
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcBodyWorldOrientation) {
-  CalcBodyWorldOrientationTemplate(*this);
+  CalcBodyWorldOrientationTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcBodyWorldOrientation) {
-  CalcBodyWorldOrientationTemplate(*this);
+  CalcBodyWorldOrientationTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcBodyWorldOrientation) {
-  CalcBodyWorldOrientationTemplate(*this);
+  CalcBodyWorldOrientationTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBodyWorldOrientation) {
-  CalcBodyWorldOrientationTemplate(*this);
+  CalcBodyWorldOrientationTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyWorldOrientation) {
-  CalcBodyWorldOrientationTemplate(*this);
+  CalcBodyWorldOrientationTemplate(*this, 10, 1e-6);
 }
 
 // -----------------------------------------------------------------------------
 
 template <typename T>
-void CalcPointAccelerationTemplate(T & obj) {
+void CalcPointAccelerationTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
   Model   & model    = obj.model;
   ADModel & ad_model = obj.ad_model;
   int const nq       = model.dof_count;
@@ -382,11 +396,11 @@ void CalcPointAccelerationTemplate(T & obj) {
   qdd_dirs.block(0, 2 * nq, nq, nq) = MatrixNd::Identity(nq, nq);
 
   int ndirs = 3 * nq;
-  MatrixNd ad_derivative(3, ndirs);
-  MatrixNd fd_derivative(3, ndirs);
+  MatrixNd ad_a_dirs(3, ndirs);
+  MatrixNd fd_a_dirs(3, ndirs);
 
   Vector3d reference_point = Vector3dZero;
-  int nTrials = 0;
+  unsigned trial = 0;
   do {
     for (unsigned i = 1; i < model.mBodies.size(); i++) {
       unsigned id = model.mBodyNameMap[model.GetBodyName(i)];
@@ -394,129 +408,129 @@ void CalcPointAccelerationTemplate(T & obj) {
             model, ad_model,
             q, q_dirs, qd, qd_dirs, qdd, qdd_dirs,
             id, reference_point,
-            ad_derivative);
+            ad_a_dirs);
       Vector3d fd_a = FD::CalcPointAcceleration(
             model,
             q, q_dirs, qd, qd_dirs, qdd, qdd_dirs,
-            id, reference_point, fd_derivative);
-      CHECK_ARRAY_CLOSE(ad_a.data(), fd_a.data(), 3, 1e-12);
-      CHECK_ARRAY_CLOSE(fd_derivative.data(), ad_derivative.data(),
-                        3 * ndirs, 1e-7);
+            id, reference_point, fd_a_dirs);
+      CHECK_ARRAY_CLOSE(ad_a.data(), fd_a.data(), 3, array_close_prec);
+      CHECK_ARRAY_CLOSE(fd_a_dirs.data(), ad_a_dirs.data(),
+                        3 * ndirs, array_close_prec);
     }
     q   = VectorNd::Random(nq);
     qd  = VectorNd::Random(nq);
     qdd = VectorNd::Random(nq);
-  } while(nTrials++ < 10);
+  } while(trial++ < trial_count);
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointAcceleration) {
-  CalcPointAccelerationTemplate(*this);
+  CalcPointAccelerationTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointAcceleration) {
-  CalcPointAccelerationTemplate(*this);
+  CalcPointAccelerationTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointAcceleration) {
-  CalcPointAccelerationTemplate(*this);
+  CalcPointAccelerationTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointAcceleration) {
-  CalcPointAccelerationTemplate(*this);
+  CalcPointAccelerationTemplate(*this, 10, 1e-6);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointAcceleration) {
-  CalcPointAccelerationTemplate(*this);
+  CalcPointAccelerationTemplate(*this, 10, 1e-6);
 }
 
 // -----------------------------------------------------------------------------
 
 template <typename T>
-void CalcPointJacobianTemplate(T & obj) {
-  // rename for convenience
-  Model& model = obj.model;
-  ADModel& ad_model = obj.ad_model;
+void CalcPointJacobianTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
+  Model model = obj.model;
+  Model ad_model = obj.model;
+  Model fd_model = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
 
-  // set up input quantities
-  int const nq = model.dof_count;
-  int const ndirs = nq;
-
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
   bool update_kinematics = true;
-  Vector3d point_position = Vector3d::Zero();
 
-  VectorNd q = VectorNd::Zero(nq);
-  MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    Vector3d point_position = Vector3d::Random();
 
-  // set up no output quantities
-  MatrixNd G = MatrixNd::Zero (3, nq);
-  MatrixNd G_ad = MatrixNd::Zero (3, nq);
-  MatrixNd G_fd = MatrixNd::Zero (3, nq);
+    VectorNd q = VectorNd::Random(nq);
+    MatrixNd q_dirs = MatrixNd::Random(nq, nq);
 
-  // set up derivative output quantities
-  vector<MatrixNd> derivative_ad (ndirs, G_ad);
-  vector<MatrixNd> derivative_fd (ndirs, G_fd);
+    // set up no output quantities
+    MatrixNd G = MatrixNd::Zero (3, nq);
+    MatrixNd ad_G = MatrixNd::Zero (3, nq);
+    MatrixNd fd_G = MatrixNd::Zero (3, nq);
 
-  for (unsigned i = 1; i < model.mBodies.size(); i++) {
-    unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
-    // call nominal version
-    CalcPointJacobian (
-          model, q, body_id, point_position, G, update_kinematics
-          );
+    // set up derivative output quantities
+    vector<MatrixNd> ad_G_dirs (ndirs, ad_G);
+    vector<MatrixNd> fd_G_dirs (ndirs, fd_G);
 
-    // call AD version
-    AD::CalcPointJacobian (
-          model, ad_model,
-          q, q_dirs,
-          body_id,
-          point_position,
-          G_ad, derivative_ad,
-          update_kinematics
-          );
+    for (unsigned i = 2; i < ad_model.mBodies.size(); i++) {
+      unsigned int body_id = ad_model.mBodyNameMap[ad_model.GetBodyName(i)];
 
-    // call FD version
-    FD::CalcPointJacobian (
-          model, ad_model,
-          q, q_dirs,
-          body_id,
-          point_position,
-          G_fd, derivative_fd,
-          update_kinematics
-          );
+      CalcPointJacobian (
+            model, q, body_id, point_position, G, update_kinematics);
 
-    // compare nominal results
-    CHECK_ARRAY_CLOSE(G_ad.data(), G.data(), G.size(), TEST_PREC);
-    CHECK_ARRAY_CLOSE(G_fd.data(), G.data(), G.size(), TEST_PREC);
-    CHECK_ARRAY_CLOSE(G_ad.data(), G_fd.data(), G.size(), TEST_PREC);
+      AD::CalcPointJacobian (
+            ad_model, ad_d_model,
+            q, q_dirs,
+            body_id,
+            point_position,
+            ad_G, ad_G_dirs,
+            update_kinematics);
 
-    for (int idir = 0; idir < ndirs; idir++) {
-      CHECK_ARRAY_CLOSE(
-            derivative_ad[idir].data(),
-            derivative_fd[idir].data(),
-            derivative_ad[idir].size(),
-            TEST_PREC
-            );
+      FD::CalcPointJacobian (
+            fd_model, fd_d_model,
+            q, q_dirs,
+            body_id,
+            point_position,
+            fd_G, fd_G_dirs,
+            update_kinematics);
+
+      checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+
+      CHECK_ARRAY_CLOSE(ad_G.data(), G.data(), G.size(), array_close_prec);
+      CHECK_ARRAY_CLOSE(fd_G.data(), G.data(), G.size(), array_close_prec);
+
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        CHECK_ARRAY_CLOSE(
+              ad_G_dirs[idir].data(),
+              fd_G_dirs[idir].data(),
+              ad_G_dirs[idir].size(),
+              array_close_prec);
+      }
     }
   }
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointJacobian) {
-  CalcPointJacobianTemplate(*this);
+  CalcPointJacobianTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointJacobian) {
-  CalcPointJacobianTemplate(*this);
+  CalcPointJacobianTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointJacobian) {
-  CalcPointJacobianTemplate(*this);
+  CalcPointJacobianTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointJacobian) {
-  CalcPointJacobianTemplate(*this);
+  CalcPointJacobianTemplate(*this, 10, 1e-5);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian) {
-  CalcPointJacobianTemplate(*this);
+  CalcPointJacobianTemplate(*this, 10, 1e-5);
 }
 
 // -----------------------------------------------------------------------------

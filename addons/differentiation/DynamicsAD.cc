@@ -653,9 +653,8 @@ void CompositeRigidBodyAlgorithm (
   }
   assert (H.rows() == model.dof_count && H.cols() == model.dof_count);
 
-
 	size_t ndirs = q_dirs.cols();
-	ad_model.resize_directions(ndirs);
+//	ad_model.resize_directions(ndirs);
 
   for (unsigned int i = 1; i < model.mBodies.size(); i++) {
     if (update_kinematics) {
@@ -697,35 +696,9 @@ void CompositeRigidBodyAlgorithm (
 
 		unsigned int dof_index_i = model.mJoints[i].q_index;
 
-		// if (model.mJoints[i].mDoFCount == 3) {
-		//  Matrix63 F_63 = model.Ic[i].toMatrix() * model.multdof3_S[i];
-		//  H.block<3,3>(dof_index_i, dof_index_i) = model.multdof3_S[i].toMatrixTranspose() * F_63;
-
-		//  unsigned int j = i;
-		//  unsigned int dof_index_j = dof_index_i;
-
-		//  while (model.lambda[j] != 0) {
-		//      F_63 = model.X_lambda[j].toMatrixTranspose() * (F_63);
-		//      j = model.lambda[j];
-		//      dof_index_j = model.mJoints[j].q_index;
-
-		//      if (model.mJoints[j].mDoFCount == 3) {
-		//          Matrix3d H_temp2 = F_63.transpose() * (model.multdof3_S[j]);
-
-		//          H.block<3,3>(dof_index_i,dof_index_j) = H_temp2;
-		//          H.block<3,3>(dof_index_j,dof_index_i) = H_temp2.transpose();
-		//      } else {
-		//          Vector3d H_temp2 = F_63.transpose() * (model.S[j]);
-
-		//          H.block<3,1>(dof_index_i,dof_index_j) = H_temp2;
-		//          H.block<1,3>(dof_index_j,dof_index_i) = H_temp2.transpose();
-		//      }
-		//  }
-		// } else {
-
 		// derivative evaluation
-		for (unsigned j = 0; j < ndirs; j++) {
-			ad_model.F[i][j] = ad_model.Ic[i][j] * model.S[i];
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_model.F[i][idir] = ad_model.Ic[i][idir] * model.S[i];
 		}
 		// nominal evaluation
 		SpatialVector F = model.Ic[i] * model.S[i];
@@ -742,21 +715,22 @@ void CompositeRigidBodyAlgorithm (
 
 		while (model.lambda[j] != 0) {
 			// derivative evaluation
-      for (size_t idir = 0; idir < ndirs; idir++) {
-        ad_model.F[i][idir] =
-            ad_model.X_lambda[j][idir].applyTranspose (F)
-            + model.X_lambda[j].applyTranspose (ad_model.F[i][idir]);
-			}
-			// nominal evaluation
-			F = model.X_lambda[j].applyTranspose(F);
+      applyTransposeSTSV(ndirs,
+                         model.X_lambda[j], ad_model.X_lambda[j],
+                         F, ad_model.F[i],
+                         F, ad_model.F[i]);
+
+//      for (size_t idir = 0; idir < ndirs; idir++) {
+//        ad_model.F[i][idir] =
+//            ad_model.X_lambda[j][idir].applyTranspose (F)
+//            + model.X_lambda[j].applyTranspose (ad_model.F[i][idir]);
+//			}
+//			// nominal evaluation
+//			F = model.X_lambda[j].applyTranspose(F);
+
 			j = model.lambda[j];
 			dof_index_j = model.mJoints[j].q_index;
 
-			// if (model.mJoints[j].mDoFCount == 3) {
-			//   Vector3d H_temp2 = (F.transpose() * model.multdof3_S[j]).transpose();
-			//   H.block<1,3>(dof_index_i,dof_index_j) = H_temp2.transpose();
-			//   H.block<3,1>(dof_index_j,dof_index_i) = H_temp2;
-			// } else {
 				// derivative evaluation
 				for (unsigned idir = 0; idir < ndirs; idir++) {
 					H_ad[idir](dof_index_i,dof_index_j) = ad_model.F[i][idir].dot(model.S[j]);
@@ -765,7 +739,6 @@ void CompositeRigidBodyAlgorithm (
 				// nominal evaluation
 				H(dof_index_i,dof_index_j) = F.dot(model.S[j]);
 				H(dof_index_j,dof_index_i) = H(dof_index_i,dof_index_j);
-			// }
 		}
 	}
 }
