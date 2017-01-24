@@ -28,51 +28,53 @@ namespace FD {
 
 RBDL_DLLAPI
 void ForwardDynamics(
-    Model& model,
-    ADModel * fd_model, // NULL means execution without fd_model update
-    const Math::VectorNd& q,
-    const Math::MatrixNd& q_dirs,
-    const Math::VectorNd& qdot,
-    const Math::MatrixNd& qdot_dirs,
-    const Math::VectorNd& tau,
-    const Math::MatrixNd& tau_dirs,
-    Math::VectorNd& qddot,
-    Math::MatrixNd& fd_qddot,
-    std::vector<Math::SpatialVector> const * f_ext = NULL,
-    std::vector<std::vector<Math::SpatialVector>> const * f_ext_dirs = NULL);
+    Model &model,
+    ADModel *fd_model, // NULL means execution without fd_model update
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    const Math::VectorNd &qdot,
+    const Math::MatrixNd &qdot_dirs,
+    const Math::VectorNd &tau,
+    const Math::MatrixNd &tau_dirs,
+    Math::VectorNd &qddot,
+    Math::MatrixNd &fd_qddot,
+    std::vector<Math::SpatialVector> const *f_ext = NULL,
+    std::vector<std::vector<Math::SpatialVector>> const *f_ext_dirs = NULL);
 
 RBDL_DLLAPI
 void InverseDynamics(
-    Model& model,
-    ADModel * fd_model, // NULL means execution without fd_model update
-    const Math::VectorNd& q,
-    const Math::MatrixNd& q_dirs,
-    const Math::VectorNd& qdot,
-    const Math::MatrixNd& qdot_dirs,
-    const Math::VectorNd& qddot,
-    const Math::MatrixNd& qddot_dirs,
-    Math::VectorNd& tau,
-    Math::MatrixNd& fd_tau,
-    std::vector<Math::SpatialVector> const * f_ext = NULL,
-    std::vector<std::vector<Math::SpatialVector>> const * f_ext_dirs = NULL);
+    Model &model,
+    ADModel *fd_model, // NULL means execution without fd_model update
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    const Math::VectorNd &qdot,
+    const Math::MatrixNd &qdot_dirs,
+    const Math::VectorNd &qddot,
+    const Math::MatrixNd &qddot_dirs,
+    Math::VectorNd &tau,
+    Math::MatrixNd &fd_tau,
+    std::vector<Math::SpatialVector> const *f_ext = NULL,
+    std::vector<std::vector<Math::SpatialVector>> const *f_ext_dirs = NULL);
 
 RBDL_DLLAPI
 void NonlinearEffects (
-    Model & model,
-    ADModel * fd_model, // NULL means execution without fd_model update
-    const Math::VectorNd & q,
-    const Math::MatrixNd & q_dirs,
-    const Math::VectorNd & qdot,
-    const Math::MatrixNd & qdot_dirs,
-    Math::VectorNd & tau,
-    Math::MatrixNd & fd_tau);
+    Model &model,
+    ADModel *fd_model, // NULL means execution without fd_model update
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    const Math::VectorNd &qdot,
+    const Math::MatrixNd &qdot_dirs,
+    Math::VectorNd &tau,
+    Math::MatrixNd &fd_tau);
 
 RBDL_DLLAPI
 void CompositeRigidBodyAlgorithm (
     Model &model,
-    const Math::VectorNd & q,
-    const Math::MatrixNd & q_dirs,
-    std::vector<Math::MatrixNd> & fd_out);
+    ADModel *fd_model, // NULL means execution without fd_model update
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    Math::MatrixNd &H,
+    std::vector<Math::MatrixNd> &fd_H);
 
 // -----------------------------------------------------------------------------
 } /* FD */

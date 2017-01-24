@@ -292,21 +292,28 @@ void CompositeRigidBodyAlgorithmADTestTemplate(
   Model & model = obj.model;
   for (unsigned i = 0; i < trial_count; i++) {
     MatrixNd q_dirs = MatrixNd::Random (model.qdot_size, model.qdot_size);
-    MatrixNd H = MatrixNd::Random(model.q_size,model.q_size);
+    MatrixNd H_nom = MatrixNd::Random(model.q_size,model.q_size);
+    MatrixNd H_fd = MatrixNd::Random(model.q_size,model.q_size);
+    MatrixNd H_ad = MatrixNd::Random(model.q_size,model.q_size);
     vector<MatrixNd> fd_out(q_dirs.cols());
     vector<MatrixNd> ad_out(q_dirs.cols(),MatrixNd::Zero(model.q_size,model.q_size));
     ADModel ad_model(model);
 
     VectorNd q = VectorNd::Random(model.qdot_size);
-    FD::CompositeRigidBodyAlgorithm(model, q, q_dirs, fd_out);
-    AD::CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, H, ad_out);
+    CompositeRigidBodyAlgorithm(model, q, H_nom, true);
+    FD::CompositeRigidBodyAlgorithm(model, NULL, q, q_dirs, H_fd, fd_out);
+    AD::CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, H_ad, ad_out);
 
-    MatrixNd inertia_test = MatrixNd::Zero(q.size(),q.size());
-    CompositeRigidBodyAlgorithm(model, q, inertia_test, true);
+    CHECK_ARRAY_CLOSE (H_nom.data(), H_fd.data(),
+                       model.q_size * model.q_size,
+                       array_close_prec);
+    CHECK_ARRAY_CLOSE (H_nom.data(), H_ad.data(),
+                       model.q_size * model.q_size,
+                       array_close_prec);
+    CHECK_ARRAY_CLOSE (H_ad.data(), H_fd.data(),
+                       model.q_size * model.q_size,
+                       array_close_prec);
     for (size_t nIdx = 0; nIdx < fd_out.size(); nIdx++) {
-      CHECK_ARRAY_CLOSE (inertia_test.data(), H.data(),
-                         model.q_size * model.q_size,
-                         array_close_prec);
       CHECK_ARRAY_CLOSE (fd_out[nIdx].data(), ad_out[nIdx].data(),
                          model.q_size * model.q_size,
                          array_close_prec);

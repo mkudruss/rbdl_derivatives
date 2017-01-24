@@ -33,7 +33,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
         Vector3d * angular_momentum,
         MatrixNd * fd_angular_momentum) {
 
-    size_t ndirs = q_dirs.cols();
+    unsigned int ndirs = q_dirs.cols();
     assert(ndirs == qdot_dirs.cols());
     assert(ndirs == fd_com.cols());
 
