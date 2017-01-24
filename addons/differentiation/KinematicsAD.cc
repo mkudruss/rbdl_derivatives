@@ -205,21 +205,20 @@ RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinates (
 
 
 RBDL_DLLAPI Vector3d CalcBaseToBodyCoordinates (
-		Model & model,
-		ADModel & ad_model,
-		VectorNd const & q,
-		MatrixNd const & q_dirs,
-		unsigned body_id,
-		Vector3d const & base_point_position,
-		MatrixNd const & base_point_position_dirs,
-		MatrixNd & ad_base_to_body_coordinates,
-		bool update_kinematics
-		) {
-	unsigned ndirs = q_dirs.cols();
-	assert(ndirs == base_point_position_dirs.cols());
-	assert(ndirs == ad_base_to_body_coordinates.cols());
-	assert(3     == base_point_position_dirs.rows());
-	assert(3     == ad_base_to_body_coordinates.rows());
+    Model & model,
+    ADModel & ad_model,
+    VectorNd const & q,
+    MatrixNd const & q_dirs,
+    unsigned body_id,
+    Vector3d const & base_pt_pos,
+    MatrixNd const & base_pt_pos_dirs,
+    MatrixNd & ad_base_to_body_coordinates,
+    bool update_kinematics) {
+  unsigned ndirs = q_dirs.cols();
+  assert(ndirs == base_pt_pos_dirs.cols());
+  assert(ndirs == ad_base_to_body_coordinates.cols());
+  assert(3     == base_pt_pos_dirs.rows());
+  assert(3     == ad_base_to_body_coordinates.rows());
 
   if (update_kinematics) {
     UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
@@ -231,31 +230,27 @@ RBDL_DLLAPI Vector3d CalcBaseToBodyCoordinates (
     abort();
   }
 
-	vector<Matrix3d> ad_body_rotation (ndirs, Matrix3d::Zero());
-	MatrixNd ad_body_position (3, ndirs);
+  vector<Matrix3d> ad_body_rotation (ndirs, Matrix3d::Zero());
+  MatrixNd ad_body_position (3, ndirs);
 
-	// derivative code
-	for (unsigned idir = 0; idir < ndirs; idir++) {
+  // derivative code
+  for (unsigned idir = 0; idir < ndirs; idir++) {
     ad_body_rotation[idir] = ad_model.X_base[body_id][idir].E;
-//        AD::E_from_Matrix(
-//					ad_model.X_base[body_id][idir]);
     ad_body_position.col(idir) = ad_model.X_base[body_id][idir].r;
-//        AD::r_from_Matrix(
-//					model.X_base[body_id].toMatrix(), ad_model.X_base[body_id][idir]);
-	}
-	// nominal code
-	Matrix3d body_rotation = model.X_base[body_id].E;
-	Vector3d body_position = model.X_base[body_id].r;
+  }
+  // nominal code
+  Matrix3d body_rotation = model.X_base[body_id].E;
+  Vector3d body_position = model.X_base[body_id].r;
 
-	// derivative code
-	for (unsigned idir = 0; idir < ndirs; idir++) {
-		ad_base_to_body_coordinates.col(idir) =
-				ad_body_rotation[idir] * (base_point_position - body_position)
-				+ body_rotation * (base_point_position_dirs.col(idir)
-													 - ad_body_position.col(idir));
-	}
-	// nominal code
-	return body_rotation * (base_point_position - body_position);
+  // derivative code
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_base_to_body_coordinates.col(idir) =
+        ad_body_rotation[idir] * (base_pt_pos - body_position)
+        + body_rotation * (base_pt_pos_dirs.col(idir)
+                           - ad_body_position.col(idir));
+  }
+  // nominal code
+  return body_rotation * (base_pt_pos - body_position);
 }
 
 
@@ -278,7 +273,10 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 
 	ad_model.resize_directions(ndirs);
 
-	SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
+  SpatialVector spatial_gravity (0., 0., 0.,
+        model.gravity[0],
+        model.gravity[1],
+        model.gravity[2]);
 
 	// derivative evaluation
   for (unsigned idir = 0; idir < ndirs; ++idir) {
@@ -429,72 +427,46 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 }
 
 RBDL_DLLAPI void UpdateKinematics (
-		Model &model,
-		ADModel &ad_model,
-		const VectorNd &q,
-		const MatrixNd &q_dirs,
-		const VectorNd &qdot,
-		const MatrixNd &qdot_dirs,
-		const VectorNd &qddot,
-		const MatrixNd &qddot_dirs) {
-	LOG << "-------- " << __func__ << " --------" << std::endl;
+    Model &model,
+    ADModel &ad_model,
+    const VectorNd &q,
+    const MatrixNd &q_dirs,
+    const VectorNd &qdot,
+    const MatrixNd &qdot_dirs,
+    const VectorNd &qddot,
+    const MatrixNd &qddot_dirs) {
+  LOG << "-------- " << __func__ << " --------" << std::endl;
 
-	unsigned int i;
-	unsigned int ndirs = q_dirs.cols();
+  unsigned int i;
+  unsigned int ndirs = q_dirs.cols();
 
-	ad_model.resize_directions(ndirs);
+  ad_model.resize_directions(ndirs);
 
-	// derivative evaluation
-	for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-		ad_model.a[0][idirs].setZero();
-	}
-	// nominal evaluation
-	model.a[0].setZero();
-	//model.a[0] = spatial_gravity;
+  // derivative evaluation
+  for (unsigned int idir = 0; idir < ndirs; ++idir) {
+    ad_model.a[0][idir].setZero();
+  }
+  // nominal evaluation
+  model.a[0].setZero();
+  //model.a[0] = spatial_gravity;
 
-	for (i = 1; i < model.mBodies.size(); i++) {
-		unsigned int q_index = model.mJoints[i].q_index;
+  for (i = 1; i < model.mBodies.size(); i++) {
+    unsigned int q_index = model.mJoints[i].q_index;
 
-		Joint joint = model.mJoints[i];
-		unsigned int lambda = model.lambda[i];
+    Joint joint = model.mJoints[i];
+    unsigned int lambda = model.lambda[i];
 
-		// derivative evaluation
-		jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
-		// nominal evaluation
-		// NOTE: nominal evaluation is not needed, because already done in ad_jcalc
-		//jcalc (model, i, q, qdot);
-
-//		// derivative evaluation
-//		for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-//			// NOTE: X_T is a constant model dependent transformation
-//			ad_model.X_lambda[i][idirs] = ad_model.X_J[i][idirs] * model.X_T[i].toMatrix();
-//		}
-//		// nominal evaluation
-//		model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+    // nominal + derivative evaluation
+    jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
 
     mulSTST(model.X_J[i], ad_model.X_J[i],
             model.X_T[i],
             model.X_lambda[i], ad_model.X_lambda[i]);
 
-		if (lambda != 0) {
-
+    if (lambda != 0) {
       mulSTST (model.X_lambda[i], ad_model.X_lambda[i],
                model.X_base[lambda], ad_model.X_base[lambda],
                model.X_base[i], ad_model.X_base[i]);
-
-//			// derivative evaluation
-//			for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-////				ad_model.X_base[i][idirs] =
-////						ad_model.X_lambda[i][idirs] * model.X_base[lambda].toMatrix()
-////						+ model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idirs];
-//        ad_model.v[i][idirs] =
-//            ad_model.X_lambda[i][idirs].apply(model.v[lambda])
-//            + model.X_lambda[i].apply(ad_model.v[lambda][idirs])
-//            + ad_model.v_J[i][idirs];
-//      }
-//      // nominal evaluation
-////			model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
-//      model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
 
       applySTSV(ndirs,
                 model.X_lambda[i], ad_model.X_lambda[i],
@@ -505,35 +477,27 @@ RBDL_DLLAPI void UpdateKinematics (
       }
       model.v[i] += model.v_J[i];
 
-		} else {
-			// derivative evaluation
-			for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-				ad_model.X_base[i][idirs] = ad_model.X_lambda[i][idirs];
-				ad_model.v[i][idirs] = ad_model.v_J[i][idirs];
-			}
-			// nominal evaluation
-			model.X_base[i] = model.X_lambda[i];
-			model.v[i] = model.v_J[i];
-		}
+    } else {
+      // derivative evaluation
+      for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+        ad_model.X_base[i][idirs] = ad_model.X_lambda[i][idirs];
+        ad_model.v[i][idirs] = ad_model.v_J[i][idirs];
+      }
+      // nominal evaluation
+      model.X_base[i] = model.X_lambda[i];
+      model.v[i] = model.v_J[i];
+    }
 
-		// derivative evaluation
+    // derivative evaluation
     for (unsigned idir = 0; idir < ndirs; ++idir) {
       ad_model.c[i][idir] = ad_model.c_J[i][idir]
           + AD::crossm(
             model.v[i], ad_model.v[i][idir],
             model.v_J[i], ad_model.v_J[i][idir]
-						);
-		}
-		// nominal evaluation
+            );
+    }
+    // nominal evaluation
     model.c[i] = model.c_J[i] + Math::crossm(model.v[i],model.v_J[i]);
-
-//    for (unsigned idir = 0; idir < ndirs; idir++) {
-//      ad_model.a[i][idir] =
-//          ad_model.X_lambda[i][idir].apply(model.a[lambda])
-//          + model.X_lambda[i].apply(ad_model.a[lambda][idir])
-//          + ad_model.c[i][idir];
-//    }
-//		model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
 
     applySTSV(ndirs,
               model.X_lambda[i], ad_model.X_lambda[i],
@@ -545,37 +509,31 @@ RBDL_DLLAPI void UpdateKinematics (
     model.a[i] += model.c[i];
 
 
-		if (model.mJoints[i].mDoFCount == 3) {
-			cerr << "Multi-DoF not supported." << endl;
-			abort();
-			/*
-					// derivative evaluation
-					for (int idirs = 0; idirs < ndirs; ++idirs) {
-					}
-					// nominal evaluation
-					Vector3d omegadot_temp (qddot[q_index], qddot[q_index + 1], qddot[q_index + 2]);
-					model.a[i] = model.a[i] + model.multdof3_S[i] * omegadot_temp;
-			*/
-		} else {
-			// derivative evaluation
-			for (unsigned int idir = 0; idir < ndirs; ++idir) {
-				ad_model.a[i][idir] = ad_model.a[i][idir]
-						+ model.S[i] * qddot_dirs(q_index, idir);
-			}
-			// nominal evaluation
-			model.a[i] = model.a[i] + model.S[i] * qddot[q_index];
-		}
-	}
+    if (model.mJoints[i].mDoFCount == 3
+        || model.mJoints[i].mJointType == JointTypeCustom) {
+      cerr << __FILE__ << " " << __LINE__
+           << ": Multi-DoF and custom joints not supported!" << endl;
+      abort();
+    } else {
+      // derivative evaluation
+      for (unsigned int idir = 0; idir < ndirs; ++idir) {
+        ad_model.a[i][idir] = ad_model.a[i][idir]
+            + model.S[i] * qddot_dirs(q_index, idir);
+      }
+      // nominal evaluation
+      model.a[i] = model.a[i] + model.S[i] * qddot[q_index];
+    }
+  }
 
-	for (i = 1; i < model.mBodies.size(); i++) {
-		// derivative evaluation
-		for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-			LOG << "ad_a[" << i << "][" << idirs << "] = "
-					<< ad_model.a[i][idirs].transpose() << std::endl;
-		}
-		// nominal evaluation
-		LOG << "a[" << i << "] = " << model.a[i].transpose() << std::endl;
-	}
+  for (i = 1; i < model.mBodies.size(); i++) {
+    // derivative evaluation
+    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+      LOG << "ad_a[" << i << "][" << idirs << "] = "
+          << ad_model.a[i][idirs].transpose() << std::endl;
+    }
+    // nominal evaluation
+    LOG << "a[" << i << "] = " << model.a[i].transpose() << std::endl;
+  }
 }
 
 
