@@ -9,6 +9,7 @@
 #include "rbdl_utilsAD.h"
 
 #include "SpatialAlgebraOperatorsAD.h"
+#include "ModelCheckADvsFD.h"
 
 using namespace RigidBodyDynamics;
 using namespace RigidBodyDynamics::Math;
@@ -16,9 +17,7 @@ using namespace RigidBodyDynamics::Utils;
 
 const double TEST_PREC = 1.0e-12;
 
-using std::cout;
-using std::endl;
-using std::vector;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 
@@ -86,7 +85,7 @@ SpatialRigidBodyInertia operator -(
 }
 
 
-void applyTransposeFD (
+void FDapplyTransposeSTSI (
     SpatialTransform const & st,
     vector<SpatialTransform> const & st_dirs,
     SpatialRigidBodyInertia const & srbi,
@@ -174,7 +173,7 @@ TEST(CheckApplyTranspose) {
 
     SpatialRigidBodyInertia fd_res;
     vector<SpatialRigidBodyInertia> fd_res_dirs(ndirs);
-    applyTransposeFD(st, st_dirs, srbi, srbi_dirs, fd_res, fd_res_dirs);
+    FDapplyTransposeSTSI(st, st_dirs, srbi, srbi_dirs, fd_res, fd_res_dirs);
 
     CHECK_EQUAL(ad_res.m, fd_res.m);
     CHECK_EQUAL(ad_res.h, fd_res.h);
@@ -203,11 +202,11 @@ TEST(CheckApplyTranspose) {
 inline void FDapplySTSV(
     unsigned ndirs,
     SpatialTransform const & st,
-    std::vector<SpatialTransform> const & st_dirs,
+    vector<SpatialTransform> const & st_dirs,
     SpatialVector const & sv,
-    std::vector<SpatialVector> const & sv_dirs,
+    vector<SpatialVector> const & sv_dirs,
     SpatialVector & res,
-    std::vector<SpatialVector> & res_dirs) {
+    vector<SpatialVector> & res_dirs) {
   assert(ndirs <= st_dirs.size());
   assert(ndirs <= sv_dirs.size());
   assert(ndirs <= res_dirs.size());
@@ -226,8 +225,8 @@ inline void FDapplySTSV(
 }
 
 TEST(CheckApplySTSV) {
-  std::uniform_real_distribution<> dist(0.0, 1.0);
-  std::default_random_engine gen;
+  uniform_real_distribution<> dist(0.0, 1.0);
+  default_random_engine gen;
 
   for (int i = 0; i < 100; i++){
     unsigned ndirs = 18;
@@ -544,25 +543,25 @@ void CalcPotentialEnergyADTestTemplate(T & obj) {
   CHECK_ARRAY_CLOSE(fd_pote.data(), ad_pote.data(), 1 * ndirs, 1e-6);
 }
 
-//TEST_FIXTURE ( CartPendulum, CartPendulumCalcPotentialEnergyADTest) {
-//  CalcPotentialEnergyADTestTemplate(*this);
-//}
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcPotentialEnergyADTest) {
+  CalcPotentialEnergyADTestTemplate(*this);
+}
 
-//TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPotentialEnergyADTest) {
-//  CalcPotentialEnergyADTestTemplate(*this);
-//}
+TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPotentialEnergyADTest) {
+  CalcPotentialEnergyADTestTemplate(*this);
+}
 
-//TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPotentialEnergyADTest) {
-//  CalcPotentialEnergyADTestTemplate(*this);
-//}
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPotentialEnergyADTest) {
+  CalcPotentialEnergyADTestTemplate(*this);
+}
 
-//TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPotentialEnergyADTest) {
-//  CalcPotentialEnergyADTestTemplate(*this);
-//}
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPotentialEnergyADTest) {
+  CalcPotentialEnergyADTestTemplate(*this);
+}
 
-//TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPotentialEnergyADTest) {
-//  CalcPotentialEnergyADTestTemplate(*this);
-//}
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPotentialEnergyADTest) {
+  CalcPotentialEnergyADTestTemplate(*this);
+}
 
 // -----------------------------------------------------------------------------
 
@@ -619,9 +618,10 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcKineticEnergyADTest) {
 
 template<typename T>
 void CalcCenterOfMassADTestTemplate(T & obj) {
-  Model & model = obj.model;
-  ADModel & ad_model = obj.ad_model;
-  ADModel & fd_model = obj.ad_model;
+  Model ad_model = obj.model;
+  Model fd_model = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
 
   VectorNd & q = obj.q;
   VectorNd & qdot = obj.qdot;
@@ -631,20 +631,20 @@ void CalcCenterOfMassADTestTemplate(T & obj) {
   qdot[0] = -.2;
   qdot[1] =  .11;
 
-  int nrows = model.dof_count;
-  int ndirs = 2 * model.dof_count;
+  int nrows = obj.model.dof_count;
+  int ndirs = 2 * obj.model.dof_count;
 
   MatrixNd q_dirs = MatrixNd::Zero(nrows, ndirs);
   MatrixNd qdot_dirs = MatrixNd::Zero(nrows, ndirs);
 
-  q_dirs.block(0, 0, nrows, model.dof_count)
-      = MatrixNd::Identity(nrows, model.dof_count);
-  q_dirs.block(0, model.dof_count, nrows, model.dof_count)
-      = MatrixNd::Zero(nrows, model.dof_count);
-  qdot_dirs.block(0, 0, nrows, model.dof_count)
-      = MatrixNd::Zero(nrows, model.dof_count);
-  qdot_dirs.block(0, model.dof_count, nrows, model.dof_count)
-      = MatrixNd::Identity(nrows, model.dof_count);
+  q_dirs.block(0, 0, nrows, obj.model.dof_count)
+      = MatrixNd::Identity(nrows, obj.model.dof_count);
+  q_dirs.block(0, obj.model.dof_count, nrows, obj.model.dof_count)
+      = MatrixNd::Zero(nrows, obj.model.dof_count);
+  qdot_dirs.block(0, 0, nrows, obj.model.dof_count)
+      = MatrixNd::Zero(nrows, obj.model.dof_count);
+  qdot_dirs.block(0, obj.model.dof_count, nrows, obj.model.dof_count)
+      = MatrixNd::Identity(nrows, obj.model.dof_count);
 
   double   ad_mass;
   Vector3d ad_com;
@@ -653,7 +653,7 @@ void CalcCenterOfMassADTestTemplate(T & obj) {
   MatrixNd ad_d_comVelocity(3, ndirs);
   Vector3d ad_angMomentum(0., 0., 0.);
   MatrixNd ad_d_angMomentum(3, ndirs);
-  AD::CalcCenterOfMass(model, ad_model, q, q_dirs, qdot, qdot_dirs, ad_mass,
+  AD::CalcCenterOfMass(ad_model, ad_d_model, q, q_dirs, qdot, qdot_dirs, ad_mass,
                        ad_com, ad_d_com,
                        &ad_comVelocity, &ad_d_comVelocity,
                        &ad_angMomentum, &ad_d_angMomentum, true);
@@ -665,9 +665,11 @@ void CalcCenterOfMassADTestTemplate(T & obj) {
   MatrixNd fd_d_comVelocity(3, ndirs);
   Vector3d fd_angMomentum(0., 0., 0.);
   MatrixNd fd_d_angMomentum(3, ndirs);
-  FD::CalcCenterOfMass(model, fd_model, q, q_dirs, qdot, qdot_dirs, fd_mass, fd_com,
+  FD::CalcCenterOfMass(fd_model, &fd_d_model, q, q_dirs, qdot, qdot_dirs, fd_mass, fd_com,
                        fd_d_com, &fd_comVelocity, &fd_d_comVelocity,
                        &fd_angMomentum, &fd_d_angMomentum);
+
+  checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
 
   CHECK_EQUAL(ad_mass, fd_mass);
   CHECK_ARRAY_CLOSE(ad_com.data(), fd_com.data(), 3, TEST_PREC);
@@ -678,24 +680,24 @@ void CalcCenterOfMassADTestTemplate(T & obj) {
   CHECK_ARRAY_CLOSE(ad_d_angMomentum.data(), fd_d_angMomentum.data(), 3 * ndirs, 1e-8);
 }
 
-//TEST_FIXTURE( CartPendulum, CartPendulumCalcCenterOfMass) {
-//  CalcCenterOfMassADTestTemplate(*this);
-//}
+TEST_FIXTURE( CartPendulum, CartPendulumCalcCenterOfMass) {
+  CalcCenterOfMassADTestTemplate(*this);
+}
 
-//TEST_FIXTURE( Arm2DofX, Arm2DofXCalcCenterOfMass) {
-//  CalcCenterOfMassADTestTemplate(*this);
-//}
+TEST_FIXTURE( Arm2DofX, Arm2DofXCalcCenterOfMass) {
+  CalcCenterOfMassADTestTemplate(*this);
+}
 
-//TEST_FIXTURE( Arm2DofZ, Arm2DofZCalcCenterOfMass) {
-//  CalcCenterOfMassADTestTemplate(*this);
-//}
+TEST_FIXTURE( Arm2DofZ, Arm2DofZCalcCenterOfMass) {
+  CalcCenterOfMassADTestTemplate(*this);
+}
 
-//TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCalcCenterOfMass) {
-//  CalcCenterOfMassADTestTemplate(*this);
-//}
+TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCalcCenterOfMass) {
+  CalcCenterOfMassADTestTemplate(*this);
+}
 
-//TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCalcCenterOfMass) {
-//  CalcCenterOfMassADTestTemplate(*this);
-//}
+TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCalcCenterOfMass) {
+  CalcCenterOfMassADTestTemplate(*this);
+}
 
 // -----------------------------------------------------------------------------

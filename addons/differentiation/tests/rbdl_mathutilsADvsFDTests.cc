@@ -18,89 +18,80 @@ const double TEST_PREC = 1.0e-12;
 // -----------------------------------------------------------------------------
 
 TEST (crossm_v1v2_ADvsAnalyticTest) {
-    unsigned int ndirs = 20;
+  unsigned ndirs = 20;
 
-    SpatialVector v1 = SpatialVector::Random();
-    SpatialVector v2 = SpatialVector::Random();
-    MatrixNd v1_dirs = MatrixNd::Random(6, ndirs);
-    MatrixNd v2_dirs = MatrixNd::Random(6, ndirs);
+  SpatialVector v1 = SpatialVector::Random();
+  SpatialVector v2 = SpatialVector::Random();
+  MatrixNd v1_dirs = MatrixNd::Random(6, ndirs);
+  MatrixNd v2_dirs = MatrixNd::Random(6, ndirs);
 
-    std::vector<SpatialVector> ad_res (ndirs, SpatialVector::Zero());
-    std::vector<SpatialVector> an_res (ndirs, SpatialVector::Zero());
+  vector<SpatialVector> ad_res (ndirs, SpatialVector::Zero());
+  vector<SpatialVector> an_res (ndirs, SpatialVector::Zero());
 
-    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-        SpatialVector v1_dir = v1_dirs.block(0, idirs, 6, 1);
-        SpatialVector v2_dir = v2_dirs.block(0, idirs, 6, 1);
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    SpatialVector v1_dir = v1_dirs.block(0, idir, 6, 1);
+    SpatialVector v2_dir = v2_dirs.block(0, idir, 6, 1);
 
-        ad_res[idirs] = AD::crossm (v1, v1_dir, v2, v2_dir);
-        an_res[idirs] = crossm (v1_dir, v2) + crossm (v1, v2_dir);
-        CHECK_ARRAY_CLOSE (
-            an_res[idirs].data(), ad_res[idirs].data(), 6, TEST_PREC
-        );
-    }
+    ad_res[idir] = AD::crossm (v1, v1_dir, v2, v2_dir);
+    an_res[idir] = crossm (v1_dir, v2) + crossm (v1, v2_dir);
+    CHECK_ARRAY_CLOSE (
+          an_res[idir].data(), ad_res[idir].data(), 6, TEST_PREC);
+  }
 }
 
 TEST (crossm_v1v2_ADvsFDTest) {
-    double TEST_PREC = 1e-07;
-    unsigned int ndirs = 20;
+  double TEST_PREC = 1e-07;
+  unsigned int ndirs = 20;
 
-    SpatialVector v1 = SpatialVector::Random();
-    SpatialVector v2 = SpatialVector::Random();
-    MatrixNd v1_dirs = MatrixNd::Random(6, ndirs);
-    MatrixNd v2_dirs = MatrixNd::Random(6, ndirs);
+  SpatialVector v1 = SpatialVector::Random();
+  SpatialVector v2 = SpatialVector::Random();
+  MatrixNd v1_dirs = MatrixNd::Random(6, ndirs);
+  MatrixNd v2_dirs = MatrixNd::Random(6, ndirs);
 
-    std::vector<SpatialVector> ad_res (ndirs, SpatialVector::Zero());
-    std::vector<SpatialVector> fd_res (ndirs, SpatialVector::Zero());
+  vector<SpatialVector> ad_res (ndirs, SpatialVector::Zero());
+  vector<SpatialVector> fd_res (ndirs, SpatialVector::Zero());
 
-    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-        SpatialVector v1_dir = v1_dirs.block(0, idirs, 6, 1);
-        SpatialVector v2_dir = v2_dirs.block(0, idirs, 6, 1);
+  for (unsigned int idir = 0; idir < ndirs; idir++) {
+    SpatialVector v1_dir = v1_dirs.block(0, idir, 6, 1);
+    SpatialVector v2_dir = v2_dirs.block(0, idir, 6, 1);
 
-        ad_res[idirs] = AD::crossm (v1, v1_dir, v2, v2_dir);
-        fd_res[idirs] = FD::crossm (v1, v1_dir, v2, v2_dir);
-        CHECK_ARRAY_CLOSE (
-            fd_res[idirs].data(), ad_res[idirs].data(), 6, TEST_PREC
-        );
-    }
+    ad_res[idir] = AD::crossm (v1, v1_dir, v2, v2_dir);
+    fd_res[idir] = FD::crossm (v1, v1_dir, v2, v2_dir);
+    CHECK_ARRAY_CLOSE (
+          fd_res[idir].data(), ad_res[idir].data(), 6, TEST_PREC);
+  }
 }
 
 TEST (crossm_v_ADvsAnalyticTest) {
-    double TEST_PREC = 1e-08;
-    unsigned int ndirs = 20;
+  double TEST_PREC = 1e-08;
+  unsigned ndirs = 20;
 
-    // SpatialVector v = SpatialVector::Random();
-    MatrixNd v_dirs = MatrixNd::Random(6, ndirs);
-
-    std::vector<SpatialMatrix> ad_res (ndirs, SpatialMatrix::Zero());
-    std::vector<SpatialMatrix> an_res (ndirs, SpatialMatrix::Zero());
-
-    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-        SpatialVector v_dir = v_dirs.block(0, idirs, 6, 1);
-
-        ad_res[idirs] = AD::crossm (v_dir);
-        an_res[idirs] = crossm (v_dir);
-        CHECK_ARRAY_CLOSE (an_res[idirs].data(), ad_res[idirs].data(), 6, TEST_PREC);
-    }
-
+  MatrixNd v_dirs = MatrixNd::Random(6, ndirs);
+  vector<SpatialMatrix> ad_res (ndirs, SpatialMatrix::Zero());
+  vector<SpatialMatrix> an_res (ndirs, SpatialMatrix::Zero());
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    SpatialVector v_dir = v_dirs.block(0, idir, 6, 1);
+    ad_res[idir] = AD::crossm (v_dir);
+    an_res[idir] = crossm (v_dir);
+    CHECK_ARRAY_CLOSE (an_res[idir].data(), ad_res[idir].data(), 6, TEST_PREC);
+  }
 }
 
 TEST (crossm_v_ADvsFDTest) {
-    double TEST_PREC = 1e-08;
-    unsigned int ndirs = 20;
+  double TEST_PREC = 1e-08;
+  unsigned int ndirs = 20;
 
-    SpatialVector v = SpatialVector::Random();
-    MatrixNd v_dirs = MatrixNd::Random(6, ndirs);
+  SpatialVector v = SpatialVector::Random();
+  MatrixNd v_dirs = MatrixNd::Random(6, ndirs);
+  vector<SpatialMatrix> ad_res (ndirs, SpatialMatrix::Zero());
+  vector<SpatialMatrix> fd_res (ndirs, SpatialMatrix::Zero());
 
-    std::vector<SpatialMatrix> ad_res (ndirs, SpatialMatrix::Zero());
-    std::vector<SpatialMatrix> fd_res (ndirs, SpatialMatrix::Zero());
-
-    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-        SpatialVector v_dir = v_dirs.block(0, idirs, 6, 1);
-
-        ad_res[idirs] = AD::crossm (v_dir);
-        fd_res[idirs] = FD::crossm (v, v_dir);
-        CHECK_ARRAY_CLOSE (fd_res[idirs].data(), ad_res[idirs].data(), 6, TEST_PREC);
-    }
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    SpatialVector v_dir = v_dirs.block(0, idir, 6, 1);
+    ad_res[idir] = AD::crossm (v_dir);
+    fd_res[idir] = FD::crossm (v, v_dir);
+    CHECK_ARRAY_CLOSE (fd_res[idir].data(), ad_res[idir].data(), 6, TEST_PREC);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -124,7 +115,7 @@ void FDinverse(
 }
 
 TEST(CheckInverse) {
-  for (unsigned i = 0; i < 100; i++){
+  for (unsigned trial = 0; trial < 100; trial++){
     unsigned ndirs = 12u;
     Matrix3d E = Matrix3d::Random();
     Vector3d r = Vector3d::Random();

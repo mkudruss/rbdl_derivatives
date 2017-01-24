@@ -469,10 +469,10 @@ RBDL_DLLAPI void UpdateKinematics (
             model.X_lambda[i], ad_model.X_lambda[i]);
 
     if (lambda != 0) {
-      mulSTST (ndirs,
-               model.X_lambda[i], ad_model.X_lambda[i],
-               model.X_base[lambda], ad_model.X_base[lambda],
-               model.X_base[i], ad_model.X_base[i]);
+      mulSTST(ndirs,
+              model.X_lambda[i], ad_model.X_lambda[i],
+              model.X_base[lambda], ad_model.X_base[lambda],
+              model.X_base[i], ad_model.X_base[i]);
 
       applySTSV(ndirs,
                 model.X_lambda[i], ad_model.X_lambda[i],
@@ -513,7 +513,6 @@ RBDL_DLLAPI void UpdateKinematics (
       ad_model.a[i][idir] += ad_model.c[i][idir];
     }
     model.a[i] += model.c[i];
-
 
     if (model.mJoints[i].mDoFCount == 3
         || model.mJoints[i].mJointType == JointTypeCustom) {
@@ -666,16 +665,6 @@ RBDL_DLLAPI Vector3d CalcPointVelocity (
 			point_spatial_velocity[5]
 			);
 }
-
-/*
- *     // derivative evaluation
-		vector<SpatialVector> ad_p_v_i(ndirs);
-		for (int idir = 0; idir < ndirs; idir++) {
-				ad_p_v_i[idir] = ad_p_X_i[idir] * model.v[reference_body_id]
-												+ p_X_i.apply(ad_model.v[reference_body_id][idir]);
-		}
-		// nominal evaluation
-		SpatialVector p_v_i = p_X_i.apply(model.v[reference_body_id]);*/
 
 RBDL_DLLAPI Vector3d CalcPointAcceleration (
 		Model &model,

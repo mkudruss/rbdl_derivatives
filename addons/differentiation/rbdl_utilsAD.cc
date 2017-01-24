@@ -41,9 +41,8 @@ RBDL_DLLAPI void CalcCenterOfMass (
   }
 
   if (update_kinematics) {
-    RigidBodyDynamics::AD::UpdateKinematicsCustom (
-          model,
-          ad_model, &q, &q_dirs, &qdot, &qdot_dirs, NULL, NULL);
+    UpdateKinematicsCustom (
+          model, ad_model, &q, &q_dirs, &qdot, &qdot_dirs, NULL, NULL);
   }
 
   for (size_t i = 1; i < model.mBodies.size(); i++) {
@@ -58,7 +57,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
     for(int idir = 0; idir < ndirs; idir++) {
       ad_model.hc[i][idir] = model.Ic[i].toMatrix() * ad_model.v[i][idir];
       // + ad_model.Ic[i][idir] * model.v[i];
-      // summand is skipped because it is always zero
+      // summand is omitted because it is always zero
     }
     // nominal evaluation
     model.hc[i] = model.Ic[i].toMatrix() * model.v[i];
@@ -74,12 +73,6 @@ RBDL_DLLAPI void CalcCenterOfMass (
     unsigned int lambda = model.lambda[i];
     if (lambda != 0) {
       // derivative evaluation
-//      for (int idir = 0; idir < ndirs; idir++) {
-//        ad_model.Ic[lambda][idir] = ad_model.Ic[lambda][idir]
-//            + model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix()
-//            + model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix() * ad_model.X_lambda[i][idir]
-//            + ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix() * model.X_lambda[i].toMatrix();
-//      }
       SpatialRigidBodyInertia         summand;
       vector<SpatialRigidBodyInertia> summand_res(ndirs);
       applyTransposeSTSI(
@@ -95,64 +88,38 @@ RBDL_DLLAPI void CalcCenterOfMass (
       for (int idir = 0; idir < ndirs; idir++) {
         ad_model.Ic[lambda][idir] = ad_model.Ic[lambda][idir] + summand_res[idir];
       }
-
       // nominal evaluation
-      model.Ic[lambda] = model.Ic[lambda] + model.X_lambda[i].applyTranspose (model.Ic[i]);
+      model.Ic[lambda] = model.Ic[lambda] + summand;
 
-      // derivative evaluation
-      for (int idir = 0; idir < ndirs; idir++) {
-        ad_model.hc[lambda][idir] =
-            ad_model.hc[lambda][idir]
-            + model.X_lambda[i].applyTranspose (ad_model.hc[i][idir])
-            + ad_model.X_lambda[i][idir].applyTranspose (model.hc[i]);
-      }
-      // nominal evaluation
-      model.hc[lambda] = model.hc[lambda] + model.X_lambda[i].applyTranspose (model.hc[i]);
+      // nominal + derivative evaluation
+      addApplyTransposeSTSV(ndirs,
+                            1.0,
+                            model.X_lambda[i], ad_model.X_lambda[i],
+                            model.hc[i], ad_model.hc[i],
+                            model.hc[lambda], ad_model.hc[lambda]);
     } else {
       // derivative evaluation
-//      for (int idir = 0; idir < ndirs; idir++) {
-//        SpatialMatrix m =
-//            model.X_lambda[i].toMatrixTranspose() * ad_model.Ic[i][idir] * model.X_lambda[i].toMatrix()
-//            + model.X_lambda[i].toMatrixTranspose() * model.Ic[i].toMatrix() * ad_model.X_lambda[i][idir]
-//            + ad_model.X_lambda[i][idir].transpose() * model.Ic[i].toMatrix() * model.X_lambda[i].toMatrix();
-
-//        SpatialRigidBodyInertia m2i;
-//        m2i.createFromMatrix(m);
-//        ad_Itot[idir] = ad_Itot[idir] + m2i;
-//      }
-
       SpatialRigidBodyInertia         summand;
       vector<SpatialRigidBodyInertia> summand_res(ndirs);
       applyTransposeSTSI(
             ndirs,
-            model.X_lambda[i],
-            ad_model.X_lambda[i],
-            model.Ic[i],
-            ad_model.Ic[i],
-            summand,
-            summand_res
+            model.X_lambda[i], ad_model.X_lambda[i],
+            model.Ic[i], ad_model.Ic[i],
+            summand, summand_res
             );
       for (int idir = 0; idir < ndirs; idir++) {
         ad_Itot[idir] = ad_Itot[idir] + summand_res[idir];
       }
-
       // nominal evaluation
-      Itot = Itot + model.X_lambda[i].applyTranspose (model.Ic[i]);
+      Itot = Itot + summand;
 
-      // derivative evaluation
-      for (int idir = 0; idir < ndirs; idir++) {
-        ad_htot[idir] +=
-            model.X_lambda[i].applyTranspose (ad_model.hc[i][idir])
-            + ad_model.X_lambda[i][idir].applyTranspose (model.hc[i]);
-      }
-      // nominal evaluation
-      htot = htot + model.X_lambda[i].applyTranspose (model.hc[i]);
+      // nominal + derivative evaluation
+      addApplyTransposeSTSV(ndirs,
+                            1.0,
+                            model.X_lambda[i], ad_model.X_lambda[i],
+                            model.hc[i], ad_model.hc[i],
+                            htot, ad_htot);
     }
-  }
-
-  std::cout << "AD HTOT = " << std::endl;
-  for (int i = 0; i < ndirs; i++) {
-    std::cout << ad_htot[i].transpose() << std::endl;
   }
 
   mass = Itot.m;
@@ -180,19 +147,21 @@ RBDL_DLLAPI void CalcCenterOfMass (
   }
 
   if (angular_momentum) {
-    // derivative evaluation
+    SpatialTransform xtrans_com = Math::Xtrans(com);
+    vector<SpatialTransform> ad_xtrans_com(ndirs);
     for (int idir = 0; idir < ndirs; idir++) {
-      ad_htot[idir] =
-          Math::Xtrans(com).applyAdjoint(ad_htot[idir])
-          + AD::Xtrans(com, ad_com.block<3,1>(0, idir)).applyAdjoint(htot);
+      ad_xtrans_com[idir] = AD::Xtrans(com, ad_com.block<3,1>(0, idir));
     }
-    // nominal evaluation
-    htot = Math::Xtrans (com).applyAdjoint (htot);
+
+    // derivative + nominal evaluation
+    applyAdjointSTSV(ndirs,
+                     xtrans_com, ad_xtrans_com,
+                     htot, ad_htot,
+                     htot, ad_htot);
 
     // derivative evaluation
     for (int idir = 0; idir < ndirs; idir++) {
       ad_angular_momentum->block<3,1>(0, idir) = ad_htot[idir].block<3, 1>(0, 0);
-      // Vector3d(ad_htot[idir][0], ad_htot[idir][1], ad_htot[idir][2]);
     }
     // nominal evaluation
     angular_momentum->set (htot[0], htot[1], htot[2]);
@@ -205,8 +174,7 @@ RBDL_DLLAPI double CalcPotentialEnergy (
     VectorNd const & q,
     MatrixNd const & q_dirs,
     MatrixNd & ad_pote,
-    bool update_kinematics)
-{
+    bool update_kinematics) {
   int ndirs = q_dirs.cols();
   assert(ad_pote.cols() == ndirs);
   assert(ad_pote.rows() == 1);
