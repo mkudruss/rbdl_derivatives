@@ -141,17 +141,20 @@ void CalcContactSystemVariablesTemplate(
 
     checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
     checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
+    q.setRandom();
+    qd.setRandom();
+    tau.setRandom();
   }
 }
 
-//TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactSystemVariables) {
-//  // add contacts and bind them to constraint set
-//  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
-//  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
-//  constraint_set.Bind (model);
-//  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
-//  CalcContactSystemVariablesTemplate(*this, 10);
-//}
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactSystemVariables) {
+  // add contacts and bind them to constraint set
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+  constraint_set.Bind (model);
+  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
+  CalcContactSystemVariablesTemplate(*this, 10);
+}
 
 // -----------------------------------------------------------------------------
 

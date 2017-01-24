@@ -275,6 +275,35 @@ void checkConstraintSetsADvsFD (
   CHECK_EQUAL(ad_d_cs.C.cols(), fd_d_cs.C.cols());
   CHECK_ARRAY_CLOSE(ad_d_cs.C.data(), fd_d_cs.C.data(),
                     ad_d_cs.C.rows() * ad_d_cs.C.cols(), 1e-6);
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.err.rows(), fd_cs.err.rows());
+  CHECK_ARRAY_CLOSE(ad_cs.err.data(), fd_cs.err.data(), ad_cs.err.rows(), 1e-6);
+  // derivative check
+  CHECK_EQUAL(ad_d_cs.err.rows(), fd_d_cs.err.rows());
+  CHECK_EQUAL(ad_d_cs.err.cols(), fd_d_cs.err.cols());
+  CHECK_ARRAY_CLOSE(ad_d_cs.err.data(), fd_d_cs.err.data(),
+                    ad_d_cs.err.rows() * ad_d_cs.err.cols(), 1e-6);
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.errd.rows(), fd_cs.errd.rows());
+  CHECK_ARRAY_CLOSE(ad_cs.errd.data(), fd_cs.errd.data(),
+                    ad_cs.errd.rows(), 1e-6);
+  // derivative check
+  CHECK_EQUAL(ad_d_cs.errd.rows(), fd_d_cs.errd.rows());
+  CHECK_EQUAL(ad_d_cs.errd.cols(), fd_d_cs.errd.cols());
+  CHECK_ARRAY_CLOSE(ad_d_cs.errd.data(), fd_d_cs.errd.data(),
+                    ad_d_cs.errd.rows() * ad_d_cs.errd.cols(), 1e-6);
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.QDDot_0.rows(), fd_cs.QDDot_0.rows());
+  CHECK_ARRAY_CLOSE(ad_cs.QDDot_0.data(), fd_cs.QDDot_0.data(),
+                    ad_cs.QDDot_0.rows(), 1e-6);
+  // derivative check
+  CHECK_EQUAL(ad_d_cs.QDDot_0.rows(), fd_d_cs.QDDot_0.rows());
+  CHECK_EQUAL(ad_d_cs.QDDot_0.cols(), fd_d_cs.QDDot_0.cols());
+  CHECK_ARRAY_CLOSE(ad_d_cs.QDDot_0.data(), fd_d_cs.QDDot_0.data(),
+                    ad_d_cs.QDDot_0.rows() * ad_d_cs.QDDot_0.cols(), 1e-6);
 }
 
 // -----------------------------------------------------------------------------

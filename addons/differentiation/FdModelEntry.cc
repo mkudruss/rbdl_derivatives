@@ -85,6 +85,8 @@ void computeFDEntry(
   fd_cs.C.col(idir) = (csh.C - cs.C) / h;
   fd_cs.gamma.col(idir) = (csh.gamma - cs.gamma) / h;
   fd_cs.force.col(idir) = (csh.force - cs.force) / h;
+  fd_cs.err.col(idir) = (csh.err - cs.err) / h;
+  fd_cs.errd.col(idir) = (csh.errd - cs.errd) / h;
 }
 
 // -----------------------------------------------------------------------------

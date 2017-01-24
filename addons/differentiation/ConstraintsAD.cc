@@ -27,14 +27,126 @@ ADConstraintSet::ADConstraintSet(const ConstraintSet & CS, int dof_count) {
   C             = MatrixNd::Zero(CS.C.rows(), ndirs);
   gamma         = MatrixNd::Zero(CS.gamma.rows(), ndirs);
   force         = MatrixNd::Zero(CS.force.rows(), ndirs);
+  err           = MatrixNd::Zero(CS.err.rows(), ndirs);
+  errd          = MatrixNd::Zero(CS.errd.rows(), ndirs);
 }
 
 // -----------------------------------------------------------------------------
 namespace AD {
 // -----------------------------------------------------------------------------
 
-RBDL_DLLAPI
-void CalcContactJacobian(
+RBDL_DLLAPI void CalcConstraintsPositionError (
+    Model &model,
+    ADModel &ad_model,
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    ConstraintSet &cs,
+    ADConstraintSet &ad_cs,
+    Math::VectorNd &err,
+    Math::MatrixNd &ad_err,
+    bool update_kinematics) {
+  unsigned const ndirs = q_dirs.cols();
+  assert(static_cast<unsigned>(err.size()) == cs.size());
+  assert(ndirs <= ad_err.cols());
+
+  if(update_kinematics) {
+    UpdateKinematicsCustom(model, ad_model,
+                           &q, &q_dirs,
+                           NULL, NULL, NULL, NULL);
+  }
+
+  for (unsigned int i = 0; i < cs.contactConstraintIndices.size(); i++) {
+    unsigned const c = cs.contactConstraintIndices[i];
+    ad_err.row(c).setZero();
+    err[c] = 0.;
+  }
+
+  for (unsigned int i = 0; i < cs.loopConstraintIndices.size(); i++) {
+    unsigned const lci = cs.loopConstraintIndices[i];
+
+    MatrixNd ad_pos_p(3, ndirs);
+    MatrixNd ad_pos_s(3, ndirs);
+    vector<Matrix3d> ad_rot_p(ndirs);
+    vector<Matrix3d> ad_rot_s(ndirs);
+    vector<Matrix3d> ad_rot_ps(ndirs);
+    vector<SpatialVector> ad_d(ndirs);
+
+    // Variables used for computations.
+    Vector3d pos_p;
+    Vector3d pos_s;
+    Matrix3d rot_p;
+    Matrix3d rot_s;
+    Matrix3d rot_ps;
+    SpatialVector d;
+
+    // Constraints computed in the predecessor body frame.
+
+    // Compute the orientation of the two constraint frames.
+    rot_p = CalcBodyWorldOrientation (model, ad_model, q, q_dirs,
+                                      cs.body_p[lci], ad_rot_p, false);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_rot_p[idir] = ad_rot_p[idir].transpose() * cs.X_p[lci].E;
+    }
+    rot_p = rot_p.transpose() * cs.X_p[lci].E;
+
+    rot_s = CalcBodyWorldOrientation (model, ad_model, q, q_dirs,
+                                      cs.body_s[lci], ad_rot_s, false);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_rot_s[idir] = ad_rot_s[idir].transpose() * cs.X_p[lci].E;
+    }
+    rot_s = rot_s.transpose() * cs.X_s[lci].E;
+
+    // Compute the orientation from the predecessor to the successor frame.
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_rot_ps[idir] =
+          ad_rot_p[idir].transpose() * rot_s
+          + rot_p.transpose() * ad_rot_s[idir];
+    }
+    rot_ps = rot_p.transpose() * rot_s;
+
+    // Compute the position of the two contact points.
+    pos_p = CalcBodyToBaseCoordinates(model, ad_model, q, q_dirs,
+                                      cs.body_p[lci], cs.X_p[lci].r,
+                                      ad_pos_p, false);
+    pos_s = CalcBodyToBaseCoordinates(model, ad_model, q, q_dirs,
+                                      cs.body_s[lci], cs.X_s[lci].r,
+                                      ad_pos_s, false);
+
+    // The first three elemenets represent the rotation error.
+    // This formulation is equivalent to u * sin(theta), where u and theta are
+    // the angle-axis of rotation from the predecessor to the successor frame.
+    // These quantities are expressed in the predecessor frame.
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_d[idir](0) = -0.5 * (ad_rot_ps[idir](1,2) - ad_rot_ps[idir](2,1));
+      ad_d[idir](1) = -0.5 * (ad_rot_ps[idir](2,0) - ad_rot_ps[idir](0,2));
+      ad_d[idir](2) = -0.5 * (ad_rot_ps[idir](0,1) - ad_rot_ps[idir](1,0));
+    }
+    d[0] = -0.5 * (rot_ps(1,2) - rot_ps(2,1));
+    d[1] = -0.5 * (rot_ps(2,0) - rot_ps(0,2));
+    d[2] = -0.5 * (rot_ps(0,1) - rot_ps(1,0));
+
+    // The last three elements represent the position error.
+    // It is equivalent to the difference in the position of the two
+    // constraint points.
+    // The distance is projected on the predecessor frame to be consistent
+    // with the rotation.
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_d[idir].segment<3>(3) =
+          ad_rot_p[idir].transpose() * (pos_s - pos_p)
+          + rot_p.transpose() * (ad_pos_s.col(idir) - ad_pos_p.col(idir));
+    }
+    d.segment<3>(3) = rot_p.transpose() * (pos_s - pos_p);
+
+    // Project the error on the constraint axis to find the actual error.
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_err.col(idir) = cs.constraintAxis[lci].transpose() * ad_d[idir];
+    }
+    err[lci] = cs.constraintAxis[lci].transpose() * d;
+  }
+}
+
+
+RBDL_DLLAPI void CalcContactJacobian(
     Model &model,
     ADModel &ad_model,
     const Math::VectorNd &q,
@@ -165,7 +277,7 @@ void CalcContactSystemVariables (
     const MatrixNd  &tau_dirs,
     ConstraintSet   &CS,
     ADConstraintSet &ad_CS) {
-  int ndirs = q_dirs.cols();
+  unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == tau_dirs.cols());
 
@@ -174,67 +286,73 @@ void CalcContactSystemVariables (
   assert (CS.H.cols() == model.dof_count && CS.H.rows() == model.dof_count);
 
   // Compute H
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_CS.H[idir].setZero();
+  }
+  CS.H.setZero();
   CompositeRigidBodyAlgorithm (model, ad_model, q, q_dirs, CS.H, ad_CS.H, false);
-  /// TODO: Check if false makes sense as last argument here.
 
   // Compute G
   // We have to update model.X_base as they are not automatically computed
   // by NonlinearEffects()
   for (unsigned int i = 1; i < model.mBodies.size(); i++) {
     unsigned int lambda = model.lambda[i];
-    // derivative evaluation
-//    for (int idir = 0; idir < ndirs; idir++) {
-//      ad_model.X_base[i][idir] =
-//          ad_model.X_lambda[i][idir] * model.X_base[lambda] //.toMatrix()
-//          + model.X_lambda[i] .toMatrix() * ad_model.X_base[lambda][idir];
-//    }
-
     mulSTST (ndirs,
              model.X_lambda[i], ad_model.X_lambda[i],
              model.X_base[lambda], ad_model.X_base[lambda],
              model.X_base[i], ad_model.X_base[i]);
-
-    // nominal evaluation
-    model.X_base[i] = model.X_lambda[i] * model.X_base[model.lambda[i]];
   }
   CalcContactJacobian(model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
-  /// TODO: Check if false makes sense as last argument here.
+
+  // Compute position error for Baumgarte Stabilization.
+  CalcConstraintsPositionError (model, ad_model, q, q_dirs,
+                                CS, ad_CS, CS.err, ad_CS.err, false);
+
+  // Compute velocity error for Baugarte stabilization.
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_CS.errd.col(idir) = ad_CS.G[idir] * qdot + CS.G * q_dirs.col(idir);
+  }
+  CS.errd = CS.G * qdot;
 
   // Compute gamma
   unsigned int prev_body_id = 0;
+  MatrixNd ad_prev_body_point = MatrixNd::Zero(3, ndirs);
+  MatrixNd ad_gamma_i = MatrixNd::Zero(3, ndirs);
   Vector3d prev_body_point = Vector3d::Zero();
   Vector3d gamma_i = Vector3d::Zero();
-  MatrixNd ad_gamma_i(gamma_i.rows(), ndirs);
-  // derivative code
-  ad_CS.QDDot_0.setZero();
-  // nominal code
-  CS.QDDot_0.setZero();
-  UpdateKinematicsCustom (model, ad_model, 0, 0, 0, 0, &CS.QDDot_0, &ad_CS.QDDot_0);
-  for (unsigned int i = 0; i < CS.size(); i++) {
-    // only compute point accelerations when necessary
-    if (prev_body_id != CS.body[i] || prev_body_point != CS.point[i]) {
-      // derivative and nominal  code
-      gamma_i = CalcPointAcceleration(model, ad_model, q, q_dirs,
-          qdot, qdot_dirs, CS.QDDot_0, ad_CS.QDDot_0, CS.body[i], CS.point[i],
-          ad_gamma_i, false);
-      /// TODO: Check if false makes sense as last argument here.
-      // nominal code
-      prev_body_id = CS.body[i];
-      prev_body_point = CS.point[i];
-    }
 
-    // we also substract ContactData[i].acceleration such that the contact
-    // point will have the desired acceleration
-    // derivative code
-    for (int idir = 0; idir < ndirs; idir++) {
-      ad_CS.gamma(i, idir) = - CS.normal[i].dot(ad_gamma_i.col(idir));
-    }
-    // nominal code
-    CS.gamma[i] = CS.acceleration[i] - CS.normal[i].dot(gamma_i);
-  }
-  /// TODO: Implement derivative of for loop, esp. CalcPointAcceleration
-  ///
-  ///
+  ad_CS.QDDot_0.setZero();
+  CS.QDDot_0.setZero();
+  UpdateKinematicsCustom(model, ad_model,
+                         NULL, NULL,
+                         NULL, NULL,
+                         &CS.QDDot_0, &ad_CS.QDDot_0);
+
+//  for (unsigned int i = 0; i < CS.size(); i++) {
+//    // only compute point accelerations when necessary
+//    if (prev_body_id != CS.body[i] || prev_body_point != CS.point[i]) {
+//      // derivative and nominal  code
+//      gamma_i = CalcPointAcceleration(model, ad_model, q, q_dirs,
+//          qdot, qdot_dirs, CS.QDDot_0, ad_CS.QDDot_0, CS.body[i], CS.point[i],
+//          ad_gamma_i, false);
+//      /// TODO: Check if false makes sense as last argument here.
+//      // nominal code
+//      prev_body_id = CS.body[i];
+//      prev_body_point = CS.point[i];
+//    }
+
+//    // we also substract ContactData[i].acceleration such that the contact
+//    // point will have the desired acceleration
+//    // derivative code
+//    for (int idir = 0; idir < ndirs; idir++) {
+//      ad_CS.gamma(i, idir) = - CS.normal[i].dot(ad_gamma_i.col(idir));
+//    }
+//    // nominal code
+//    CS.gamma[i] = CS.acceleration[i] - CS.normal[i].dot(gamma_i);
+//  }
+//  /// TODO: Implement derivative of for loop, esp. CalcPointAcceleration
+//  ///
+//  ///
 }
 
 RBDL_DLLAPI

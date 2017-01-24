@@ -269,23 +269,18 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 	unsigned int i;
 	unsigned int ndirs = 0;
 
-	if (q) {
-		ndirs = q_dirs->cols();
-	}
+  if (q) {
+    ndirs = q_dirs->cols();
+    assert(!qdot || qdot_dirs->cols() == ndirs);
+    assert(!qddot || qddot_dirs->cols() == ndirs);
+  } else if(qdot) {
+    ndirs = qdot_dirs->cols();
+    assert(!qddot || qddot_dirs->cols() == ndirs);
+  } else if (qddot) {
+    ndirs = qddot_dirs->cols();
+  }
 
-	ad_model.resize_directions(ndirs);
-
-  SpatialVector spatial_gravity (0., 0., 0.,
-        model.gravity[0],
-        model.gravity[1],
-        model.gravity[2]);
-
-	// derivative evaluation
-  for (unsigned idir = 0; idir < ndirs; ++idir) {
-    ad_model.a[0][idir].setZero();
-	}
-	// nominal evaluation
-	model.a[0].setZero();
+  ad_model.resize_directions(ndirs);
 
 	if (q) {
 		for (i = 1; i < model.mBodies.size(); i++) {
@@ -374,23 +369,12 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
     }
   }
 
-	if (qddot) {
-		for (i = 1; i < model.mBodies.size(); i++) {
-			unsigned int q_index = model.mJoints[i].q_index;
-			unsigned int lambda = model.lambda[i];
+  if (qddot) {
+    for (i = 1; i < model.mBodies.size(); i++) {
+      unsigned int q_index = model.mJoints[i].q_index;
+      unsigned int lambda = model.lambda[i];
 
-			if (lambda != 0) {
-//				// derivative evaluation
-//				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-//          ad_model.a[i][idirs] =
-//              ad_model.X_lambda[i][idirs].apply (model.a[lambda])
-//              + model.X_lambda[i].apply (ad_model.a[lambda][idirs])
-//              + ad_model.c[i][idirs];
-//				}
-//				// nominal evaluation
-//				model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
-
-
+      if (lambda != 0) {
         applySTSV(ndirs,
                   model.X_lambda[i], ad_model.X_lambda[i],
                   model.a[lambda], ad_model.a[lambda],
@@ -399,35 +383,29 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
           ad_model.a[i][idir] += ad_model.c[i][idir];
         }
         model.a[i] += model.c[i];
+      } else {
+        // derivative evaluation
+        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+          ad_model.a[i][idirs] = ad_model.c[i][idirs];
+        }
+        // nominal evaluation
+        model.a[i] = model.c[i];
+      }
 
-			} else {
-				// derivative evaluation
-				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-					ad_model.a[i][idirs] = ad_model.c[i][idirs];
-				}
-				// nominal evaluation
-				model.a[i] = model.c[i];
-			}
-
-			if (model.mJoints[i].mDoFCount == 3) {
-				cerr << "Multi-DoF not supported." << endl;
-				abort();
-				/*
-								// nominal evaluation
-								Vector3d omegadot_temp ((*qddot)[q_index], (*qddot)[q_index + 1], (*qddot)[q_index + 2]);
-								model.a[i] = model.a[i] + model.multdof3_S[i] * omegadot_temp;
-								*/
-			} else {
-				// derivative evaluation
-				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-					ad_model.a[i][idirs] = ad_model.a[i][idirs]
-							+ model.S[i] * (*qddot_dirs)(q_index, idirs);
-				}
-				// nominal evaluation
-				model.a[i] = model.a[i] + model.S[i] * (*qddot)[q_index];
-			}
-		}
-	}
+      if (model.mJoints[i].mDoFCount == 3) {
+        cerr << "Multi-DoF not supported." << endl;
+        abort();
+      } else {
+        // derivative evaluation
+        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+          ad_model.a[i][idirs] = ad_model.a[i][idirs]
+              + model.S[i] * (*qddot_dirs)(q_index, idirs);
+        }
+        // nominal evaluation
+        model.a[i] = model.a[i] + model.S[i] * (*qddot)[q_index];
+      }
+    }
+  }
 }
 
 RBDL_DLLAPI void UpdateKinematics (

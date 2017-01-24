@@ -142,10 +142,10 @@ RBDL_DLLAPI void UpdateKinematicsCustom(
         if (model.mJoints[i].mDoFCount == 1) {
           model.a[i] = model.a[i] + model.S[i] * (*QDDot)[q_index];
         } else if (model.mJoints[i].mDoFCount == 3) {
-          Vector3d omegadot_temp ((*QDDot)[q_index], 
-              (*QDDot)[q_index + 1], 
+          Vector3d omegadot_temp ((*QDDot)[q_index],
+              (*QDDot)[q_index + 1],
               (*QDDot)[q_index + 2]);
-          model.a[i] = model.a[i] 
+          model.a[i] = model.a[i]
             + model.multdof3_S[i] * omegadot_temp;
         }
       } else {

@@ -14,28 +14,42 @@ namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
 
 struct ADConstraintSet {
-	int ndirs;
+  int ndirs;
 
   std::vector<Math::MatrixNd> G;
   std::vector<Math::MatrixNd> Gi;
-	std::vector<Math::MatrixNd> A;
-	std::vector<Math::MatrixNd> H;
-	Math::MatrixNd              b;
-	Math::MatrixNd              v_plus;
-	Math::MatrixNd              x;
-	Math::MatrixNd              impulse;
-	Math::MatrixNd              QDDot_0;
-	Math::MatrixNd              C;
-	Math::MatrixNd              gamma;
-	Math::MatrixNd              force;
+  std::vector<Math::MatrixNd> A;
+  std::vector<Math::MatrixNd> H;
+  Math::MatrixNd              b;
+  Math::MatrixNd              v_plus;
+  Math::MatrixNd              x;
+  Math::MatrixNd              impulse;
+  Math::MatrixNd              QDDot_0;
+  Math::MatrixNd              C;
+  Math::MatrixNd              gamma;
+  Math::MatrixNd              force;
+  Math::MatrixNd              err;
+  Math::MatrixNd              errd;
 
-	ADConstraintSet() {}
-	ADConstraintSet(const ConstraintSet &CS, int dof_count);
+  ADConstraintSet() {}
+  ADConstraintSet(const ConstraintSet &CS, int dof_count);
 };
 
 // -----------------------------------------------------------------------------
 namespace AD {
 // -----------------------------------------------------------------------------
+
+RBDL_DLLAPI void CalcConstraintsPositionError (
+    Model &model,
+    ADModel &ad_model,
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    ConstraintSet &cs,
+    ADConstraintSet &ad_cs,
+    Math::VectorNd &err,
+    Math::MatrixNd &ad_err,
+    bool update_kinematics
+    );
 
 RBDL_DLLAPI
 void CalcContactJacobian(
