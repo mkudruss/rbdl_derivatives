@@ -268,7 +268,7 @@ RBDL_DLLAPI void CalcContactJacobian(
 }
 
 RBDL_DLLAPI
-void CalcContactSystemVariables (
+void CalcConstrainedSystemVariables (
     Model &model,
     ADModel &ad_model,
     const VectorNd  &q,
@@ -312,7 +312,7 @@ void CalcContactSystemVariables (
 
   // Compute velocity error for Baugarte stabilization.
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    ad_CS.errd.col(idir) = ad_CS.G[idir] * qdot + CS.G * q_dirs.col(idir);
+    ad_CS.errd.col(idir) = ad_CS.G[idir] * qdot + CS.G * qdot_dirs.col(idir);
   }
   CS.errd = CS.G * qdot;
 
@@ -469,7 +469,7 @@ RBDL_DLLAPI void ForwardDynamicsContactsDirect (
   assert(ndirs == tau_dirs.cols());
 
   // derivative and nominal code
-  CalcContactSystemVariables (model, ad_model, q, q_dirs, qdot, qdot_dirs,
+  CalcConstrainedSystemVariables (model, ad_model, q, q_dirs, qdot, qdot_dirs,
                               tau, tau_dirs, CS, ad_CS);
 
   // derivative and nominal code

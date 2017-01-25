@@ -64,7 +64,7 @@ void CalcContactJacobian(
 		bool update_kinematics = true
 		);
 
-RBDL_DLLAPI void CalcContactSystemVariables (
+RBDL_DLLAPI void CalcConstrainedSystemVariables (
     Model &model,
     ADModel &ad_model,
     const Math::VectorNd  &q,
