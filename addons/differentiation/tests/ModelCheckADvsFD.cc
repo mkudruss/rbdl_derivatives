@@ -304,6 +304,16 @@ void checkConstraintSetsADvsFD (
   CHECK_EQUAL(ad_d_cs.QDDot_0.cols(), fd_d_cs.QDDot_0.cols());
   CHECK_ARRAY_CLOSE(ad_d_cs.QDDot_0.data(), fd_d_cs.QDDot_0.data(),
                     ad_d_cs.QDDot_0.rows() * ad_d_cs.QDDot_0.cols(), 1e-6);
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.gamma.rows(), fd_cs.gamma.rows());
+  CHECK_ARRAY_CLOSE(ad_cs.gamma.data(), fd_cs.gamma.data(),
+                    ad_cs.gamma.rows(), 1e-6);
+  // derivative check
+  CHECK_EQUAL(ad_d_cs.gamma.rows(), fd_d_cs.gamma.rows());
+  CHECK_EQUAL(ad_d_cs.gamma.cols(), fd_d_cs.gamma.cols());
+  CHECK_ARRAY_CLOSE(ad_d_cs.gamma.data(), fd_d_cs.gamma.data(),
+                    ad_d_cs.gamma.rows() * ad_d_cs.gamma.cols(), 1e-6);
 }
 
 // -----------------------------------------------------------------------------

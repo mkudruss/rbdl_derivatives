@@ -1,6 +1,8 @@
+#include "rbdl/Constraints.h"
 #include "ConstraintsAD.h"
 #include "DynamicsAD.h"
 #include "SpatialAlgebraOperatorsAD.h"
+#include "rbdl_mathutilsAD.h"
 
 #include <iomanip>
 
@@ -202,7 +204,7 @@ RBDL_DLLAPI void CalcContactJacobian(
 
       // Update variables for optimization check.
       prev_body_id_1 = CS.body[c];
-      prev_body_X_1 = Xtrans(CS.point[c]);
+      prev_body_X_1 = RigidBodyDynamics::Xtrans(CS.point[c]);
     }
 
     for(unsigned int j = 0; j < model.dof_count; j++) {
@@ -328,35 +330,126 @@ void CalcContactSystemVariables (
                          NULL, NULL,
                          &CS.QDDot_0, &ad_CS.QDDot_0);
 
-//  for (unsigned int i = 0; i < CS.size(); i++) {
-//    // only compute point accelerations when necessary
-//    if (prev_body_id != CS.body[i] || prev_body_point != CS.point[i]) {
-//      // derivative and nominal  code
-//      gamma_i = CalcPointAcceleration(model, ad_model, q, q_dirs,
-//          qdot, qdot_dirs, CS.QDDot_0, ad_CS.QDDot_0, CS.body[i], CS.point[i],
-//          ad_gamma_i, false);
-//      /// TODO: Check if false makes sense as last argument here.
-//      // nominal code
-//      prev_body_id = CS.body[i];
-//      prev_body_point = CS.point[i];
-//    }
+  for (unsigned int i = 0; i < CS.contactConstraintIndices.size(); i++) {
+    unsigned const c = CS.contactConstraintIndices[i];
 
-//    // we also substract ContactData[i].acceleration such that the contact
-//    // point will have the desired acceleration
-//    // derivative code
-//    for (int idir = 0; idir < ndirs; idir++) {
-//      ad_CS.gamma(i, idir) = - CS.normal[i].dot(ad_gamma_i.col(idir));
-//    }
-//    // nominal code
-//    CS.gamma[i] = CS.acceleration[i] - CS.normal[i].dot(gamma_i);
-//  }
-//  /// TODO: Implement derivative of for loop, esp. CalcPointAcceleration
-//  ///
-//  ///
+    // only compute point accelerations when necessary
+    if (prev_body_id != CS.body[c] || prev_body_point != CS.point[c]) {
+      gamma_i = CalcPointAcceleration(
+            model, ad_model, q, q_dirs, qdot, qdot_dirs,
+            CS.QDDot_0, ad_CS.QDDot_0, CS.body[c], CS.point[c], ad_gamma_i,
+            false);
+      prev_body_id = CS.body[c];
+      prev_body_point = CS.point[c];
+    }
+
+    // we also substract ContactData[c].acceleration such that the contact
+    // point will have the desired acceleration
+    ad_CS.gamma.row(c).segment(0, ndirs) =
+        -CS.normal[c].transpose() * ad_gamma_i;
+    CS.gamma[c] = CS.acceleration[c] - CS.normal[c].dot(gamma_i);
+  }
+
+  for (unsigned int i = 0; i < CS.loopConstraintIndices.size(); i++) {
+    const unsigned int c = CS.loopConstraintIndices[i];
+
+    // Variables used for computations.
+    MatrixNd ad_pos_p(3, ndirs);
+    vector<Matrix3d> ad_rot_p(ndirs);
+    vector<SpatialVector> ad_vel_p(ndirs);
+    vector<SpatialVector> ad_vel_s(ndirs);
+    vector<SpatialVector> ad_axis(ndirs);
+
+    Vector3d pos_p;
+    Matrix3d rot_p;
+    SpatialVector vel_p;
+    SpatialVector vel_s;
+    SpatialVector axis;
+    unsigned int id_p;
+    unsigned int id_s;
+
+    // Force recomputation.
+    prev_body_id = 0;
+
+    // Express the constraint axis in the base frame.
+    // nominal + derivative
+    pos_p = CalcBodyToBaseCoordinates(model, ad_model, q, q_dirs, CS.body_p[c],
+                                      CS.X_p[c].r, ad_pos_p, false);
+    // nominal + derivative
+    rot_p = CalcBodyWorldOrientation(model, ad_model, q, q_dirs, CS.body_p[c],
+                                     ad_rot_p, false);
+    // derivative
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_rot_p[idir] = ad_rot_p[idir].transpose() * CS.X_p[c].E;
+    }
+    // nominal
+    rot_p = rot_p.transpose() * CS.X_p[c].E;
+
+    // derivative + nominal
+    SpatialTransform st(rot_p, pos_p);
+    vector<SpatialTransform> st_dirs(ndirs);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      st_dirs[idir] = SpatialTransform(ad_rot_p[idir], ad_pos_p.col(idir));
+    }
+    applySTSV(ndirs,
+              st, st_dirs,
+              CS.constraintAxis[c],
+              axis, ad_axis);
+
+    // Compute the spatial velocities of the two constrained bodies.
+    vel_p = CalcPointVelocity6D (model, ad_model, q, q_dirs, qdot, qdot_dirs,
+                                 CS.body_p[c], CS.X_p[c].r,
+                                 ad_vel_p, false);
+
+    vel_s = CalcPointVelocity6D (model, ad_model, q, q_dirs, qdot, qdot_dirs,
+                                 CS.body_s[c], CS.X_s[c].r,
+                                 ad_vel_s, false);
+
+    // Check if the bodies involved in the constraint are fixed. If yes, find
+    // their movable parent to access the right value in the a vector.
+    // This is needed because we access the model.a vector directly later.
+    id_p = GetMovableBodyId (model, CS.body_p[c]);
+    id_s = GetMovableBodyId (model, CS.body_s[c]);
+
+    // Problem here if one of the bodies is fixed...
+    // Compute the value of gamma.
+
+    SpatialVector temp_accel =
+        model.a[id_s] - model.a[id_p] + Math::crossm(vel_s, vel_p);
+
+
+
+
+    // derivative
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+
+      SpatialVector ad_temp_accel =
+          ad_model.a[id_s][idir]
+          - ad_model.a[id_p][idir]
+          + AD::crossm(vel_s, ad_vel_s[idir],
+                       vel_p, ad_vel_p[idir]);
+
+      double ad_axis_temp_accel = ad_axis[idir].transpose() * temp_accel;
+
+      ad_CS.gamma(c, idir)
+        = - axis.transpose() * ad_temp_accel
+          - ad_axis_temp_accel
+          - 2. * CS.T_stab_inv[c] * ad_CS.errd(c, idir)
+          - CS.T_stab_inv[c] * CS.T_stab_inv[c] * ad_CS.err(c, idir)
+          ;
+    }
+
+    // nominal
+    CS.gamma[c]
+      // Right hand side term.
+      = - axis.transpose() * temp_accel
+      // Baumgarte stabilization term.
+      - 2. * CS.T_stab_inv[c] * CS.errd[c]
+      - CS.T_stab_inv[c] * CS.T_stab_inv[c] * CS.err[c];
+  }
 }
 
-RBDL_DLLAPI
-void ForwardDynamicsContactsDirect (
+RBDL_DLLAPI void ForwardDynamicsContactsDirect (
     Model   & model,
     ADModel & ad_model,
     const VectorNd & q,

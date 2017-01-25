@@ -609,66 +609,66 @@ void CalcConstrainedSystemVariables (
   CS.QDDot_0.setZero();
   UpdateKinematicsCustom(model, NULL, NULL, &CS.QDDot_0);
 
-//  for (unsigned int i = 0; i < CS.contactConstraintIndices.size(); i++) {
-//    const unsigned int c = CS.contactConstraintIndices[i];
+  for (unsigned int i = 0; i < CS.contactConstraintIndices.size(); i++) {
+    const unsigned int c = CS.contactConstraintIndices[i];
 
-//    // only compute point accelerations when necessary
-//    if (prev_body_id != CS.body[c] || prev_body_point != CS.point[c]) {
-//      gamma_i = CalcPointAcceleration (model, Q, QDot, CS.QDDot_0, CS.body[c]
-//          , CS.point[c], false);
-//      prev_body_id = CS.body[c];
-//      prev_body_point = CS.point[c];
-//    }
+    // only compute point accelerations when necessary
+    if (prev_body_id != CS.body[c] || prev_body_point != CS.point[c]) {
+      gamma_i = CalcPointAcceleration (model, Q, QDot, CS.QDDot_0, CS.body[c]
+          , CS.point[c], false);
+      prev_body_id = CS.body[c];
+      prev_body_point = CS.point[c];
+    }
 
-//    // we also substract ContactData[c].acceleration such that the contact
-//    // point will have the desired acceleration
-//    CS.gamma[c] = CS.acceleration[c] - CS.normal[c].dot(gamma_i);
-//  }
+    // we also substract ContactData[c].acceleration such that the contact
+    // point will have the desired acceleration
+    CS.gamma[c] = CS.acceleration[c] - CS.normal[c].dot(gamma_i);
+  }
 
-//  for (unsigned int i = 0; i < CS.loopConstraintIndices.size(); i++) {
-//    const unsigned int c = CS.loopConstraintIndices[i];
+  for (unsigned int i = 0; i < CS.loopConstraintIndices.size(); i++) {
+    const unsigned int c = CS.loopConstraintIndices[i];
 
-//    // Variables used for computations.
-//    Vector3d pos_p;
-//    Matrix3d rot_p;
-//    SpatialVector vel_p;
-//    SpatialVector vel_s;
-//    SpatialVector axis;
-//    unsigned int id_p;
-//    unsigned int id_s;
+    // Variables used for computations.
+    Vector3d pos_p;
+    Matrix3d rot_p;
+    SpatialVector vel_p;
+    SpatialVector vel_s;
+    SpatialVector axis;
+    unsigned int id_p;
+    unsigned int id_s;
 
-//    // Force recomputation.
-//    prev_body_id = 0;
+    // Force recomputation.
+    prev_body_id = 0;
 
-//    // Express the constraint axis in the base frame.
-//    pos_p = CalcBodyToBaseCoordinates (model, Q, CS.body_p[c], CS.X_p[c].r
-//        , false);
-//    rot_p = CalcBodyWorldOrientation (model, Q, CS.body_p[c], false).transpose()
-//      * CS.X_p[c].E;
-//    axis = SpatialTransform (rot_p, pos_p).apply(CS.constraintAxis[c]);
+    // Express the constraint axis in the base frame.
+    pos_p = CalcBodyToBaseCoordinates (model, Q, CS.body_p[c], CS.X_p[c].r
+        , false);
+    rot_p = CalcBodyWorldOrientation (model, Q, CS.body_p[c], false).transpose()
+      * CS.X_p[c].E;
+    axis = SpatialTransform (rot_p, pos_p).apply(CS.constraintAxis[c]);
 
-//    // Compute the spatial velocities of the two constrained bodies.
-//    vel_p = CalcPointVelocity6D (model, Q, QDot, CS.body_p[c], CS.X_p[c].r
-//        , false);
-//    vel_s = CalcPointVelocity6D (model, Q, QDot, CS.body_s[c], CS.X_s[c].r
-//        , false);
+    // Compute the spatial velocities of the two constrained bodies.
+    vel_p = CalcPointVelocity6D (model, Q, QDot, CS.body_p[c], CS.X_p[c].r
+        , false);
+    vel_s = CalcPointVelocity6D (model, Q, QDot, CS.body_s[c], CS.X_s[c].r
+        , false);
 
-//    // Check if the bodies involved in the constraint are fixed. If yes, find
-//    // their movable parent to access the right value in the a vector.
-//    // This is needed because we access the model.a vector directly later.
-//    id_p = GetMovableBodyId (model, CS.body_p[c]);
-//    id_s = GetMovableBodyId (model, CS.body_s[c]);
+    // Check if the bodies involved in the constraint are fixed. If yes, find
+    // their movable parent to access the right value in the a vector.
+    // This is needed because we access the model.a vector directly later.
+    id_p = GetMovableBodyId (model, CS.body_p[c]);
+    id_s = GetMovableBodyId (model, CS.body_s[c]);
 
-//    // Problem here if one of the bodies is fixed...
-//    // Compute the value of gamma.
-//    CS.gamma[c]
-//      // Right hand side term.
-//      = - axis.transpose() * (model.a[id_s] - model.a[id_p]
-//          + crossm(vel_s, vel_p))
-//      // Baumgarte stabilization term.
-//      - 2. * CS.T_stab_inv[c] * CS.errd[c]
-//      - CS.T_stab_inv[c] * CS.T_stab_inv[c] * CS.err[c];
-//  }
+    // Problem here if one of the bodies is fixed...
+    // Compute the value of gamma.
+    CS.gamma[c]
+      // Right hand side term.
+      = - axis.transpose() * (model.a[id_s] - model.a[id_p]
+          + crossm(vel_s, vel_p))
+      // Baumgarte stabilization term.
+      - 2. * CS.T_stab_inv[c] * CS.errd[c]
+      - CS.T_stab_inv[c] * CS.T_stab_inv[c] * CS.err[c];
+  }
 }
 
 RBDL_DLLAPI

@@ -644,6 +644,76 @@ RBDL_DLLAPI Vector3d CalcPointVelocity (
 			);
 }
 
+RBDL_DLLAPI SpatialVector CalcPointVelocity6D(
+    Model &model,
+    ADModel &ad_model,
+    const VectorNd &q,
+    const MatrixNd &q_dirs,
+    const VectorNd &qdot,
+    const MatrixNd &qdot_dirs,
+    unsigned int body_id,
+    const Vector3d &point_position,
+    vector<SpatialVector> &pv6d_dirs,
+    bool update_kinematics) {
+  unsigned ndirs = q_dirs.cols();
+  assert(ndirs == static_cast<unsigned>(qdot_dirs.cols()));
+  assert(ndirs == static_cast<unsigned>(pv6d_dirs.size()));
+
+  assert (model.IsBodyId(body_id));
+  assert (model.q_size == q.size());
+  assert (model.qdot_size == qdot.size());
+
+  // Reset the velocity of the root body
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_model.v[0][idir].setZero();
+  }
+  model.v[0].setZero();
+
+  // update the Kinematics with zero acceleration
+  if (update_kinematics) {
+    UpdateKinematicsCustom (model, ad_model,
+                            &q, &q_dirs,
+                            &qdot, &qdot_dirs,
+                            NULL, NULL);
+  }
+
+  unsigned int reference_body_id = body_id;
+  MatrixNd reference_point_dirs = MatrixNd::Zero(3, ndirs);
+  Vector3d reference_point = point_position;
+
+  if (model.IsFixedBodyId(body_id)) {
+    unsigned int fbody_id = body_id - model.fixed_body_discriminator;
+    reference_body_id = model.mFixedBodies[fbody_id].mMovableParent;
+
+    MatrixNd base_coords_dirs(3, ndirs);
+    Vector3d base_coords = CalcBodyToBaseCoordinates(
+          model, ad_model, q, q_dirs, body_id,
+          point_position, base_coords_dirs, false);
+
+    reference_point = CalcBaseToBodyCoordinates(
+          model, ad_model, q, q_dirs, reference_body_id,
+          base_coords, base_coords_dirs, reference_point_dirs, false);
+  }
+
+
+  vector<Matrix3d> E_dirs(ndirs);
+  Matrix3d E = CalcBodyWorldOrientation (model, ad_model, q, q_dirs,
+      reference_body_id, E_dirs, false);
+  vector<SpatialTransform> st_dirs(ndirs);
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    st_dirs[idir] = SpatialTransform(E_dirs[idir].transpose(),
+                                     reference_point_dirs.col(idir));
+  }
+  SpatialTransform st(E.transpose(), reference_point);
+
+  SpatialVector pv6d;
+  applySTSV(ndirs,
+            st, st_dirs,
+            model.v[reference_body_id], ad_model.v[reference_body_id],
+            pv6d, pv6d_dirs);
+  return pv6d;
+}
+
 RBDL_DLLAPI Vector3d CalcPointAcceleration (
 		Model &model,
 		ADModel &ad_model,
@@ -656,8 +726,7 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
 		unsigned int body_id,
 		const Math::Vector3d &point_position,
 		Math::MatrixNd &ad_derivative,
-		bool update_kinematics
-		) {
+		bool update_kinematics) {
 	LOG << "-------- " << __func__ << " --------" << std::endl;
 
 	int const ndirs = q_dirs.cols();
