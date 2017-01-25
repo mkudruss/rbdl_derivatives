@@ -16,7 +16,7 @@ SET ( TESTS_SRCS
     DynamicsADvsFDTests.cc
     KinematicsADvsFDTests.cc
     MinimalADvsFDTests.cc
-    ContactsADvsFDTests.cc
+    ConstraintsADvsFDTests.cc
     ModelCheckADvsFD.cc
 )
 

@@ -8,7 +8,7 @@
 #include "rbdl/rbdl_mathutils.h"
 
 #include "ConstraintsAD.h"
-#include "ContactsFD.h"
+#include "ConstraintsFD.h"
 
 #include "ModelCheckADvsFD.h"
 
@@ -92,12 +92,12 @@ void CalcContactJacobianTemplate(
 }
 
 TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobian) {
-    // add contacts and bind them to constraint set
-    constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
-    constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
-    constraint_set.Bind (model);
-    ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
-    CalcContactJacobianTemplate(*this, 10, 1e-5);
+  // add contacts and bind them to constraint set
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+  constraint_set.Bind (model);
+  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
+  CalcContactJacobianTemplate(*this, 10, 1e-5);
 }
 
 // -----------------------------------------------------------------------------
@@ -199,7 +199,7 @@ void ForwardDynamicsConstraintsDirectTemplate(
 
     ForwardDynamicsConstraintsDirect(model, q, qd, tau, cs, qdd);
 
-    AD::ForwardDynamicsContactsDirect(
+    AD::ForwardDynamicsConstraintsDirect(
           ad_model, ad_d_model,
           q, q_dirs,
           qd, qd_dirs,
@@ -295,7 +295,7 @@ TEST (SolveContactSystemDirectTest) {
     MatrixNd ad_x_dirs(nm + nc, ndirs);
     ad_b_dirs.setZero();
     ad_x_dirs.setZero();
-    AD::SolveContactSystemDirect(H, H_dirs, G, G_dirs, c, c_dirs, gamma,
+    AD::SolveConstrainedSystemDirect(H, H_dirs, G, G_dirs, c, c_dirs, gamma,
                                  gamma_dirs, ad_A, ad_A_dirs, ad_b, ad_b_dirs,
                                  ad_x, ad_x_dirs, ls, ndirs);
 

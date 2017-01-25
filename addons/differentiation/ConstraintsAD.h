@@ -77,7 +77,7 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     ADConstraintSet &ad_CS);
 
 RBDL_DLLAPI
-void ForwardDynamicsContactsDirect (
+void ForwardDynamicsConstraintsDirect (
     Model   & model,
     ADModel & ad_model,
     const Math::VectorNd & q,
@@ -160,7 +160,7 @@ void ComputeContactImpulsesNullSpace (
 */
 
 RBDL_DLLAPI
-void SolveContactSystemDirect (
+void SolveConstrainedSystemDirect (
     const Math::MatrixNd &H,
     const std::vector<Math::MatrixNd> & H_dirs,
     const Math::MatrixNd &G,

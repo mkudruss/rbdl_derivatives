@@ -37,6 +37,167 @@ ADConstraintSet::ADConstraintSet(const ConstraintSet & CS, int dof_count) {
 namespace AD {
 // -----------------------------------------------------------------------------
 
+RBDL_DLLAPI
+void ComputeContactImpulsesDirect (
+    Model & model,
+    ADModel & ad_model,
+    const VectorNd & q,
+    const MatrixNd & q_dirs,
+    const VectorNd & qdot_minus,
+    const MatrixNd & qdot_minus_dirs,
+    ConstraintSet & CS,
+    ADConstraintSet & ad_CS,
+    VectorNd & qdot_plus,
+    MatrixNd & ad_qdot_plus) {
+  int ndirs = q_dirs.cols();
+  assert(ndirs == qdot_minus_dirs.cols());
+  assert(ndirs == ad_qdot_plus.cols());
+
+  // Compute H
+  UpdateKinematicsCustom(model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
+
+//  vector<MatrixNd> H_ad(ndirs, CS.H);
+  CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, CS.H, ad_CS.H, false);
+  /// TODO: Check if false makes sense as last argument here.
+
+  // Compute G
+  CalcContactJacobian (model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
+  /// TODO: Check if false makes sense as last argument here.
+
+  VectorNd c = CS.H * qdot_minus;
+  MatrixNd c_ad(CS.H.rows(), ndirs);
+  for (int i = 0; i < ndirs; i++) {
+    c_ad.block(0, i, CS.H.rows(), 1) = CS.H * qdot_minus_dirs.col(i) + ad_CS.H[i] * qdot_minus;
+  }
+
+  SolveConstrainedSystemDirect (CS.H, ad_CS.H, CS.G, ad_CS.G, c, c_ad, CS.v_plus,
+                            ad_CS.v_plus, CS.A, ad_CS.A, CS.b, ad_CS.b,
+                            CS.x, ad_CS.x, CS.linear_solver, ndirs);
+
+  // derivative evaluation
+  ad_qdot_plus = ad_CS.x.block(0, 0, model.dof_count, ndirs);
+  // nominal evaluation
+  //    Copy back QDotPlus
+  qdot_plus = CS.x.segment(0, model.dof_count);
+
+  // derivative evaluation
+  ad_CS.impulse = ad_CS.x.block(model.dof_count, 0, CS.size(), ndirs);
+  // nominal evaluation
+  //    Copy back constraint impulses
+  CS.impulse = CS.x.segment(model.dof_count, CS.size());
+}
+
+RBDL_DLLAPI void SolveConstrainedSystemDirect (
+    const MatrixNd &H,
+    const vector<MatrixNd> & H_dirs,
+    const MatrixNd &G,
+    const vector<MatrixNd> & G_dirs,
+    const VectorNd & c,
+    const MatrixNd & c_dirs,
+    const VectorNd & gamma,
+    const MatrixNd & gamma_dirs,
+    MatrixNd &A,
+    vector<MatrixNd> & A_dirs,
+    VectorNd & b,
+    MatrixNd & b_dirs,
+    VectorNd & x,
+    MatrixNd & x_ad,
+    LinearSolver & linear_solver,
+    unsigned ndirs) {
+  assert(ndirs <= H_dirs.size());
+  assert(ndirs <= G_dirs.size());
+  assert(ndirs <= c_dirs.cols());
+  assert(ndirs <= gamma_dirs.cols());
+  assert(ndirs <= A_dirs.size());
+  assert(ndirs <= b_dirs.cols());
+  assert(ndirs <= x_ad.cols());
+
+  // derivative construction
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    A_dirs[idir].block(0, 0, c.rows(), c.rows())            = H_dirs[idir];
+    A_dirs[idir].block(0, c.rows(), c.rows(), gamma.rows()) =
+        G_dirs[idir].transpose();
+    A_dirs[idir].block(c.rows(), 0, gamma.rows(), c.rows()) = G_dirs[idir];
+    b_dirs.block(0, idir, c.rows(), 1)                      = c_dirs.col(idir);
+    b_dirs.block(c.rows(), idir, gamma.rows(), 1)           = gamma_dirs.col(idir);
+  }
+  // nominal construction
+  //    Build the system: Copy H
+  A.block(0, 0, c.rows(), c.rows()) = H;
+  //    Copy G and G^T
+  A.block(0, c.rows(), c.rows(), gamma.rows()) = G.transpose();
+  A.block(c.rows(), 0, gamma.rows(), c.rows()) = G;
+  //    Build the system: Copy -C + \tau
+  b.block(0, 0, c.rows(), 1) = c;
+  b.block(c.rows(), 0, gamma.rows(), 1) = gamma;
+
+  LOG << "A = " << std::endl << A << std::endl;
+  LOG << "b = " << std::endl << b << std::endl;
+
+  switch (linear_solver) {
+    case (LinearSolverPartialPivLU) :
+#ifdef RBDL_USE_SIMPLE_MATH
+      {
+        cerr << __FILE__ << " " << __LINE__
+             << ": Simple Math not supported." << endl;
+      }
+#else
+      {
+        Eigen::PartialPivLU<MatrixNd::PlainObject> A_LU = A.partialPivLu();
+        // nominal code
+        x = A_LU.solve(b);
+        // derivative code
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          x_ad.col(idir) = A_LU.solve(b_dirs.col(idir) - A_dirs[idir] * x);
+        }
+      }
+#endif
+      break;
+    case (LinearSolverColPivHouseholderQR) :
+      {
+        Eigen::ColPivHouseholderQR<MatrixNd::PlainObject> A_CPQR =
+            A.colPivHouseholderQr();
+        // nominal code
+        x = A_CPQR.solve(b);
+        // derivative code
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          x_ad.col(idir) = A_CPQR.solve(b_dirs.col(idir) - A_dirs[idir] * x);
+        }
+      }
+      break;
+    case (LinearSolverHouseholderQR) :
+      {
+        Eigen::HouseholderQR<MatrixNd::PlainObject> A_QR = A.householderQr();
+        // nominal evaluation
+        x = A_QR.solve(b);
+        // derivative evaluation
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          x_ad.col(idir) = A_QR.solve(b_dirs.col(idir) - A_dirs[idir] * x);
+        }
+      }
+      break;
+//    case (LinearSolverLLT) :
+//      {
+//        Eigen::LLT<MatrixNd::PlainObject> A_LLT = A.llt();
+//        // nominal code
+//        x = A_LLT.solve(b);
+//        // derivative code
+//        for (int i = 0; i < ndirs; i++) {
+//          x_ad.col(i) = A_LLT.solve(b_dirs.col(i) - A_dirs[i] * x);
+//        }
+//      }
+//      break;
+/// TODO: Add support for this solver also.
+    default:
+      LOG << "Error: Invalid linear solver: " << linear_solver << std::endl;
+      cerr << __FILE__ << " " << __LINE__
+           << ": Error: Invalid linear solver: " << linear_solver << std::endl;
+      assert (0);
+      break;
+  }
+  LOG << "x = " << std::endl << x << std::endl;
+}
+
 RBDL_DLLAPI void CalcConstraintsPositionError (
     Model &model,
     ADModel &ad_model,
@@ -54,7 +215,8 @@ RBDL_DLLAPI void CalcConstraintsPositionError (
   if(update_kinematics) {
     UpdateKinematicsCustom(model, ad_model,
                            &q, &q_dirs,
-                           NULL, NULL, NULL, NULL);
+                           NULL, NULL,
+                           NULL, NULL);
   }
 
   for (unsigned int i = 0; i < cs.contactConstraintIndices.size(); i++) {
@@ -147,16 +309,15 @@ RBDL_DLLAPI void CalcConstraintsPositionError (
   }
 }
 
-
 RBDL_DLLAPI void CalcContactJacobian(
     Model &model,
     ADModel &ad_model,
-    const Math::VectorNd &q,
-    const Math::MatrixNd &q_dirs,
-    ConstraintSet & CS,
-    ADConstraintSet & ad_CS,
-    Math::MatrixNd &G,
-    vector<Math::MatrixNd> &G_dirs,
+    const VectorNd   &q,
+    const MatrixNd   &q_dirs,
+    ConstraintSet    &CS,
+    ADConstraintSet  &ad_CS,
+    MatrixNd         &G,
+    vector<MatrixNd> &G_dirs,
     bool update_kinematics) {
   unsigned int ndirs = q_dirs.cols();
   assert(ndirs <= G_dirs.size());
@@ -267,8 +428,7 @@ RBDL_DLLAPI void CalcContactJacobian(
 //  }
 }
 
-RBDL_DLLAPI
-void CalcConstrainedSystemVariables (
+RBDL_DLLAPI void CalcConstrainedSystemVariables (
     Model &model,
     ADModel &ad_model,
     const VectorNd  &q,
@@ -417,9 +577,6 @@ void CalcConstrainedSystemVariables (
     SpatialVector temp_accel =
         model.a[id_s] - model.a[id_p] + Math::crossm(vel_s, vel_p);
 
-
-
-
     // derivative
     for (unsigned idir = 0; idir < ndirs; idir++) {
 
@@ -435,8 +592,7 @@ void CalcConstrainedSystemVariables (
         = - axis.transpose() * ad_temp_accel
           - ad_axis_temp_accel
           - 2. * CS.T_stab_inv[c] * ad_CS.errd(c, idir)
-          - CS.T_stab_inv[c] * CS.T_stab_inv[c] * ad_CS.err(c, idir)
-          ;
+          - CS.T_stab_inv[c] * CS.T_stab_inv[c] * ad_CS.err(c, idir);
     }
 
     // nominal
@@ -449,24 +605,23 @@ void CalcConstrainedSystemVariables (
   }
 }
 
-RBDL_DLLAPI void ForwardDynamicsContactsDirect (
-    Model   & model,
-    ADModel & ad_model,
-    const VectorNd & q,
-    const MatrixNd & q_dirs,
-    const VectorNd & qdot,
-    const MatrixNd & qdot_dirs,
-    const VectorNd & tau,
-    const MatrixNd & tau_dirs,
-    ConstraintSet & CS,
-    ADConstraintSet & ad_CS,
-    VectorNd & qddot,
-    MatrixNd & ad_qddot
-    ) {
+RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
+    Model   &model,
+    ADModel &ad_model,
+    const VectorNd &q,
+    const MatrixNd &q_dirs,
+    const VectorNd &qdot,
+    const MatrixNd &qdot_dirs,
+    const VectorNd &tau,
+    const MatrixNd &tau_dirs,
+    ConstraintSet &CS,
+    ADConstraintSet &ad_CS,
+    VectorNd &qddot,
+    MatrixNd &ad_qddot) {
   LOG << "-------- " << __func__ << " --------" << std::endl;
-  int ndirs = q_dirs.cols();
-  assert(ndirs == qdot_dirs.cols());
-  assert(ndirs == tau_dirs.cols());
+  unsigned const ndirs = q_dirs.cols();
+  assert(ndirs == static_cast<unsigned>(qdot_dirs.cols()));
+  assert(ndirs == static_cast<unsigned>(tau_dirs.cols()));
 
   // derivative and nominal code
   CalcConstrainedSystemVariables (model, ad_model, q, q_dirs, qdot, qdot_dirs,
@@ -475,10 +630,10 @@ RBDL_DLLAPI void ForwardDynamicsContactsDirect (
   // derivative and nominal code
   VectorNd c    = tau - CS.C;
   MatrixNd ad_c(c.rows(), ndirs);
-  for (int idir = 0; idir < ndirs; idir++) {
+  for (unsigned idir = 0; idir < ndirs; idir++) {
     ad_c.col(idir) = tau_dirs.col(idir) - ad_CS.C.col(idir);
   }
-  SolveContactSystemDirect (CS.H, ad_CS.H, CS.G, ad_CS.G, c, ad_c,
+  SolveConstrainedSystemDirect (CS.H, ad_CS.H, CS.G, ad_CS.G, c, ad_c,
                             CS.gamma, ad_CS.gamma, CS.A, ad_CS.A, CS.b, ad_CS.b,
                             CS.x, ad_CS.x, CS.linear_solver, ndirs);
 
@@ -494,169 +649,6 @@ RBDL_DLLAPI void ForwardDynamicsContactsDirect (
   // nominal code
   CS.force    = -CS.x.segment(model.dof_count, CS.size());
 }
-
-RBDL_DLLAPI
-void ComputeContactImpulsesDirect (
-    Model & model,
-    ADModel & ad_model,
-    const VectorNd & q,
-    const MatrixNd & q_dirs,
-    const VectorNd & qdot_minus,
-    const MatrixNd & qdot_minus_dirs,
-    ConstraintSet & CS,
-    ADConstraintSet & ad_CS,
-    VectorNd & qdot_plus,
-    MatrixNd & ad_qdot_plus
-) {
-  int ndirs = q_dirs.cols();
-  assert(ndirs == qdot_minus_dirs.cols());
-  assert(ndirs == ad_qdot_plus.cols());
-
-  // Compute H
-  UpdateKinematicsCustom(model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
-
-//  vector<MatrixNd> H_ad(ndirs, CS.H);
-  CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, CS.H, ad_CS.H, false);
-  /// TODO: Check if false makes sense as last argument here.
-
-  // Compute G
-  CalcContactJacobian (model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
-  /// TODO: Check if false makes sense as last argument here.
-
-  VectorNd c = CS.H * qdot_minus;
-  MatrixNd c_ad(CS.H.rows(), ndirs);
-  for (int i = 0; i < ndirs; i++) {
-    c_ad.block(0, i, CS.H.rows(), 1) = CS.H * qdot_minus_dirs.col(i) + ad_CS.H[i] * qdot_minus;
-  }
-
-  SolveContactSystemDirect (CS.H, ad_CS.H, CS.G, ad_CS.G, c, c_ad, CS.v_plus,
-                            ad_CS.v_plus, CS.A, ad_CS.A, CS.b, ad_CS.b,
-                            CS.x, ad_CS.x, CS.linear_solver, ndirs);
-
-  // derivative evaluation
-  ad_qdot_plus = ad_CS.x.block(0, 0, model.dof_count, ndirs);
-  // nominal evaluation
-  //    Copy back QDotPlus
-  qdot_plus = CS.x.segment(0, model.dof_count);
-
-  // derivative evaluation
-  ad_CS.impulse = ad_CS.x.block(model.dof_count, 0, CS.size(), ndirs);
-  // nominal evaluation
-  //    Copy back constraint impulses
-  CS.impulse = CS.x.segment(model.dof_count, CS.size());
-}
-
-RBDL_DLLAPI
-void SolveContactSystemDirect (
-    const MatrixNd &H,
-    const vector<MatrixNd> & H_dirs,
-    const MatrixNd &G,
-    const vector<MatrixNd> & G_dirs,
-    const VectorNd & c,
-    const MatrixNd & c_dirs,
-    const VectorNd & gamma,
-    const MatrixNd & gamma_dirs,
-    MatrixNd &A,
-    vector<MatrixNd> & A_dirs,
-    VectorNd & b,
-    MatrixNd & b_dirs,
-    VectorNd & x,
-    MatrixNd & x_ad,
-    LinearSolver & linear_solver,
-    unsigned ndirs) {
-  assert(ndirs <= H_dirs.size());
-  assert(ndirs <= G_dirs.size());
-  assert(ndirs <= c_dirs.cols());
-  assert(ndirs <= gamma_dirs.cols());
-  assert(ndirs <= A_dirs.size());
-  assert(ndirs <= b_dirs.cols());
-  assert(ndirs <= x_ad.cols());
-
-  // derivative construction
-  for (unsigned idir = 0; idir < ndirs; idir++) {
-    A_dirs[idir].block(0, 0, c.rows(), c.rows())            = H_dirs[idir];
-    A_dirs[idir].block(0, c.rows(), c.rows(), gamma.rows()) =
-        G_dirs[idir].transpose();
-    A_dirs[idir].block(c.rows(), 0, gamma.rows(), c.rows()) = G_dirs[idir];
-    b_dirs.block(0, idir, c.rows(), 1)                      = c_dirs.col(idir);
-    b_dirs.block(c.rows(), idir, gamma.rows(), 1)           = gamma_dirs.col(idir);
-  }
-  // nominal construction
-  //    Build the system: Copy H
-  A.block(0, 0, c.rows(), c.rows()) = H;
-  //    Copy G and G^T
-  A.block(0, c.rows(), c.rows(), gamma.rows()) = G.transpose();
-  A.block(c.rows(), 0, gamma.rows(), c.rows()) = G;
-  //    Build the system: Copy -C + \tau
-  b.block(0, 0, c.rows(), 1) = c;
-  b.block(c.rows(), 0, gamma.rows(), 1) = gamma;
-
-  LOG << "A = " << std::endl << A << std::endl;
-  LOG << "b = " << std::endl << b << std::endl;
-
-  switch (linear_solver) {
-    case (LinearSolverPartialPivLU) :
-#ifdef RBDL_USE_SIMPLE_MATH
-      // SimpleMath does not have a LU solver so just use its QR solver
-      x = A.householderQr().solve(b);
-      /// TODO: implement for simple math
-#else
-      {
-        Eigen::PartialPivLU<MatrixNd::PlainObject> A_LU = A.partialPivLu();
-        // nominal code
-        x = A_LU.solve(b);
-        // derivative code
-        for (unsigned idir = 0; idir < ndirs; idir++) {
-          x_ad.col(idir) = A_LU.solve(b_dirs.col(idir) - A_dirs[idir] * x);
-        }
-      }
-#endif
-      break;
-    case (LinearSolverColPivHouseholderQR) :
-      {
-        Eigen::ColPivHouseholderQR<MatrixNd::PlainObject> A_CPQR =
-            A.colPivHouseholderQr();
-        // nominal code
-        x = A_CPQR.solve(b);
-        // derivative code
-        for (unsigned idir = 0; idir < ndirs; idir++) {
-          x_ad.col(idir) = A_CPQR.solve(b_dirs.col(idir) - A_dirs[idir] * x);
-        }
-      }
-      break;
-    case (LinearSolverHouseholderQR) :
-      {
-        Eigen::HouseholderQR<MatrixNd::PlainObject> A_QR = A.householderQr();
-        // nominal evaluation
-        x = A_QR.solve(b);
-        // derivative evaluation
-        for (unsigned idir = 0; idir < ndirs; idir++) {
-          x_ad.col(idir) = A_QR.solve(b_dirs.col(idir) - A_dirs[idir] * x);
-        }
-      }
-      break;
-//    case (LinearSolverLLT) :
-//      {
-//        Eigen::LLT<MatrixNd::PlainObject> A_LLT = A.llt();
-//        // nominal code
-//        x = A_LLT.solve(b);
-//        // derivative code
-//        for (int i = 0; i < ndirs; i++) {
-//          x_ad.col(i) = A_LLT.solve(b_dirs.col(i) - A_dirs[i] * x);
-//        }
-//      }
-//      break;
-/// TODO: Add support for this solver also.
-    default:
-      LOG << "Error: Invalid linear solver: " << linear_solver << std::endl;
-      cerr << __FILE__ << " " << __LINE__
-           << ": Error: Invalid linear solver: " << linear_solver << std::endl;
-      assert (0);
-      break;
-  }
-  LOG << "x = " << std::endl << x << std::endl;
-}
-
 
 // -----------------------------------------------------------------------------
 } // namespace AD
