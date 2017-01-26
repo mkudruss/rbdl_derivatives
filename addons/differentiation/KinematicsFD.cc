@@ -25,30 +25,7 @@ namespace FD {
 
 using namespace RigidBodyDynamics::Math;
 
-RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinatesSingleFunc (
-        Model &model,
-        const VectorNd &q,
-        const MatrixNd &q_dirs,
-        unsigned int body_id,
-        const Vector3d &point_body_coordinates,
-        MatrixNd &out) {
-    Vector3d ref = CalcBodyToBaseCoordinatesSingleFunc (model, q, body_id, point_body_coordinates);
-
-    unsigned int ndirs = q_dirs.cols();
-    double const h = 1e-8;
-    for (unsigned int idir = 0; idir < ndirs; idir++) {
-        VectorNd q_dir = q_dirs.block(0, idir, model.q_size, 1);
-        Vector3d res_hd = CalcBodyToBaseCoordinatesSingleFunc (model, q + h * q_dir, body_id, point_body_coordinates);
-//        Vector3d res_hd_rbdl = CalcBodyToBaseCoordinates (model, q + h * q_dir, body_id, point_body_coordinates);
-        out.block<3,1>(0, idir) = (res_hd - ref) / h;
-    }
-
-    return ref;
-}
-
-
-RBDL_DLLAPI
-Vector3d CalcBodyToBaseCoordinates (
+RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinates (
     Model & model,
     ADModel * fd_model,
     VectorNd const & q,

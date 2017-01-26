@@ -6,25 +6,8 @@
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
-
-RBDL_DLLAPI Math::Vector3d CalcBodyToBaseCoordinatesSingleFunc (
-        Model &model,
-        const Math::VectorNd &Q,
-        unsigned int body_id,
-        const Math::Vector3d &point_body_coordinates);
-
-// -----------------------------------------------------------------------------
 namespace AD {
 // -----------------------------------------------------------------------------
-
-RBDL_DLLAPI Math::Vector3d CalcBodyToBaseCoordinatesSingleFunc (
-        Model &model,
-        ADModel &ad_model,
-        const Math::VectorNd &q,
-        const Math::MatrixNd &q_dirs,
-        unsigned int body_id,
-        const Math::Vector3d &point_body_coordinates,
-        Math::MatrixNd & out);
 
 RBDL_DLLAPI Math::Vector3d CalcBodyToBaseCoordinates (
     Model &model,
