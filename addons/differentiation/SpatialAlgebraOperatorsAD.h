@@ -173,12 +173,13 @@ inline void applySTSV(
       );
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
+    Vector3d w_dir = sv_dirs[idir].segment<3>(0);
     res_dirs[idir].segment<3>(0) =
-        st.E * sv_dirs[idir].segment<3>(0)
+        st.E * w_dir
         + st_dirs[idir].E * sv.segment<3>(0);
     res_dirs[idir].segment<3>(3) =
         st.E * (sv_dirs[idir].segment<3>(3)
-                - st.r.cross(sv_dirs[idir].segment<3>(0))
+                - st.r.cross(w_dir)
                 - st_dirs[idir].r.cross(sv.segment<3>(0)))
         + st_dirs[idir].E * v_rxw;
   }

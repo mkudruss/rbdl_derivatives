@@ -26,7 +26,7 @@ SET ( DIFFERENTIATION_SOURCES
 	ModelAD.cc
 	FdModelEntry.cc
 	ConstraintsAD.cc
-	ContactsFD.cc
+	ConstraintsFD.cc
 	KinematicsAD.cc
 	KinematicsFD.cc
 	DynamicsAD.cc
@@ -78,5 +78,5 @@ INSTALL ( FILES ${headers}
 	)
 
 IF (RBDL_BUILD_TESTS)
- ADD_SUBDIRECTORY ( tests )
+	ADD_SUBDIRECTORY ( tests )
 ENDIF (RBDL_BUILD_TESTS)

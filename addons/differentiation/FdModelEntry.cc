@@ -5,11 +5,11 @@ namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
 
 void computeFDEntry(
-    Model const & model,
-    Model const & modelh,
+    Model const &model,
+    Model const &modelh,
     double h,
     int idir,
-    ADModel & fd_model) {
+    ADModel &fd_model) {
 
   for (unsigned i = 0; i < model.X_lambda.size(); i++) {
     fd_model.X_lambda[i][idir].E = (modelh.X_lambda[i].E - model.X_lambda[i].E) / h;
@@ -85,6 +85,8 @@ void computeFDEntry(
   fd_cs.C.col(idir) = (csh.C - cs.C) / h;
   fd_cs.gamma.col(idir) = (csh.gamma - cs.gamma) / h;
   fd_cs.force.col(idir) = (csh.force - cs.force) / h;
+  fd_cs.err.col(idir) = (csh.err - cs.err) / h;
+  fd_cs.errd.col(idir) = (csh.errd - cs.errd) / h;
 }
 
 // -----------------------------------------------------------------------------

@@ -14,28 +14,42 @@ namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
 
 struct ADConstraintSet {
-	int ndirs;
+  int ndirs;
 
   std::vector<Math::MatrixNd> G;
   std::vector<Math::MatrixNd> Gi;
-	std::vector<Math::MatrixNd> A;
-	std::vector<Math::MatrixNd> H;
-	Math::MatrixNd              b;
-	Math::MatrixNd              v_plus;
-	Math::MatrixNd              x;
-	Math::MatrixNd              impulse;
-	Math::MatrixNd              QDDot_0;
-	Math::MatrixNd              C;
-	Math::MatrixNd              gamma;
-	Math::MatrixNd              force;
+  std::vector<Math::MatrixNd> A;
+  std::vector<Math::MatrixNd> H;
+  Math::MatrixNd              b;
+  Math::MatrixNd              v_plus;
+  Math::MatrixNd              x;
+  Math::MatrixNd              impulse;
+  Math::MatrixNd              QDDot_0;
+  Math::MatrixNd              C;
+  Math::MatrixNd              gamma;
+  Math::MatrixNd              force;
+  Math::MatrixNd              err;
+  Math::MatrixNd              errd;
 
-	ADConstraintSet() {}
-	ADConstraintSet(const ConstraintSet &CS, int dof_count);
+  ADConstraintSet() {}
+  ADConstraintSet(const ConstraintSet &CS, int dof_count);
 };
 
 // -----------------------------------------------------------------------------
 namespace AD {
 // -----------------------------------------------------------------------------
+
+RBDL_DLLAPI void CalcConstraintsPositionError (
+    Model &model,
+    ADModel &ad_model,
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    ConstraintSet &cs,
+    ADConstraintSet &ad_cs,
+    Math::VectorNd &err,
+    Math::MatrixNd &ad_err,
+    bool update_kinematics
+    );
 
 RBDL_DLLAPI
 void CalcContactJacobian(
@@ -50,18 +64,20 @@ void CalcContactJacobian(
 		bool update_kinematics = true
 		);
 
-/*
-RBDL_DLLAPI
-void CalcContactSystemVariables (
-				Model &model,
-				const Math::VectorNd &Q,
-				const Math::VectorNd &QDot,
-				const Math::VectorNd &Tau,
-				ConstraintSet &CS
-				); */
+RBDL_DLLAPI void CalcConstrainedSystemVariables (
+    Model &model,
+    ADModel &ad_model,
+    const Math::VectorNd  &q,
+    const Math::MatrixNd  &q_dirs,
+    const Math::VectorNd  &qdot,
+    const Math::MatrixNd  &qdot_dirs,
+    const Math::VectorNd  &tau,
+    const Math::MatrixNd  &tau_dirs,
+    ConstraintSet   &CS,
+    ADConstraintSet &ad_CS);
 
 RBDL_DLLAPI
-void ForwardDynamicsContactsDirect (
+void ForwardDynamicsConstraintsDirect (
     Model   & model,
     ADModel & ad_model,
     const Math::VectorNd & q,
@@ -144,7 +160,7 @@ void ComputeContactImpulsesNullSpace (
 */
 
 RBDL_DLLAPI
-void SolveContactSystemDirect (
+void SolveConstrainedSystemDirect (
     const Math::MatrixNd &H,
     const std::vector<Math::MatrixNd> & H_dirs,
     const Math::MatrixNd &G,

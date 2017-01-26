@@ -1,4 +1,4 @@
-#include "ContactsFD.h"
+#include "ConstraintsFD.h"
 #include "FdModelEntry.h"
 
 using namespace std;
@@ -11,35 +11,97 @@ namespace FD {
 
 using namespace RigidBodyDynamics::Math;
 
-RBDL_DLLAPI
-void ForwardDynamicsContactsDirect (Model   & model,
-    ADModel * ad_model,
-    const VectorNd & q,
-    const MatrixNd & q_dirs,
-    const VectorNd & qdot,
-    const MatrixNd & qdot_dirs,
-    const VectorNd & tau,
-    const MatrixNd & tau_dirs,
-    ConstraintSet   & cs,
-    ADConstraintSet & ad_cs,
-    Math::VectorNd  & qddot,
-    Math::MatrixNd  & ad_qddot) {
-  unsigned ndirs = q_dirs.cols();
+RBDL_DLLAPI void CalcConstrainedSystemVariables (
+    Model &model,
+    ADModel *fd_model, // NULL means execution without fd_model update
+    const VectorNd &q,
+    const MatrixNd &q_dirs,
+    const VectorNd &qdot,
+    const MatrixNd &qdot_dirs,
+    const VectorNd &tau,
+    const MatrixNd &tau_dirs,
+    ConstraintSet   &cs,
+    ADConstraintSet &fd_cs) {
+  unsigned const ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == tau_dirs.cols());
-  assert(ndirs == ad_qddot.cols());
 
-  ConstraintSet cs_in = cs;
+  double const h = 1e-8;
+  ConstraintSet const cs_in = cs;
+
+  CalcConstrainedSystemVariables(model, q, qdot, tau, cs);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model *modelh = &model;
+    VectorNd qh    = q + h * q_dirs.col(idir);
+    VectorNd qdoth = qdot + h * qdot_dirs.col(idir);
+    VectorNd tauh  = tau + h * tau_dirs.col(idir);
+    ConstraintSet csh = cs_in;
+
+    if (fd_model) {
+      modelh = new Model(model);
+    }
+
+    CalcConstrainedSystemVariables(*modelh, qh, qdoth, tauh, csh);
+
+    computeFDEntry(cs, csh, h, idir, fd_cs);
+
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
+  }
+}
+
+
+RBDL_DLLAPI void ForwardDynamicsContactsDirect (
+    Model &model,
+    ADModel *fd_model,
+    const VectorNd &q,
+    const MatrixNd &q_dirs,
+    const VectorNd &qdot,
+    const MatrixNd &qdot_dirs,
+    const VectorNd &tau,
+    const MatrixNd &tau_dirs,
+    ConstraintSet   &cs,
+    ADConstraintSet &fd_cs,
+    VectorNd  &qddot,
+    MatrixNd  &fd_qddot) {
+  unsigned const ndirs = q_dirs.cols();
+  assert(ndirs == qdot_dirs.cols());
+  assert(ndirs == tau_dirs.cols());
+  assert(ndirs == fd_qddot.cols());
+
+  double const h = 1e-8;
+  ConstraintSet const cs_in = cs;
+
   ForwardDynamicsConstraintsDirect(model, q, qdot, tau, cs, qddot);
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model *modelh = &model;
+    VectorNd qh    = q + h * q_dirs.col(idir);
+    VectorNd qdoth = qdot + h * qdot_dirs.col(idir);
+    VectorNd tauh  = tau + h * tau_dirs.col(idir);
+    ConstraintSet csh = cs_in;
+    VectorNd qddoth = VectorNd::Zero(qddot.rows());
 
+    if (fd_model) {
+      modelh = new Model(model);
+    }
+
+    ForwardDynamicsConstraintsDirect(*modelh, qh, qdoth, tauh, csh, qddoth);
+
+    fd_qddot.col(idir) = (qddoth - qddot) / h;
+    computeFDEntry(cs, csh, h, idir, fd_cs);
+
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
   }
-
 }
 
-RBDL_DLLAPI
-void CalcConstraintsJacobian(
+RBDL_DLLAPI void CalcConstraintsJacobian(
     Model & model,
     ADModel * fd_model,
     const VectorNd & q,
@@ -48,26 +110,30 @@ void CalcConstraintsJacobian(
     ADConstraintSet & fd_CS,
     MatrixNd & G,
     vector<MatrixNd> & G_dirs) {
-  unsigned ndirs = q_dirs.cols();
+  unsigned const ndirs = q_dirs.cols();
   assert(ndirs == G_dirs.size());
-  bool update_kinematics = true;
-  ConstraintSet cs_in = cs;
+
+  bool const update_kinematics = true;
+  double const h = 1e-8;
+  ConstraintSet const cs_in = cs;
+
   CalcConstraintsJacobian(model, q, cs, G, update_kinematics);
-  double h = 1e-8;
+
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    Model * modelh;
-    if (fd_model) {
-      modelh = new Model(model);
-    } else {
-      modelh = &model;
-    }
+    Model *modelh = &model;
+    VectorNd qh = q + h * q_dirs.col(idir);
     ConstraintSet csh = cs_in;
     MatrixNd Gh = MatrixNd::Zero (3, model.dof_count);
-    VectorNd q_dir = q_dirs.block(0, idir, model.q_size, 1);
-    CalcConstraintsJacobian(
-          *modelh, q + h * q_dir, csh, Gh, update_kinematics);
+
+    if (fd_model) {
+      modelh = new Model(model);
+    }
+
+    CalcConstraintsJacobian(*modelh, qh, csh, Gh, update_kinematics);
+
     G_dirs[idir] = (Gh - G) / h;
     computeFDEntry(cs, csh, h, idir, fd_CS);
+
     if (fd_model) {
       computeFDEntry(model, *modelh, h, idir, *fd_model);
       delete modelh;
@@ -75,8 +141,7 @@ void CalcConstraintsJacobian(
   }
 }
 
-RBDL_DLLAPI
-void ComputeConstraintImpulsesDirect (
+RBDL_DLLAPI void ComputeConstraintImpulsesDirect (
     Model & model,
     ADModel * fd_model,
     const VectorNd & q,

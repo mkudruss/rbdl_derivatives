@@ -152,6 +152,92 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointVelocity) {
 // -----------------------------------------------------------------------------
 
 template <typename T>
+void CalcPointVelocity6DTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
+  Model   model = obj.model;
+  Model   ad_model = obj.model;
+  Model   fd_model = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
+
+  // set up input quantities
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = 2 * nq;
+
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    Vector3d pt_pos = Vector3d::Random();
+    VectorNd q    = VectorNd::Random(nq);
+    MatrixNd q_dirs = MatrixNd::Random(nq, ndirs);
+    VectorNd qdot = VectorNd::Random(nq);
+    MatrixNd qdot_dirs = MatrixNd::Random(nq, ndirs);
+
+    // set up no output quantities
+    SpatialVector pv6d;
+    SpatialVector ad_pv6d;
+    SpatialVector fd_pv6d;
+
+    // set up derivative output quantities
+    vector<SpatialVector> ad_pv6d_dirs (ndirs);
+    vector<SpatialVector> fd_pv6d_dirs (ndirs);
+
+    for (unsigned i = 1; i < model.mBodies.size(); i++) {
+      unsigned int body_id = model.mBodyNameMap[ad_model.GetBodyName(i)];
+      // call nominal version
+      pv6d = CalcPointVelocity6D(model, q, qdot, body_id, pt_pos);
+
+      // call FD version
+      fd_pv6d = FD::CalcPointVelocity6D(
+            fd_model, &fd_d_model, q, q_dirs, qdot, qdot_dirs,
+            body_id, pt_pos, fd_pv6d_dirs);
+
+      // call AD version
+      ad_pv6d = AD::CalcPointVelocity6D(
+            ad_model, ad_d_model, q, q_dirs, qdot, qdot_dirs,
+            body_id, pt_pos, ad_pv6d_dirs);
+
+      checkModelsADvsFD(ndirs,
+                        ad_model, ad_d_model,
+                        fd_model, fd_d_model);
+
+      // nominal check
+      CHECK_ARRAY_CLOSE(ad_pv6d.data(), pv6d.data(), 6,
+                        array_close_prec);
+      CHECK_ARRAY_CLOSE(fd_pv6d.data(), pv6d.data(), 6,
+                        array_close_prec);
+      // derivative check
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        CHECK_ARRAY_CLOSE(ad_pv6d_dirs[idir].data(), fd_pv6d_dirs[idir].data(),
+                          6, array_close_prec);
+      }
+    }
+  }
+}
+
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointVelocity6D) {
+  CalcPointVelocity6DTemplate(*this, 10, 1e-5);
+}
+
+TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointVelocity6D) {
+  CalcPointVelocity6DTemplate(*this, 10, 1e-5);
+}
+
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointVelocity6D) {
+  CalcPointVelocity6DTemplate(*this, 10, 1e-5);
+}
+
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointVelocity6D) {
+  CalcPointVelocity6DTemplate(*this, 10, 1e-5);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointVelocity6D) {
+  CalcPointVelocity6DTemplate(*this, 10, 1e-5);
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename T>
 void CalcBaseToBodyCoordinatesTemplate(
     T & obj,
     unsigned trial_count,
@@ -417,9 +503,12 @@ void CalcPointAccelerationTemplate(
       CHECK_ARRAY_CLOSE(fd_a_dirs.data(), ad_a_dirs.data(),
                         3 * ndirs, array_close_prec);
     }
-    q   = VectorNd::Random(nq);
-    qd  = VectorNd::Random(nq);
-    qdd = VectorNd::Random(nq);
+    q.setRandom();
+    qd.setRandom();
+    qdd.setRandom();
+    q_dirs.setRandom();
+    qd_dirs.setRandom();
+    qdd_dirs.setRandom();
   } while(trial++ < trial_count);
 }
 

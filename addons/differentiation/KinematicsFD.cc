@@ -170,6 +170,47 @@ RBDL_DLLAPI Vector3d CalcPointVelocity (
   return ref;
 }
 
+RBDL_DLLAPI SpatialVector CalcPointVelocity6D (
+    Model &model,
+    ADModel *fd_model, // NULL means execution without fd_model update
+    const VectorNd &q,
+    const MatrixNd &q_dirs,
+    const VectorNd &qdot,
+    const MatrixNd &qdot_dirs,
+    unsigned int body_id,
+    const Vector3d &point_position,
+    vector<SpatialVector> &pv6d_dirs) {
+  unsigned const ndirs = q_dirs.cols();
+  assert(ndirs == static_cast<unsigned>(qdot_dirs.cols()));
+
+  double const h = 1e-8;
+
+  SpatialVector pv6d =
+    CalcPointVelocity6D(model, q, qdot, body_id, point_position);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model *modelh = &model;
+    VectorNd qh = q + h * q_dirs.col(idir);
+    VectorNd qdoth = qdot + h * qdot_dirs.col(idir);
+    if (fd_model) {
+      modelh = new Model(model);
+    }
+
+    SpatialVector pv6dh =
+        CalcPointVelocity6D(*modelh, qh, qdoth, body_id, point_position);
+
+    pv6d_dirs[idir] = (pv6dh - pv6d) / h;
+
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
+  }
+
+  return pv6d;
+}
+
+
 RBDL_DLLAPI Vector3d CalcPointAcceleration (
 		Model & model,
 		VectorNd const & q,
@@ -180,8 +221,7 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
 		MatrixNd const & qddot_dirs,
 		unsigned int body_id,
 		Vector3d const & point_position,
-		MatrixNd & fd_derivative
-) {
+		MatrixNd & fd_derivative) {
 	Vector3d ref = CalcPointAcceleration(model, q, qdot, qddot, body_id,
 			point_position, true);
 	unsigned int const ndirs = q_dirs.cols();

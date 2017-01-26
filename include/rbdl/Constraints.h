@@ -229,6 +229,8 @@ namespace RigidBodyDynamics {
 
 struct Model;
 
+unsigned int GetMovableBodyId (Model& model, unsigned int id);
+
 /** \brief Structure that contains both constraint information and workspace memory.
  *
  * This structure is used to reduce the amount of memory allocations that
