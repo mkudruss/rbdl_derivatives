@@ -1,4 +1,4 @@
-# WARNING! 
+# WARNING!
 #
 # This file was automatically created from rbdl-wrapper.pyx using wrappergen.py.
 # Do not modify this file directly. Edit original source instead!!
@@ -390,6 +390,22 @@ cdef np.ndarray VectorNdToNumpy (crbdl.VectorNd cx):
 
     return result
 
+# Matrix3d
+cdef crbdl.Matrix3d NumpyToMatrix3d (np.ndarray[double, ndim=2, mode="c"] M):
+    cdef crbdl.Matrix3d cM = crbdl.Matrix3d()
+    for i in range (M.shape[0]):
+        for j in range (M.shape[1]):
+            (&(cM.coeff(i,j)))[0] = M[i,j]
+
+    return cM
+
+cdef np.ndarray Matrix3dToNumpy (crbdl.Matrix3d cM):
+    result = np.ndarray ([cM.rows(), cM.cols()])
+    for i in range (cM.rows()):
+        for j in range (cM.cols()):
+            result[i,j] = cM.coeff(i,j)
+
+    return result
 # MatrixNd
 cdef crbdl.MatrixNd NumpyToMatrixNd (np.ndarray[double, ndim=2, mode="c"] M):
     cdef crbdl.MatrixNd cM = crbdl.MatrixNd(M.shape[0], M.shape[1])
@@ -1851,6 +1867,123 @@ cdef class ConstraintSet:
 #            vec = VectorNd.fromPythonArray (values)
 #            self.thisptr.acceleration = <crbdl.VectorNd> (vec.thisptr[0])
 
+cdef class InverseKinematicsConstraintSet:
+    cdef crbdl.InverseKinematicsConstraintSet *thisptr
+    # cdef _ConstraintSet_point_Vector3d_VectorWrapper point
+    # cdef _ConstraintSet_normal_Vector3d_VectorWrapper normal
+
+    def __cinit__(self):
+        self.thisptr = new crbdl.InverseKinematicsConstraintSet()
+        # self.body_points = _ConstraintSet_body_points_Vector3d_VectorWrapper (<uintptr_t> self.thisptr)
+        # self.target_positions = _ConstraintSet_target_positions_Vector3d_VectorWrapper (<uintptr_t> self.thisptr)
+        # self.target_orientations = _ConstraintSet_target_orientations_Vector3d_VectorWrapper (<uintptr_t> self.thisptr)
+
+    def __dealloc__(self):
+        del self.thisptr
+
+    # def __repr__(self):
+    #     return "rbdl.ConstraintSet (0x{:0x})".format(<uintptr_t><void *> self.thisptr)
+
+    def AddPointConstraint (self,
+            unsigned int body_id,
+            np.ndarray[double, ndim=1, mode="c"] body_point,
+            np.ndarray[double, ndim=1, mode="c"] target_pos
+        ):
+        cdef crbdl.Vector3d c_body_point
+        cdef crbdl.Vector3d c_target_pos
+
+        for i in range (3):
+            c_body_point[i] = body_point[i]
+            c_target_pos[i] = target_pos[i]
+
+        return self.thisptr.AddPointConstraint (
+                body_id,
+                c_body_point,
+                c_target_pos
+        )
+
+    def AddOrientationConstraint (self,
+            unsigned int body_id,
+            np.ndarray[double, ndim=2, mode="c"] target_orientation
+        ):
+        cdef crbdl.Vector3d c_body_point
+        cdef crbdl.Matrix3d c_target_orientation
+
+        for i in range (3):
+            for j in range (3):
+                (&(c_target_orientation.coeff(i,j)))[0] = target_orientation[i, j]
+
+        return self.thisptr.AddOrientationConstraint (
+                body_id,
+                c_target_orientation
+        )
+
+    def AddFullConstraint (self,
+            unsigned int body_id,
+            np.ndarray[double, ndim=1, mode="c"] body_point,
+            np.ndarray[double, ndim=1, mode="c"] target_pos,
+            np.ndarray[double, ndim=2, mode="c"] target_orientation
+        ):
+        cdef crbdl.Vector3d c_body_point
+        cdef crbdl.Vector3d c_target_pos
+        cdef crbdl.Matrix3d c_target_orientation
+
+        for i in range (3):
+            c_body_point[i] = body_point[i]
+            c_target_pos[i] = target_pos[i]
+            for j in range (3):
+                (&(c_target_orientation.coeff(i,j)))[0] = target_orientation[i, j]
+
+        return self.thisptr.AddFullConstraint (
+                body_id,
+                c_body_point,
+                c_target_pos,
+                c_target_orientation
+        )
+
+    property e:
+        def __get__ (self):
+            return self.thisptr.damper.toNumpy()
+
+
+    property damper:
+        def __get__ (self):
+            return self.thisptr.damper
+
+        def __set__ (self, value):
+            self.thisptr.damper = value
+
+
+
+
+def InverseKinematics (
+    Model model,
+    np.ndarray[double, ndim=1, mode="c"] Qinit,
+    InverseKinematicsConstraintSet CS
+):
+    """Compute solution for inverse kinematics for given constraint set."""
+    cdef crbdl.VectorNd Qres
+    Qres.resize(model.dof_count)
+    res = np.zeros(model.dof_count)
+
+    # copy over data
+    # FIXME use memory views
+    for i in range(model.dof_count):
+        Qres[i] = 0.0
+
+    ret = crbdl.InverseKinematics (
+        model.thisptr[0],
+        NumpyToVectorNd (Qinit),
+        CS.thisptr[0],
+        Qres
+    )
+
+    # copy over data
+    # FIXME use memory views
+    for i in range(model.dof_count):
+        res[i] = Qres[i]
+
+    return res
 ##############################
 #
 # Kinematics.h
@@ -1880,6 +2013,17 @@ def CalcBaseToBodyCoordinates (Model model,
             NumpyToVectorNd (q),
             body_id,
             NumpyToVector3d (body_point_position),
+            update_kinematics
+            ))
+
+def CalcBodyWorldOrientation (Model model,
+        np.ndarray[double, ndim=1, mode="c"] q,
+        unsigned int body_id,
+        update_kinematics=True):
+    return Matrix3dToNumpy (crbdl.CalcBodyWorldOrientation (
+            model.thisptr[0],
+            NumpyToVectorNd (q),
+            body_id,
             update_kinematics
             ))
 

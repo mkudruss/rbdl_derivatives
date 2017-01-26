@@ -20,7 +20,7 @@ const double TEST_PREC = 1.0e-12;
 void print_ik_set (const InverseKinematicsConstraintSet &cs) {
   int label_width = 18;
   cout.width (label_width);
-  cout << "lambda: " << cs.lambda << endl;
+  cout << "lambda: " << cs.damper << endl;
   cout.width (label_width);
   cout << "num_steps: " << cs.num_steps << endl;
   cout.width (label_width);
@@ -99,18 +99,18 @@ TEST_FIXTURE ( Human36, ManyPointConstraints ) {
 
   CHECK_CLOSE (0., cs.error_norm, TEST_PREC);
 
-  UpdateKinematicsCustom (*model, &qres, NULL, NULL);  
+  UpdateKinematicsCustom (*model, &qres, NULL, NULL);
   Vector3d result_position1 = CalcBodyToBaseCoordinates (*model, qres, body_id_emulated[BodyFootRight], local_point1);
   Vector3d result_position2 = CalcBodyToBaseCoordinates (*model, qres, body_id_emulated[BodyFootLeft], local_point2);
   Vector3d result_position3 = CalcBodyToBaseCoordinates (*model, qres, body_id_emulated[BodyHandRight], local_point3);
   Vector3d result_position4 = CalcBodyToBaseCoordinates (*model, qres, body_id_emulated[BodyHandLeft], local_point4);
   Vector3d result_position5 = CalcBodyToBaseCoordinates (*model, qres, body_id_emulated[BodyHead], local_point5);
 
-  CHECK_ARRAY_CLOSE (target_position1.data(), result_position1.data(), 3, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_position2.data(), result_position2.data(), 3, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_position3.data(), result_position3.data(), 3, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_position4.data(), result_position4.data(), 3, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_position5.data(), result_position5.data(), 3, TEST_PREC); 
+  CHECK_ARRAY_CLOSE (target_position1.data(), result_position1.data(), 3, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_position2.data(), result_position2.data(), 3, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_position3.data(), result_position3.data(), 3, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_position4.data(), result_position4.data(), 3, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_position5.data(), result_position5.data(), 3, TEST_PREC);
 }
 
 /// Checks whether the end of a 3-link chain can aligned with a given
@@ -165,18 +165,18 @@ TEST_FIXTURE ( Human36, ManyBodyOrientations ) {
 
   CHECK_CLOSE (0., cs.error_norm, TEST_PREC);
 
-  UpdateKinematicsCustom (*model, &qres, NULL, NULL);  
+  UpdateKinematicsCustom (*model, &qres, NULL, NULL);
   Matrix3d result_orientation1 = CalcBodyWorldOrientation (*model, qres, body_id_emulated[BodyFootRight], false);
   Matrix3d result_orientation2 = CalcBodyWorldOrientation (*model, qres, body_id_emulated[BodyFootLeft], false);
   Matrix3d result_orientation3 = CalcBodyWorldOrientation (*model, qres, body_id_emulated[BodyHandRight], false);
   Matrix3d result_orientation4 = CalcBodyWorldOrientation (*model, qres, body_id_emulated[BodyHandLeft], false);
   Matrix3d result_orientation5 = CalcBodyWorldOrientation (*model, qres, body_id_emulated[BodyHead], false);
 
-  CHECK_ARRAY_CLOSE (target_orientation1.data(), result_orientation1.data(), 9, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_orientation2.data(), result_orientation2.data(), 9, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_orientation3.data(), result_orientation3.data(), 9, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_orientation4.data(), result_orientation4.data(), 9, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_orientation5.data(), result_orientation5.data(), 9, TEST_PREC); 
+  CHECK_ARRAY_CLOSE (target_orientation1.data(), result_orientation1.data(), 9, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_orientation2.data(), result_orientation2.data(), 9, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_orientation3.data(), result_orientation3.data(), 9, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_orientation4.data(), result_orientation4.data(), 9, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_orientation5.data(), result_orientation5.data(), 9, TEST_PREC);
 }
 
 TEST_FIXTURE ( Human36, ChainSingleBodyFullConstraint ) {
@@ -232,7 +232,7 @@ TEST_FIXTURE ( Human36, ManyBodyFullConstraints ) {
   cs.AddFullConstraint (body_id_emulated[BodyFootLeft],  local_point2, target_position2, target_orientation2);
   cs.AddFullConstraint (body_id_emulated[BodyHandRight], local_point3, target_position3, target_orientation3);
   cs.AddFullConstraint (body_id_emulated[BodyHandLeft],  local_point4, target_position4, target_orientation4);
-  cs.AddFullConstraint (body_id_emulated[BodyHead],      local_point5, target_position5, target_orientation5);  
+  cs.AddFullConstraint (body_id_emulated[BodyHead],      local_point5, target_position5, target_orientation5);
   cs.step_tol = 1e-12;
 
   q.setZero();
@@ -245,7 +245,7 @@ TEST_FIXTURE ( Human36, ManyBodyFullConstraints ) {
 
   CHECK_CLOSE (0., cs.error_norm, cs.step_tol);
 
-  UpdateKinematicsCustom (*model, &qres, NULL, NULL);  
+  UpdateKinematicsCustom (*model, &qres, NULL, NULL);
   Matrix3d result_orientation1 = CalcBodyWorldOrientation (*model, qres, body_id_emulated[BodyFootRight], false);
   Matrix3d result_orientation2 = CalcBodyWorldOrientation (*model, qres, body_id_emulated[BodyFootLeft], false);
   Matrix3d result_orientation3 = CalcBodyWorldOrientation (*model, qres, body_id_emulated[BodyHandRight], false);
@@ -258,15 +258,15 @@ TEST_FIXTURE ( Human36, ManyBodyFullConstraints ) {
   Vector3d result_position4 = CalcBodyToBaseCoordinates (*model, qres, body_id_emulated[BodyHandLeft], local_point4);
   Vector3d result_position5 = CalcBodyToBaseCoordinates (*model, qres, body_id_emulated[BodyHead], local_point5);
 
-  CHECK_ARRAY_CLOSE (target_position1.data(), result_position1.data(), 3, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_position2.data(), result_position2.data(), 3, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_position3.data(), result_position3.data(), 3, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_position4.data(), result_position4.data(), 3, TEST_PREC); 
+  CHECK_ARRAY_CLOSE (target_position1.data(), result_position1.data(), 3, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_position2.data(), result_position2.data(), 3, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_position3.data(), result_position3.data(), 3, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_position4.data(), result_position4.data(), 3, TEST_PREC);
   CHECK_ARRAY_CLOSE (target_position5.data(), result_position5.data(), 3, TEST_PREC);
 
-  CHECK_ARRAY_CLOSE (target_orientation1.data(), result_orientation1.data(), 9, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_orientation2.data(), result_orientation2.data(), 9, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_orientation3.data(), result_orientation3.data(), 9, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_orientation4.data(), result_orientation4.data(), 9, TEST_PREC); 
-  CHECK_ARRAY_CLOSE (target_orientation5.data(), result_orientation5.data(), 9, TEST_PREC); 
+  CHECK_ARRAY_CLOSE (target_orientation1.data(), result_orientation1.data(), 9, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_orientation2.data(), result_orientation2.data(), 9, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_orientation3.data(), result_orientation3.data(), 9, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_orientation4.data(), result_orientation4.data(), 9, TEST_PREC);
+  CHECK_ARRAY_CLOSE (target_orientation5.data(), result_orientation5.data(), 9, TEST_PREC);
 }

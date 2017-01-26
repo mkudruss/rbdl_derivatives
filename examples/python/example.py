@@ -10,7 +10,7 @@ joint_rot_y = rbdl.Joint.fromJointType ("JointTypeRevoluteY")
 # Create a body for given mass, center of mass, and inertia at
 # the CoM
 body = rbdl.Body.fromMassComInertia (
-    1., 
+    1.,
     np.array([0., 0.5, 0.]),
     np.eye(3) * 0.05)
 xtrans= rbdl.SpatialTransform()
