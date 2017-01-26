@@ -31,6 +31,7 @@ examples/simple/librbdl.so
 examples/luamodel/example_luamodel
 examples/luamodel/CMakeCache.txt
 
+*.orig
 *.vcxproj
 *.vcxproj.filters
 *.suo
