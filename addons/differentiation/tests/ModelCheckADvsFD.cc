@@ -268,6 +268,32 @@ void checkConstraintSetsADvsFD (
   }
 
   // nominal check
+  CHECK_EQUAL(ad_cs.GSpi.rows(), fd_cs.GSpi.rows());
+  CHECK_EQUAL(ad_cs.GSpi.cols(), fd_cs.GSpi.cols());
+  CHECK_ARRAY_CLOSE(ad_cs.GSpi.data(), fd_cs.GSpi.data(),
+                    fd_cs.GSpi.rows() * fd_cs.GSpi.cols(),
+                    1e-6);
+  // derivative check
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    CHECK_ARRAY_CLOSE(ad_d_cs.GSpi[idir].data(), fd_d_cs.GSpi[idir].data(),
+                      fd_cs.GSpi.rows() * fd_cs.GSpi.cols(),
+                      1e-6);
+  }
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.GSsi.rows(), fd_cs.GSsi.rows());
+  CHECK_EQUAL(ad_cs.GSsi.cols(), fd_cs.GSsi.cols());
+  CHECK_ARRAY_CLOSE(ad_cs.GSsi.data(), fd_cs.GSsi.data(),
+                    fd_cs.GSsi.rows() * fd_cs.GSsi.cols(),
+                    1e-6);
+  // derivative check
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    CHECK_ARRAY_CLOSE(ad_d_cs.GSsi[idir].data(), fd_d_cs.GSsi[idir].data(),
+                      fd_cs.GSsi.rows() * fd_cs.GSsi.cols(),
+                      1e-6);
+  }
+
+  // nominal check
   CHECK_EQUAL(ad_cs.C.rows(), fd_cs.C.rows());
   CHECK_ARRAY_CLOSE(ad_cs.C.data(), fd_cs.C.data(), ad_cs.C.rows(), 1e-6);
   // derivative check

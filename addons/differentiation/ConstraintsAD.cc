@@ -19,8 +19,10 @@ ADConstraintSet::ADConstraintSet(const ConstraintSet & CS, int dof_count) {
 
   G.resize(ndirs,  MatrixNd::Zero(CS.G.rows(), CS.G.cols()));
   Gi.resize(ndirs, MatrixNd::Zero(3, dof_count));
-  A.resize(ndirs, MatrixNd::Zero(CS.A.rows(), CS.A.cols()));
-  H.resize(ndirs, MatrixNd::Zero(CS.H.rows(), CS.H.cols()));
+  GSpi.resize(ndirs, MatrixNd::Zero(6, dof_count));
+  GSsi.resize(ndirs, MatrixNd::Zero(6, dof_count));
+  A.resize(ndirs,  MatrixNd::Zero(CS.A.rows(), CS.A.cols()));
+  H.resize(ndirs,  MatrixNd::Zero(CS.H.rows(), CS.H.cols()));
   b             = MatrixNd::Zero(CS.b.rows(), ndirs);
   v_plus        = MatrixNd::Zero(CS.v_plus.rows(), ndirs);
   x             = MatrixNd::Zero(CS.x.rows(), ndirs);
@@ -38,31 +40,28 @@ namespace AD {
 // -----------------------------------------------------------------------------
 
 RBDL_DLLAPI
-void ComputeContactImpulsesDirect (
-    Model & model,
-    ADModel & ad_model,
-    const VectorNd & q,
-    const MatrixNd & q_dirs,
-    const VectorNd & qdot_minus,
-    const MatrixNd & qdot_minus_dirs,
-    ConstraintSet & CS,
-    ADConstraintSet & ad_CS,
-    VectorNd & qdot_plus,
-    MatrixNd & ad_qdot_plus) {
+void ComputeConstraintImpulsesDirect (
+    Model &model,
+    ADModel &ad_model,
+    const VectorNd &q,
+    const MatrixNd &q_dirs,
+    const VectorNd &qdot_minus,
+    const MatrixNd &qdot_minus_dirs,
+    ConstraintSet &CS,
+    ADConstraintSet &ad_CS,
+    VectorNd &qdot_plus,
+    MatrixNd &ad_qdot_plus) {
   int ndirs = q_dirs.cols();
   assert(ndirs == qdot_minus_dirs.cols());
   assert(ndirs == ad_qdot_plus.cols());
 
   // Compute H
   UpdateKinematicsCustom(model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
-
-//  vector<MatrixNd> H_ad(ndirs, CS.H);
   CompositeRigidBodyAlgorithm(model, ad_model, q, q_dirs, CS.H, ad_CS.H, false);
-  /// TODO: Check if false makes sense as last argument here.
 
   // Compute G
-  CalcContactJacobian (model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
-  /// TODO: Check if false makes sense as last argument here.
+  CalcConstraintsJacobian (model, ad_model, q, q_dirs,
+                       CS, ad_CS, CS.G, ad_CS.G, false);
 
   VectorNd c = CS.H * qdot_minus;
   MatrixNd c_ad(CS.H.rows(), ndirs);
@@ -74,35 +73,33 @@ void ComputeContactImpulsesDirect (
                             ad_CS.v_plus, CS.A, ad_CS.A, CS.b, ad_CS.b,
                             CS.x, ad_CS.x, CS.linear_solver, ndirs);
 
+  // Copy back QDotPlus
   // derivative evaluation
   ad_qdot_plus = ad_CS.x.block(0, 0, model.dof_count, ndirs);
   // nominal evaluation
-  //    Copy back QDotPlus
   qdot_plus = CS.x.segment(0, model.dof_count);
 
-  // derivative evaluation
+  // Copy back constraint impulses
   ad_CS.impulse = ad_CS.x.block(model.dof_count, 0, CS.size(), ndirs);
-  // nominal evaluation
-  //    Copy back constraint impulses
   CS.impulse = CS.x.segment(model.dof_count, CS.size());
 }
 
 RBDL_DLLAPI void SolveConstrainedSystemDirect (
     const MatrixNd &H,
-    const vector<MatrixNd> & H_dirs,
+    const vector<MatrixNd> &H_dirs,
     const MatrixNd &G,
-    const vector<MatrixNd> & G_dirs,
-    const VectorNd & c,
-    const MatrixNd & c_dirs,
-    const VectorNd & gamma,
-    const MatrixNd & gamma_dirs,
+    const vector<MatrixNd> &G_dirs,
+    const VectorNd &c,
+    const MatrixNd &c_dirs,
+    const VectorNd &gamma,
+    const MatrixNd &gamma_dirs,
     MatrixNd &A,
-    vector<MatrixNd> & A_dirs,
-    VectorNd & b,
-    MatrixNd & b_dirs,
-    VectorNd & x,
-    MatrixNd & x_ad,
-    LinearSolver & linear_solver,
+    vector<MatrixNd> &A_dirs,
+    VectorNd &b,
+    MatrixNd &b_dirs,
+    VectorNd &x,
+    MatrixNd &x_ad,
+    LinearSolver &linear_solver,
     unsigned ndirs) {
   assert(ndirs <= H_dirs.size());
   assert(ndirs <= G_dirs.size());
@@ -201,12 +198,12 @@ RBDL_DLLAPI void SolveConstrainedSystemDirect (
 RBDL_DLLAPI void CalcConstraintsPositionError (
     Model &model,
     ADModel &ad_model,
-    const Math::VectorNd &q,
-    const Math::MatrixNd &q_dirs,
+    const VectorNd &q,
+    const MatrixNd &q_dirs,
     ConstraintSet &cs,
     ADConstraintSet &ad_cs,
-    Math::VectorNd &err,
-    Math::MatrixNd &ad_err,
+    VectorNd &err,
+    MatrixNd &ad_err,
     bool update_kinematics) {
   unsigned const ndirs = q_dirs.cols();
   assert(static_cast<unsigned>(err.size()) == cs.size());
@@ -309,7 +306,7 @@ RBDL_DLLAPI void CalcConstraintsPositionError (
   }
 }
 
-RBDL_DLLAPI void CalcContactJacobian(
+RBDL_DLLAPI void CalcConstraintsJacobian(
     Model &model,
     ADModel &ad_model,
     const VectorNd   &q,
@@ -323,23 +320,18 @@ RBDL_DLLAPI void CalcContactJacobian(
   assert(ndirs <= G_dirs.size());
 
   if (update_kinematics) {
-    // derivative evaluation
-    UpdateKinematicsCustom (
-          model, ad_model,
-          &q, &q_dirs,
-          NULL, NULL,
-          NULL, NULL
-          );
-    // nominal evaluation
-    // NOTE kinematics are already updated in the AD version
-    // UpdateKinematicsCustom (model, &Q, NULL, NULL);
+    // nominal + derivative evaluation
+    UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
   }
 
   // variables to check whether we need to recompute G.
   ConstraintSet::ConstraintType prev_constraint_type
     = ConstraintSet::ConstraintTypeLast;
-  unsigned int prev_body_id_1 = 0;
-  // unsigned int prev_body_id_2 = 0;
+  unsigned prev_body_id_1 = 0;
+  unsigned prev_body_id_2 = 0;
+
+  vector<SpatialTransform> prev_body_X_1_dirs(ndirs);
+  vector<SpatialTransform> prev_body_X_2_dirs(ndirs);
   SpatialTransform prev_body_X_1;
   SpatialTransform prev_body_X_2;
 
@@ -365,6 +357,9 @@ RBDL_DLLAPI void CalcContactJacobian(
 
       // Update variables for optimization check.
       prev_body_id_1 = CS.body[c];
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        prev_body_X_1_dirs[idir].setZero();
+      }
       prev_body_X_1 = RigidBodyDynamics::Xtrans(CS.point[c]);
     }
 
@@ -381,51 +376,93 @@ RBDL_DLLAPI void CalcContactJacobian(
     }
   }
 
-//  unsigned int i,j;
+  // Variables used for computations.
+  MatrixNd ad_normal(3, ndirs);
+  vector<SpatialVector> ad_axis(ndirs);
+  MatrixNd ad_pos_p(3, ndirs);
+  vector<Matrix3d> ad_rot_p(ndirs);
+  vector<SpatialTransform> ad_X_0p(ndirs);
 
-//  // variables to check whether we need to recompute G
-//  unsigned int prev_body_id = 0;
-//  Vector3d prev_body_point = Vector3d::Zero();
-//  // derivative evaluation
-//  vector<MatrixNd> Gi_dirs (ndirs, MatrixNd::Zero (3, model.dof_count));
-//  // nominal evaluation
-//  MatrixNd Gi (3, model.dof_count);
+  Vector3d normal;
+  SpatialVector axis;
+  Vector3d pos_p;
+  Matrix3d rot_p;
+  SpatialTransform X_0p;
 
-//  for (i = 0; i < CS.size(); i++) {
-//    // only compute the matrix Gi if actually needed
-//    if (prev_body_id != CS.body[i] || prev_body_point != CS.point[i]) {
-//      Gi.setZero();
-//      // derivative evaluation
-//      AD::CalcPointJacobian(
-//            model, ad_model,
-//            q, q_dirs,
-//            CS.body[i], CS.point[i],
-//            Gi, Gi_dirs,
-//            false
-//            );
-//      // nominal evaluation
-//      // NOTE nominal Jacobian is already computed by the AD version
-//      // CalcPointJacobian (model, Q, CS.body[i], CS.point[i], Gi, false);
+  for (unsigned i = 0; i < CS.loopConstraintIndices.size(); i++) {
+    unsigned const c = CS.loopConstraintIndices[i];
 
-//      prev_body_id = CS.body[i];
-//      prev_body_point = CS.point[i];
-//    }
+    // Only recompute variables if necessary.
+    if( prev_body_id_1 != CS.body_p[c]
+        || prev_body_id_2 != CS.body_s[c]
+        || prev_body_X_1.r != CS.X_p[c].r
+        || prev_body_X_2.r != CS.X_s[c].r
+        || prev_body_X_1.E != CS.X_p[c].E
+        || prev_body_X_2.E != CS.X_s[c].E) {
 
-//    for (j = 0; j < model.dof_count; j++) {
-//      // derivative evaluation
-//      for (unsigned idir = 0; idir < ndirs; idir++) {
-//        Vector3d gaxis_dirs (
-//              Gi_dirs[idir](0,j),
-//              Gi_dirs[idir](1,j),
-//              Gi_dirs[idir](2,j));
-//            G_dirs[idir](i,j) = gaxis_dirs.transpose() * CS.normal[i];
-//      }
-//      // nominal evaluation
-//      Math::Vector3d gaxis (Gi(0,j), Gi(1,j), Gi(2,j));
-//      // nominal evaluation
-//      G(i,j) = gaxis.transpose() * CS.normal[i];
-//    }
-//  }
+      // Compute the 6D jacobians of the two contact points.
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_CS.GSpi[idir].setZero();
+      }
+      CS.GSpi.setZero();
+
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_CS.GSsi[idir].setZero();
+      }
+      CS.GSsi.setZero();
+
+      CalcPointJacobian6D(model, ad_model, q, q_dirs, CS.body_p[c],
+                          CS.X_p[c].r, CS.GSpi, ad_CS.GSpi, false);
+
+      CalcPointJacobian6D(model, ad_model, q, q_dirs, CS.body_s[c],
+                          CS.X_s[c].r, CS.GSsi, ad_CS.GSsi, false);
+
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_CS.GSJ[idir] = ad_CS.GSsi[idir] - ad_CS.GSpi[idir];
+      }
+      CS.GSJ = CS.GSsi - CS.GSpi;
+
+      // Compute position and rotation matrix from predecessor body to base.
+
+      pos_p = CalcBodyToBaseCoordinates(model, ad_model, q, q_dirs,
+                                        CS.body_p[c], CS.X_p[c].r,
+                                        ad_pos_p, false);
+
+      rot_p = CalcBodyWorldOrientation(model, ad_model, q, q_dirs,
+                                       CS.body_p[c], ad_rot_p, false);
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_rot_p[idir] = ad_rot_p[idir].transpose() * CS.X_p[c].E;
+      }
+      rot_p = rot_p.transpose() * CS.X_p[c].E;
+
+
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_X_0p[idir] = SpatialTransform(ad_rot_p[idir], ad_pos_p.col(idir));
+      }
+      X_0p = SpatialTransform (rot_p, pos_p);
+
+      // Update variables for optimization check.
+      prev_constraint_type = ConstraintSet::LoopConstraint;
+      prev_body_id_1 = CS.body_p[c];
+      prev_body_id_2 = CS.body_s[c];
+      prev_body_X_1 = CS.X_p[c];
+      prev_body_X_2 = CS.X_s[c];
+    }
+
+    // Express the constraint axis in the base frame.
+    applySTSV(ndirs,
+              X_0p, ad_X_0p,
+              CS.constraintAxis[c],
+              axis, ad_axis);
+
+    // Compute the constraint Jacobian row.
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      G_dirs[idir].row(c) =
+          axis.transpose() * ad_CS.GSJ[idir]
+          + ad_axis[idir].transpose() * CS.GSJ;
+    }
+    G.row(c) = axis.transpose() * CS.GSJ;
+  }
 }
 
 RBDL_DLLAPI void CalcConstrainedSystemVariables (
@@ -464,7 +501,7 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
              model.X_base[lambda], ad_model.X_base[lambda],
              model.X_base[i], ad_model.X_base[i]);
   }
-  CalcContactJacobian(model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
+  CalcConstraintsJacobian(model, ad_model, q, q_dirs, CS, ad_CS, CS.G, ad_CS.G, false);
 
   // Compute position error for Baumgarte Stabilization.
   CalcConstraintsPositionError (model, ad_model, q, q_dirs,

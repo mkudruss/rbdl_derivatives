@@ -824,12 +824,12 @@ RBDL_DLLAPI
 void CalcPointJacobian (
     Model &model,
     ADModel &ad_model,
-    Math::VectorNd const &Q,
-    Math::MatrixNd const &Q_dirs,
-    unsigned int body_id,
-    Math::Vector3d const &point_position,
-    Math::MatrixNd &G,
-    std::vector<Math::MatrixNd> &G_dirs,
+    VectorNd const &Q,
+    MatrixNd const &Q_dirs,
+    unsigned body_id,
+    Vector3d const &point_position,
+    MatrixNd &G,
+    vector<MatrixNd> &G_dirs,
     bool update_kinematics
     ) {
   LOG << "-------- " << __func__ << " --------" << std::endl;
@@ -937,6 +937,92 @@ void CalcPointJacobian (
             3,0,3,model.mCustomJoints[k]->mDoFCount);
     }
 
+    j = model.lambda[j];
+  }
+}
+
+RBDL_DLLAPI void CalcPointJacobian6D (
+    Model &model,
+    ADModel &ad_model,
+    VectorNd const &q,
+    MatrixNd const &q_dirs,
+    unsigned body_id,
+    Vector3d const &point_position,
+    MatrixNd &G,
+    vector<MatrixNd> &ad_G,
+    bool update_kinematics) {
+  unsigned ndirs = q_dirs.cols();
+  assert(ndirs == ad_G.size());
+
+  if (update_kinematics) {
+    UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
+  }
+
+  MatrixNd r_dirs(3, ndirs);
+  Vector3d r = CalcBodyToBaseCoordinates(model, ad_model, q, q_dirs, body_id,
+                                         point_position, r_dirs, false);
+
+  vector<SpatialTransform> point_trans_dirs(ndirs);
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    point_trans_dirs[idir] = SpatialTransform(Matrix3d::Zero(), r_dirs.col(idir));
+  }
+  SpatialTransform point_trans = SpatialTransform (Matrix3d::Identity(), r);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    assert(ad_G[idir].rows() == 6);
+    assert(ad_G[idir].cols() == model.qdot_size);
+  }
+  assert (G.rows() == 6 && G.cols() == model.qdot_size );
+
+
+  unsigned int reference_body_id = body_id;
+
+  if (model.IsFixedBodyId(body_id)) {
+    unsigned int fbody_id = body_id - model.fixed_body_discriminator;
+    reference_body_id = model.mFixedBodies[fbody_id].mMovableParent;
+  }
+
+  unsigned int j = reference_body_id;
+  while (j != 0) {
+    unsigned q_index = model.mJoints[j].q_index;
+
+    if(model.mJoints[j].mJointType != JointTypeCustom){
+      if (model.mJoints[j].mDoFCount == 1) {
+
+        vector<SpatialTransform> Xbji_dirs(ndirs);
+        SpatialTransform Xbji;
+        inverse(ndirs,
+                model.X_base[j], ad_model.X_base[j],
+                Xbji, Xbji_dirs);
+
+        vector<SpatialVector> XbjiSj_dirs(ndirs);
+        SpatialVector XbjiSj;
+        applySTSV(ndirs,
+                  Xbji, Xbji_dirs,
+                  model.S[j],
+                  XbjiSj, XbjiSj_dirs);
+
+        SpatialVector Gqi;
+        vector<SpatialVector> Gqi_dirs(ndirs);
+        applySTSV(ndirs,
+                  point_trans, point_trans_dirs,
+                  XbjiSj, XbjiSj_dirs,
+                  Gqi, Gqi_dirs);
+
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          ad_G[idir].col(q_index) = Gqi_dirs[idir];
+        }
+        G.col(q_index) = Gqi;
+      } else if (model.mJoints[j].mDoFCount == 3) {
+        cerr << __FILE__ << " " << __LINE__
+             << ": Multi-DoF joint not supported!" << endl;
+        abort();
+      }
+    } else {
+      cerr << __FILE__ << " " << __LINE__
+           << ": Custom joint not supported!" << endl;
+      abort();
+    }
     j = model.lambda[j];
   }
 }

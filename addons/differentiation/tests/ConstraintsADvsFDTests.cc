@@ -57,7 +57,7 @@ void CalcContactJacobianTemplate(
     // call nominal version
     CalcConstraintsJacobian(ad_model, q, ad_cs, G, update_kinematics);
 
-    AD::CalcContactJacobian(
+    AD::CalcConstraintsJacobian(
           ad_model, ad_d_model,
           q, q_dirs,
           ad_cs, ad_d_cs,
@@ -196,7 +196,6 @@ void ForwardDynamicsConstraintsDirectTemplate(
     VectorNd qd = VectorNd::Random(nq);
     VectorNd tau = VectorNd::Random(nq);
 
-
     ForwardDynamicsConstraintsDirect(model, q, qd, tau, cs, qdd);
 
     AD::ForwardDynamicsConstraintsDirect(
@@ -235,7 +234,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsContactsDirect) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
   ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
-  ForwardDynamicsConstraintsDirectTemplate(*this, 10, 1e-5);
+  ForwardDynamicsConstraintsDirectTemplate(*this, 10, 1e-4);
 }
 
 // -----------------------------------------------------------------------------
@@ -373,7 +372,7 @@ void ComputeContactImpulsesDirectTestTemplate(
     MatrixNd fd_qd_plus_dirs(nq, ndirs);
 
     ComputeConstraintImpulsesDirect (model, q, qd, cs, qd_plus);
-    AD::ComputeContactImpulsesDirect(ad_model, ad_d_model,
+    AD::ComputeConstraintImpulsesDirect(ad_model, ad_d_model,
                                      q, q_dirs, qd, qd_dirs,
                                      ad_cs, ad_d_cs,
                                      ad_qd_plus, ad_qd_plus_dirs);

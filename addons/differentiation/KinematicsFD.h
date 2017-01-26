@@ -85,8 +85,17 @@ RBDL_DLLAPI void CalcPointJacobian (
     unsigned int body_id,
     Math::Vector3d const &point_position,
     Math::MatrixNd &G,
-    std::vector<Math::MatrixNd> &G_dirs,
-    bool update_kinematics = true);
+    std::vector<Math::MatrixNd> &G_dirs);
+
+RBDL_DLLAPI void CalcPointJacobian6D (
+    Model &model,
+    ADModel *fd_model, // NULL means execution without fd_model update
+    Math::VectorNd const &q,
+    Math::MatrixNd const &q_dirs,
+    unsigned body_id,
+    Math::Vector3d const &point_position,
+    Math::MatrixNd &G,
+    std::vector<Math::MatrixNd> &fd_G);
 
 RBDL_DLLAPI void UpdateKinematicsCustom (
     Model & model,

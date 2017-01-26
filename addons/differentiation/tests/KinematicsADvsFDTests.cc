@@ -583,8 +583,7 @@ void CalcPointJacobianTemplate(
             q, q_dirs,
             body_id,
             point_position,
-            fd_G, fd_G_dirs,
-            update_kinematics);
+            fd_G, fd_G_dirs);
 
       checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
 
@@ -623,3 +622,93 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian) {
 }
 
 // -----------------------------------------------------------------------------
+
+template <typename T>
+void CalcPointJacobian6DTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
+  Model model = obj.model;
+  Model ad_model = obj.model;
+  Model fd_model = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
+
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
+  bool update_kinematics = true;
+
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    Vector3d point_position = Vector3d::Random();
+
+    VectorNd q = VectorNd::Random(nq);
+    MatrixNd q_dirs = MatrixNd::Random(nq, nq);
+
+    // set up no output quantities
+    MatrixNd G = MatrixNd::Zero (6, nq);
+    MatrixNd ad_G = MatrixNd::Zero (6, nq);
+    MatrixNd fd_G = MatrixNd::Zero (6, nq);
+
+    // set up derivative output quantities
+    vector<MatrixNd> ad_G_dirs (ndirs, ad_G);
+    vector<MatrixNd> fd_G_dirs (ndirs, fd_G);
+
+    for (unsigned i = 2; i < ad_model.mBodies.size(); i++) {
+      unsigned int body_id = ad_model.mBodyNameMap[ad_model.GetBodyName(i)];
+
+      CalcPointJacobian6D (
+            model, q, body_id, point_position, G, update_kinematics);
+
+      AD::CalcPointJacobian6D (
+            ad_model, ad_d_model,
+            q, q_dirs,
+            body_id,
+            point_position,
+            ad_G, ad_G_dirs,
+            update_kinematics);
+
+      FD::CalcPointJacobian6D (
+            fd_model, &fd_d_model,
+            q, q_dirs,
+            body_id,
+            point_position,
+            fd_G, fd_G_dirs);
+
+      checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+
+      CHECK_ARRAY_CLOSE(ad_G.data(), G.data(), G.size(), array_close_prec);
+      CHECK_ARRAY_CLOSE(fd_G.data(), G.data(), G.size(), array_close_prec);
+
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        CHECK_ARRAY_CLOSE(
+              ad_G_dirs[idir].data(),
+              fd_G_dirs[idir].data(),
+              ad_G_dirs[idir].size(),
+              array_close_prec);
+      }
+    }
+  }
+}
+
+TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointJacobian6D) {
+  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+}
+
+TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointJacobian6D) {
+  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+}
+
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointJacobian6D) {
+  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+}
+
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointJacobian6D) {
+  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian6D) {
+  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+}
+
+// -----------------------------------------------------------------------------
+

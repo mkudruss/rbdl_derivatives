@@ -18,6 +18,10 @@ struct ADConstraintSet {
 
   std::vector<Math::MatrixNd> G;
   std::vector<Math::MatrixNd> Gi;
+  std::vector<Math::MatrixNd> GSpi;
+  std::vector<Math::MatrixNd> GSsi;
+  std::vector<Math::MatrixNd> GSJ;
+
   std::vector<Math::MatrixNd> A;
   std::vector<Math::MatrixNd> H;
   Math::MatrixNd              b;
@@ -52,7 +56,7 @@ RBDL_DLLAPI void CalcConstraintsPositionError (
     );
 
 RBDL_DLLAPI
-void CalcContactJacobian(
+void CalcConstraintsJacobian(
 		Model   & model,
 		ADModel & ad_model,
 		const Math::VectorNd & q,
@@ -126,7 +130,7 @@ void ForwardDynamicsContactsKokkevis (
 */
 
 RBDL_DLLAPI
-void ComputeContactImpulsesDirect(
+void ComputeConstraintImpulsesDirect(
 		Model & model,
 		ADModel & ad_model,
 		const Math::VectorNd & q,

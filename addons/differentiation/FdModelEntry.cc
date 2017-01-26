@@ -75,6 +75,8 @@ void computeFDEntry(
     ADConstraintSet &fd_cs) {
   fd_cs.G[idir]  = (csh.G - cs.G) / h;
   fd_cs.Gi[idir] = (csh.Gi - cs.Gi) / h;
+  fd_cs.GSpi[idir] = (csh.GSpi - cs.GSpi) / h;
+  fd_cs.GSsi[idir] = (csh.GSsi - cs.GSsi) / h;
   fd_cs.A[idir]  = (csh.A - cs.A) / h;
   fd_cs.H[idir]  = (csh.H - cs.H) / h;
   fd_cs.b.col(idir) = (csh.b - cs.b) / h;

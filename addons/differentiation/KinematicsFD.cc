@@ -247,17 +247,17 @@ void CalcPointJacobian (
     unsigned int body_id,
     Math::Vector3d const &point_position,
     Math::MatrixNd &G,
-    std::vector<Math::MatrixNd> &G_dirs,
-    bool update_kinematics) {
+    std::vector<Math::MatrixNd> &G_dirs) {
   unsigned int ndirs = q_dirs.cols();
   fd_model.resize_directions(ndirs);
+
+  double const h = 1e-8;
+  bool const update_kinematics = true;
 
   // temporary evaluation at current point
   CalcPointJacobian (
         model, q, body_id, point_position, G, update_kinematics
         );
-
-  double h = 1e-8;
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
     Model modelh = model;
@@ -272,6 +272,40 @@ void CalcPointJacobian (
     G_dirs[idir] = (Gh - G) / h;
     computeFDEntry(model, modelh, h, idir, fd_model);
   }
+}
+
+RBDL_DLLAPI void CalcPointJacobian6D (
+    Model &model,
+    ADModel *fd_model,
+    VectorNd const &q,
+    MatrixNd const &q_dirs,
+    unsigned body_id,
+    Vector3d const &point_position,
+    MatrixNd &G,
+    vector<MatrixNd> &fd_G) {
+  unsigned const ndirs = q_dirs.cols();
+  assert(ndirs == fd_G.size());
+
+  double const h = 1e-8;
+  CalcPointJacobian6D(model, q, body_id, point_position, G);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model *modelh = &model;
+    MatrixNd Gh(G.rows(), G.cols());
+    VectorNd qh = q + h * q_dirs.col(idir);
+    if (fd_model) {
+      modelh = new Model(model);
+    }
+
+    CalcPointJacobian6D(*modelh, qh, body_id, point_position, Gh);
+    fd_G[idir] = (Gh - G) / h;
+
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
+  }
+
 }
 
 RBDL_DLLAPI

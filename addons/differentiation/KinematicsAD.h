@@ -114,8 +114,7 @@ RBDL_DLLAPI Math::Vector3d CalcPointAcceleration (
     Math::MatrixNd & ad_derivative,
     bool update_kinematics = true);
 
-RBDL_DLLAPI
-void CalcPointJacobian (
+RBDL_DLLAPI void CalcPointJacobian (
     Model &model,
     ADModel &ad_model,
     Math::VectorNd const &Q,
@@ -126,6 +125,17 @@ void CalcPointJacobian (
     std::vector<Math::MatrixNd> &G_dirs,
     bool update_kinematics = true
     );
+
+RBDL_DLLAPI void CalcPointJacobian6D (
+    Model &model,
+    ADModel &ad_model,
+    Math::VectorNd const &q,
+    Math::MatrixNd const &q_dirs,
+    unsigned body_id,
+    Math::Vector3d const &point_position,
+    Math::MatrixNd &G,
+    std::vector<Math::MatrixNd> &ad_G,
+    bool update_kinematics);
 
 // -----------------------------------------------------------------------------
 } // namespace AD
