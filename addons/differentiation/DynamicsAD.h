@@ -32,7 +32,8 @@ namespace AD {
 // -----------------------------------------------------------------------------
 
 RBDL_DLLAPI
-void ForwardDynamics (Model& model,
+void ForwardDynamics (
+    Model& model,
     ADModel& ad_model,
     const Math::VectorNd& q,
     const Math::MatrixNd& q_dirs,
@@ -61,7 +62,8 @@ void InverseDynamics(
     std::vector<std::vector<Math::SpatialVector>> const * f_ext_dirs = NULL);
 
 RBDL_DLLAPI
-void NonlinearEffects (Model & model,
+void NonlinearEffects (
+    Model & model,
     ADModel & ad_model,
     const Math::VectorNd & q,
     const Math::MatrixNd & q_dirs,
@@ -88,5 +90,5 @@ void CompositeRigidBodyAlgorithm (
 } /* RigidBodyDynamics */
 // -----------------------------------------------------------------------------
 
-/* RBDL_MATH_AD_H */
+/* RBDL_DYNAMICS_AD_H */
 #endif

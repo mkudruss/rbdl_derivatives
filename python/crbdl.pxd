@@ -77,6 +77,9 @@ cdef extern from "<rbdl/SpatialAlgebraOperators.h>" namespace "RigidBodyDynamics
         SpatialMatrix toMatrix()
         SpatialTransform inverse()
         SpatialTransform operator*(const SpatialTransform&)
+
+        SpatialVector applyAdjoint(const SpatialVector&)
+
         Matrix3d E
         Vector3d r
 

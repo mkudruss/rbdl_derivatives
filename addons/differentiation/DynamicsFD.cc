@@ -4,7 +4,6 @@
  *
  * Licensed under the zlib license. See LICENSE for more details.
  */
-
 #include "DynamicsFD.h"
 #include "FdModelEntry.h"
 
@@ -218,3 +217,4 @@ void CompositeRigidBodyAlgorithm (
 // -----------------------------------------------------------------------------
 } // namespace RigidBodyDynamics
 // -----------------------------------------------------------------------------
+

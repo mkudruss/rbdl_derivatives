@@ -474,6 +474,26 @@ cdef class SpatialTransform:
                 self.thisptr.E.coeff(2,0), self.thisptr.E.coeff(2,1), self.thisptr.E.coeff(2,2),
                 self.thisptr.r[0], self.thisptr.r[1], self.thisptr.r[2])
 
+    def inverse(self):
+        """Return inverse spatial transform."""
+        cdef crbdl.SpatialTransform s_inv
+        s_inv = self.thisptr.inverse()
+        s = SpatialTransform.fromPointer (<uintptr_t> &s_inv)
+        return s
+
+    def applyAdjoint(self, np.ndarray[double, ndim=1] f_sp):
+        """Apply the adjoint spatial transform on a spatial vector."""
+        # create a Python Spatial vector
+        s = SpatialVector(0, f_sp)
+
+        # extract C++ Spatial Vector from Python object and apply Adjoint
+        cdef crbdl.SpatialVector f_sp_c
+        f_sp_c = self.thisptr.applyAdjoint(s.thisptr[0])
+
+        # convert resulting C++ Spatial Vector to Python numpy array
+        return SpatialVectorToNumpy(f_sp_c)
+
+
     property E:
         """ Rotational part of the SpatialTransform. """
         def __get__ (self):

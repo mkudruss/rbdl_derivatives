@@ -8,8 +8,8 @@
 #ifndef RBDL_AD_H
 #define RBDL_AD_H
 
-#include "ContactsAD.h"
-#include "ContactsFD.h"
+#include "ConstraintsAD.h"
+#include "ConstraintsFD.h"
 #include "DynamicsAD.h"
 #include "DynamicsFD.h"
 #include "FdModelEntry.h"
@@ -17,12 +17,11 @@
 #include "KinematicsAD.h"
 #include "KinematicsFD.h"
 #include "ModelAD.h"
-#include "rbdl_ad.h"
-#include "rbdl_mathutilsAD.h"
-#include "rbdl_mathutilsFD.h"
-#include "rbdl_utilsAD.h"
-#include "rbdl_utilsFD.h"
-#include "SpatialAlgebraOperatorsAD.h"
+// #include "rbdl_mathutilsAD.h"
+// #include "rbdl_mathutilsFD.h"
+// #include "rbdl_utilsAD.h"
+// #include "rbdl_utilsFD.h"
+// #include "SpatialAlgebraOperatorsAD.h"
 
 /** \page api_version_checking_page API Changes
  * @{
@@ -68,4 +67,5 @@
 // RBDL_DLLAPI void rbdl_print_version();
 
 /* RBDL_AD_H */
+
 #endif

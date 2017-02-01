@@ -5,6 +5,9 @@
  * Licensed under the zlib license. See LICENSE for more details.
  */
 
+#ifndef RBDL_MATH_FD_H
+#define RBDL_MATH_FD_H
+
 #include <cmath>
 #include <limits>
 
@@ -25,7 +28,7 @@ namespace Math {
 namespace FD {
 // -----------------------------------------------------------------------------
 
-SpatialVector crossm (
+inline SpatialVector crossm (
         const SpatialVector &v1, const SpatialVector &v1_dirs,
         const SpatialVector &v2, const SpatialVector &v2_dirs
 ) {
@@ -40,7 +43,7 @@ SpatialVector crossm (
     return (res_hd - res) / h;
 };
 
-SpatialMatrix crossm (
+inline SpatialMatrix crossm (
         const SpatialVector &v, const SpatialVector &v_dirs
 ) {
     double h = 1.0e-8;
@@ -61,3 +64,6 @@ SpatialMatrix crossm (
 // -----------------------------------------------------------------------------
 } /* RigidBodyDynamics */
 // -----------------------------------------------------------------------------
+
+/* RBDL_MATH_FD_H */
+#endif

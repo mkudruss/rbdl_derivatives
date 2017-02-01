@@ -5,6 +5,9 @@
  * Licensed under the zlib license. See LICENSE for more details.
  */
 
+#ifndef RBDL_DYNAMICS_FD_H
+#define RBDL_DYNAMICS_FD_H
+
 #include <iostream>
 #include <limits>
 #include <assert.h>
@@ -81,3 +84,6 @@ void CompositeRigidBodyAlgorithm (
 // -----------------------------------------------------------------------------
 } /* RigidBodyDynamics */
 // -----------------------------------------------------------------------------
+
+/* RBDL_DYNAMICS_FD_H */
+#endif
