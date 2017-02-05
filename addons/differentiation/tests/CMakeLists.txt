@@ -19,10 +19,6 @@ SET ( TESTS_SRCS
     ModelCheckADvsFD.cc
 )
 
-SET ( TEST_HEADER_SRCS
-    headers.cc
-)
-
 INCLUDE_DIRECTORIES ( ../src/ )
 
 SET_TARGET_PROPERTIES ( ${PROJECT_EXECUTABLES} PROPERTIES
@@ -30,7 +26,6 @@ SET_TARGET_PROPERTIES ( ${PROJECT_EXECUTABLES} PROPERTIES
 )
 
 ADD_EXECUTABLE ( rbdl_ad_tests ${TESTS_SRCS} )
-ADD_EXECUTABLE ( rbdl_header_tests ${TEST_HEADER_SRCS} )
 # target_compile_features(rbdl_ad_tests PRIVATE cxx_range_for)
 SET_TARGET_PROPERTIES ( rbdl_ad_tests PROPERTIES
     LINKER_LANGUAGE CXX
@@ -49,11 +44,6 @@ ENDIF (RBDL_BUILD_STATIC)
 
 TARGET_LINK_LIBRARIES ( rbdl_ad_tests
         ${UNITTEST++_LIBRARY}
-        ${RBDL_LIBRARY}
-        ${RBDL_LIBRARY_AD}
-    )
-
-TARGET_LINK_LIBRARIES ( rbdl_header_tests
         ${RBDL_LIBRARY}
         ${RBDL_LIBRARY_AD}
     )

@@ -1963,8 +1963,7 @@ cdef class InverseKinematicsConstraintSet:
 
     property e:
         def __get__ (self):
-            return self.thisptr.damper.toNumpy()
-
+            return VectorNd.fromPointer (<uintptr_t> &(self.thisptr.e)).toNumpy()
 
     property damper:
         def __get__ (self):
