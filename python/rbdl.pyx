@@ -2009,6 +2009,20 @@ def InverseKinematics (
 #
 ##############################
 
+def UpdateKinematics(
+        Model model,
+        np.ndarray[double, ndim=1, mode="c"] q,
+        np.ndarray[double, ndim=1, mode="c"] qdot,
+        np.ndarray[double, ndim=1, mode="c"] qddot
+):
+    crbdl.UpdateKinematics(
+            model.thisptr[0],
+            NumpyToVectorNd (q),
+            NumpyToVectorNd (qdot),
+            NumpyToVectorNd (qddot)
+    )
+
+
 def CalcBodyToBaseCoordinates (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
         int body_id,
