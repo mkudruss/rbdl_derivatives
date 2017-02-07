@@ -168,7 +168,9 @@ bool ConstraintSet::Bind (const Model &model) {
 
   Gi.conservativeResize (3, model.qdot_size);
   GSpi.conservativeResize (6, model.qdot_size);
+  GSpi.setZero();
   GSsi.conservativeResize (6, model.qdot_size);
+  GSsi.setZero();
   GSJ.conservativeResize (6, model.qdot_size);
 
   // HouseHolderQR crashes if matrix G has more rows than columns.
