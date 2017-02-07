@@ -676,14 +676,14 @@ void CalcPointJacobian6DTemplate(
 
       checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
 
-      CHECK_ARRAY_CLOSE(ad_G.data(), G.data(), G.size(), array_close_prec);
-      CHECK_ARRAY_CLOSE(fd_G.data(), G.data(), G.size(), array_close_prec);
+      CHECK_ARRAY_CLOSE(ad_G.data(), G.data(), G.rows() * G.cols(), array_close_prec);
+      CHECK_ARRAY_CLOSE(fd_G.data(), G.data(), G.rows() * G.cols(), array_close_prec);
 
       for (unsigned idir = 0; idir < ndirs; idir++) {
         CHECK_ARRAY_CLOSE(
               ad_G_dirs[idir].data(),
               fd_G_dirs[idir].data(),
-              ad_G_dirs[idir].size(),
+              ad_G_dirs[idir].rows() * ad_G_dirs[idir].cols(),
               array_close_prec);
       }
     }

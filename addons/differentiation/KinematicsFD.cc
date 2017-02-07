@@ -264,6 +264,7 @@ RBDL_DLLAPI void CalcPointJacobian6D (
   assert(ndirs == fd_G.size());
 
   double const h = 1e-8;
+  G.setZero();
   CalcPointJacobian6D(model, q, body_id, point_position, G);
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
@@ -274,6 +275,7 @@ RBDL_DLLAPI void CalcPointJacobian6D (
       modelh = new Model(model);
     }
 
+    Gh.setZero();
     CalcPointJacobian6D(*modelh, qh, body_id, point_position, Gh);
     fd_G[idir] = (Gh - G) / h;
 
