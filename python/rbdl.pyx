@@ -1879,6 +1879,10 @@ cdef class ConstraintSet:
         def __get__ (self):
             return self.normal
 
+    property force:
+        def __get__ (self):
+            return VectorNdToNumpy(self.thisptr.force)
+
 
 #    property acceleration:
 #        def __get__(self):
