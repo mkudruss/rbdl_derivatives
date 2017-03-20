@@ -2275,6 +2275,34 @@ def ForwardDynamics (Model model,
             NULL
             )
 
+##############################
+#
+# Constraints.h
+#
+##############################
+
+def ForwardDynamicsForwardDynamicsConstraintsDirect (
+        Model model,
+        np.ndarray[double, ndim=1, mode="c"] q,
+        np.ndarray[double, ndim=1, mode="c"] qdot,
+        np.ndarray[double, ndim=1, mode="c"] tau,
+        ConstraintSet CS,
+        np.ndarray[double, ndim=1, mode="c"] qddot):
+    crbdl.ForwardDynamicsConstraintsDirectPtr (
+            model.thisptr[0],
+            <double*>q.data,
+            <double*>qdot.data,
+            <double*>tau.data,
+            CS.thisptr[0],
+            <double*>qddot.data
+            )
+
+##############################
+#
+# Utilities
+#
+##############################
+
 def loadModel (
         filename,
         **kwargs

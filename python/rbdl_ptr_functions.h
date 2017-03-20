@@ -642,7 +642,7 @@ void ForwardDynamicsConstraintsDirectPtr (
   const double *qdot_ptr,
   const double *tau_ptr,
   ConstraintSet &CS,
-  const double *qddot_ptr
+  double *qddot_ptr
 ) {
   LOG << "-------- " << __func__ << " --------" << std::endl;
 
@@ -664,7 +664,7 @@ void ForwardDynamicsConstraintsDirectPtr (
   LOG << "QDDot_dummy      = " << QDDot_dummy.transpose() << std::endl;
 
   // calling non-pointer version
-  ForwardDynamicsConstraintsNullSpace (
+  ForwardDynamicsConstraintsDirect (
     model, Q, QDot, Tau, CS, QDDot_dummy
   );
 

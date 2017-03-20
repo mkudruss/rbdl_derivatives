@@ -463,6 +463,15 @@ cdef extern from "rbdl_ptr_functions.h" namespace "RigidBodyDynamics":
             vector[SpatialVector] *f_ext
             )
 
+    cdef void ForwardDynamicsConstraintsDirectPtr (
+            Model &model,
+            const double* q_ptr,
+            const double* qdot_ptr,
+            const double* tau_ptr,
+            ConstraintSet &CS,
+            double* qddot_ptr
+            )
+
 cdef extern from "rbdl_loadmodel.cc":
     cdef bool rbdl_loadmodel (
             const char* filename,
