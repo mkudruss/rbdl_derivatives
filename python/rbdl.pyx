@@ -1548,7 +1548,7 @@ cdef class Model:
                 )
 
     def SetQuaternion (self,
-            int body_id,
+            unsigned int body_id,
             np.ndarray[double, ndim=1, mode="c"] quat,
             np.ndarray[double, ndim=1, mode="c"] q):
         quat_wrap = Quaternion.fromPythonArray (quat)
@@ -1560,7 +1560,7 @@ cdef class Model:
             q[i] = q_wrap[i]
 
     def GetQuaternion (self,
-            int body_id,
+            unsigned int body_id,
             np.ndarray[double, ndim=1, mode="c"] q):
         return QuaternionToNumpy (self.thisptr.GetQuaternion(body_id, NumpyToVectorNd (q)))
 
@@ -1594,7 +1594,7 @@ cdef class Model:
         def __get__ (self):
             return self.thisptr.qdot_size
 
-    property previously_added_body_id:
+    property previously_addedbody_id:
         def __get__ (self):
             return self.thisptr.previously_added_body_id
 
@@ -1879,6 +1879,10 @@ cdef class ConstraintSet:
         def __get__ (self):
             return self.normal
 
+    property force:
+        def __get__ (self):
+            return VectorNdToNumpy(self.thisptr.force)
+
 
 #    property acceleration:
 #        def __get__(self):
@@ -2025,7 +2029,7 @@ def UpdateKinematics(
 
 def CalcBodyToBaseCoordinates (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
-        int body_id,
+        unsigned int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return Vector3dToNumpy (crbdl.CalcBodyToBaseCoordinates (
@@ -2038,7 +2042,7 @@ def CalcBodyToBaseCoordinates (Model model,
 
 def CalcBaseToBodyCoordinates (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
-        int body_id,
+        unsigned int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return Vector3dToNumpy (crbdl.CalcBaseToBodyCoordinates (
@@ -2063,7 +2067,7 @@ def CalcBodyWorldOrientation (Model model,
 def CalcPointVelocity (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
         np.ndarray[double, ndim=1, mode="c"] qdot,
-        int body_id,
+        unsigned int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return Vector3dToNumpy (crbdl.CalcPointVelocity (
@@ -2079,7 +2083,7 @@ def CalcPointAcceleration (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
         np.ndarray[double, ndim=1, mode="c"] qdot,
         np.ndarray[double, ndim=1, mode="c"] qddot,
-        int body_id,
+        unsigned int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return Vector3dToNumpy (crbdl.CalcPointAcceleration (
@@ -2095,7 +2099,7 @@ def CalcPointAcceleration (Model model,
 def CalcPointVelocity6D (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
         np.ndarray[double, ndim=1, mode="c"] qdot,
-        int body_id,
+        unsigned int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return SpatialVectorToNumpy (crbdl.CalcPointVelocity6D (
@@ -2111,7 +2115,7 @@ def CalcPointAcceleration6D (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
         np.ndarray[double, ndim=1, mode="c"] qdot,
         np.ndarray[double, ndim=1, mode="c"] qddot,
-        int body_id,
+        unsigned int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return SpatialVectorToNumpy (crbdl.CalcPointAcceleration6D (
@@ -2126,7 +2130,7 @@ def CalcPointAcceleration6D (Model model,
 
 def CalcPointJacobian (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
-        int body_id,
+        unsigned int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         np.ndarray[double, ndim=2, mode="c"] G,
         update_kinematics=True):
@@ -2141,7 +2145,7 @@ def CalcPointJacobian (Model model,
 
 def CalcPointJacobian6D (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
-        int body_id,
+        unsigned int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         np.ndarray[double, ndim=2, mode="c"] G,
         update_kinematics=True):
@@ -2156,7 +2160,7 @@ def CalcPointJacobian6D (Model model,
 
 def CalcBodySpatialJacobian(Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
-        int body_id,
+        unsigned int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         np.ndarray[double, ndim=2, mode="c"] G,
         update_kinematics=True):
