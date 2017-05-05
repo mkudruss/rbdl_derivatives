@@ -44,7 +44,7 @@ void ForwardDynamics (
     Math::VectorNd & qddot,
     Math::MatrixNd & ad_qddot,
     std::vector<Math::SpatialVector> const * f_ext = NULL,
-    std::vector<std::vector<Math::SpatialVector>> const * f_ext_dirs = NULL);
+    std::vector<std::vector<Math::SpatialVector> > const * f_ext_dirs = NULL);
 
 RBDL_DLLAPI
 void InverseDynamics(
@@ -59,7 +59,7 @@ void InverseDynamics(
     Math::VectorNd& tau,
     Math::MatrixNd& ad_tau,
     std::vector<Math::SpatialVector> const * f_ext = NULL,
-    std::vector<std::vector<Math::SpatialVector>> const * f_ext_dirs = NULL);
+    std::vector<std::vector<Math::SpatialVector> > const * f_ext_dirs = NULL);
 
 RBDL_DLLAPI
 void NonlinearEffects (
