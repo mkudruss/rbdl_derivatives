@@ -188,23 +188,32 @@ void CompositeRigidBodyAlgorithm (
     const VectorNd &q,
     const MatrixNd &q_dirs,
     MatrixNd &H,
-    vector<MatrixNd> &fd_H) {
+    vector<MatrixNd> &fd_H
+) {
   unsigned const ndirs = q_dirs.cols();
   assert(ndirs == fd_H.size());
 
-  H = MatrixNd::Zero(q.size(),q.size());
-  MatrixNd inertia_fd = MatrixNd::Zero(q.size(),q.size());
-
-  CompositeRigidBodyAlgorithm(model, q, H, true);
+  // value of perturbation
   double h = 1.0e-8;
+
+  // compute value at current configuration q as nominal value
+  CompositeRigidBodyAlgorithm(model, q, H, true);
+
   for (unsigned idir = 0; idir < ndirs; idir++) {
+    // hack to compute finite differences of model quantities
     Model *modelh = &model;
     if (fd_model) {
       modelh = new Model(model);
     }
     VectorNd q_dir = q_dirs.col(idir);
-    CompositeRigidBodyAlgorithm(*modelh, q+h*q_dir, inertia_fd, true);
-    fd_H[idir] = (inertia_fd - H) / h;
+
+    // compute perturbations along direction
+    CompositeRigidBodyAlgorithm(*modelh, q+h*q_dir, fd_H[idir], true);
+
+    // compute directional derivatives using forward first order differences
+    fd_H[idir] = (fd_H[idir] - H) / h;
+
+    // hack to compute finite differences of model quantities
     if (fd_model) {
       computeFDEntry(model, *modelh, h, idir, *fd_model);
       delete modelh;

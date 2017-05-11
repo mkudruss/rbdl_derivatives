@@ -1,4 +1,4 @@
-# WARNING!
+# WARNING! 
 #
 # This file was automatically created from rbdl-wrapper.pyx using wrappergen.py.
 # Do not modify this file directly. Edit original source instead!!
@@ -390,22 +390,6 @@ cdef np.ndarray VectorNdToNumpy (crbdl.VectorNd cx):
 
     return result
 
-# Matrix3d
-cdef crbdl.Matrix3d NumpyToMatrix3d (np.ndarray[double, ndim=2, mode="c"] M):
-    cdef crbdl.Matrix3d cM = crbdl.Matrix3d()
-    for i in range (M.shape[0]):
-        for j in range (M.shape[1]):
-            (&(cM.coeff(i,j)))[0] = M[i,j]
-
-    return cM
-
-cdef np.ndarray Matrix3dToNumpy (crbdl.Matrix3d cM):
-    result = np.ndarray ([cM.rows(), cM.cols()])
-    for i in range (cM.rows()):
-        for j in range (cM.cols()):
-            result[i,j] = cM.coeff(i,j)
-
-    return result
 # MatrixNd
 cdef crbdl.MatrixNd NumpyToMatrixNd (np.ndarray[double, ndim=2, mode="c"] M):
     cdef crbdl.MatrixNd cM = crbdl.MatrixNd(M.shape[0], M.shape[1])
@@ -473,26 +457,6 @@ cdef class SpatialTransform:
                 self.thisptr.E.coeff(1,0), self.thisptr.E.coeff(1,1), self.thisptr.E.coeff(1,2),
                 self.thisptr.E.coeff(2,0), self.thisptr.E.coeff(2,1), self.thisptr.E.coeff(2,2),
                 self.thisptr.r[0], self.thisptr.r[1], self.thisptr.r[2])
-
-    def inverse(self):
-        """Return inverse spatial transform."""
-        cdef crbdl.SpatialTransform s_inv
-        s_inv = self.thisptr.inverse()
-        s = SpatialTransform.fromPointer (<uintptr_t> &s_inv)
-        return s
-
-    def applyAdjoint(self, np.ndarray[double, ndim=1] f_sp):
-        """Apply the adjoint spatial transform on a spatial vector."""
-        # create a Python Spatial vector
-        s = SpatialVector(0, f_sp)
-
-        # extract C++ Spatial Vector from Python object and apply Adjoint
-        cdef crbdl.SpatialVector f_sp_c
-        f_sp_c = self.thisptr.applyAdjoint(s.thisptr[0])
-
-        # convert resulting C++ Spatial Vector to Python numpy array
-        return SpatialVectorToNumpy(f_sp_c)
-
 
     property E:
         """ Rotational part of the SpatialTransform. """
@@ -1548,7 +1512,7 @@ cdef class Model:
                 )
 
     def SetQuaternion (self,
-            unsigned int body_id,
+            int body_id,
             np.ndarray[double, ndim=1, mode="c"] quat,
             np.ndarray[double, ndim=1, mode="c"] q):
         quat_wrap = Quaternion.fromPythonArray (quat)
@@ -1560,7 +1524,7 @@ cdef class Model:
             q[i] = q_wrap[i]
 
     def GetQuaternion (self,
-            unsigned int body_id,
+            int body_id,
             np.ndarray[double, ndim=1, mode="c"] q):
         return QuaternionToNumpy (self.thisptr.GetQuaternion(body_id, NumpyToVectorNd (q)))
 
@@ -1594,7 +1558,7 @@ cdef class Model:
         def __get__ (self):
             return self.thisptr.qdot_size
 
-    property previously_addedbody_id:
+    property previously_added_body_id:
         def __get__ (self):
             return self.thisptr.previously_added_body_id
 
@@ -1879,10 +1843,6 @@ cdef class ConstraintSet:
         def __get__ (self):
             return self.normal
 
-    property force:
-        def __get__ (self):
-            return VectorNdToNumpy(self.thisptr.force)
-
 
 #    property acceleration:
 #        def __get__(self):
@@ -1891,145 +1851,15 @@ cdef class ConstraintSet:
 #            vec = VectorNd.fromPythonArray (values)
 #            self.thisptr.acceleration = <crbdl.VectorNd> (vec.thisptr[0])
 
-cdef class InverseKinematicsConstraintSet:
-    cdef crbdl.InverseKinematicsConstraintSet *thisptr
-    # cdef _ConstraintSet_point_Vector3d_VectorWrapper point
-    # cdef _ConstraintSet_normal_Vector3d_VectorWrapper normal
-
-    def __cinit__(self):
-        self.thisptr = new crbdl.InverseKinematicsConstraintSet()
-        # self.body_points = _ConstraintSet_body_points_Vector3d_VectorWrapper (<uintptr_t> self.thisptr)
-        # self.target_positions = _ConstraintSet_target_positions_Vector3d_VectorWrapper (<uintptr_t> self.thisptr)
-        # self.target_orientations = _ConstraintSet_target_orientations_Vector3d_VectorWrapper (<uintptr_t> self.thisptr)
-
-    def __dealloc__(self):
-        del self.thisptr
-
-    # def __repr__(self):
-    #     return "rbdl.ConstraintSet (0x{:0x})".format(<uintptr_t><void *> self.thisptr)
-
-    def AddPointConstraint (self,
-            unsigned int body_id,
-            np.ndarray[double, ndim=1, mode="c"] body_point,
-            np.ndarray[double, ndim=1, mode="c"] target_pos
-        ):
-        cdef crbdl.Vector3d c_body_point
-        cdef crbdl.Vector3d c_target_pos
-
-        for i in range (3):
-            c_body_point[i] = body_point[i]
-            c_target_pos[i] = target_pos[i]
-
-        return self.thisptr.AddPointConstraint (
-                body_id,
-                c_body_point,
-                c_target_pos
-        )
-
-    def AddOrientationConstraint (self,
-            unsigned int body_id,
-            np.ndarray[double, ndim=2, mode="c"] target_orientation
-        ):
-        cdef crbdl.Vector3d c_body_point
-        cdef crbdl.Matrix3d c_target_orientation
-
-        for i in range (3):
-            for j in range (3):
-                (&(c_target_orientation.coeff(i,j)))[0] = target_orientation[i, j]
-
-        return self.thisptr.AddOrientationConstraint (
-                body_id,
-                c_target_orientation
-        )
-
-    def AddFullConstraint (self,
-            unsigned int body_id,
-            np.ndarray[double, ndim=1, mode="c"] body_point,
-            np.ndarray[double, ndim=1, mode="c"] target_pos,
-            np.ndarray[double, ndim=2, mode="c"] target_orientation
-        ):
-        cdef crbdl.Vector3d c_body_point
-        cdef crbdl.Vector3d c_target_pos
-        cdef crbdl.Matrix3d c_target_orientation
-
-        for i in range (3):
-            c_body_point[i] = body_point[i]
-            c_target_pos[i] = target_pos[i]
-            for j in range (3):
-                (&(c_target_orientation.coeff(i,j)))[0] = target_orientation[i, j]
-
-        return self.thisptr.AddFullConstraint (
-                body_id,
-                c_body_point,
-                c_target_pos,
-                c_target_orientation
-        )
-
-    property e:
-        def __get__ (self):
-            return VectorNd.fromPointer (<uintptr_t> &(self.thisptr.e)).toNumpy()
-
-    property damper:
-        def __get__ (self):
-            return self.thisptr.damper
-
-        def __set__ (self, value):
-            self.thisptr.damper = value
-
-
-
-
-def InverseKinematics (
-    Model model,
-    np.ndarray[double, ndim=1, mode="c"] Qinit,
-    InverseKinematicsConstraintSet CS
-):
-    """Compute solution for inverse kinematics for given constraint set."""
-    cdef crbdl.VectorNd Qres
-    Qres.resize(model.dof_count)
-    res = np.zeros(model.dof_count)
-
-    # copy over data
-    # FIXME use memory views
-    for i in range(model.dof_count):
-        Qres[i] = 0.0
-
-    ret = crbdl.InverseKinematics (
-        model.thisptr[0],
-        NumpyToVectorNd (Qinit),
-        CS.thisptr[0],
-        Qres
-    )
-
-    # copy over data
-    # FIXME use memory views
-    for i in range(model.dof_count):
-        res[i] = Qres[i]
-
-    return res
 ##############################
 #
 # Kinematics.h
 #
 ##############################
 
-def UpdateKinematics(
-        Model model,
-        np.ndarray[double, ndim=1, mode="c"] q,
-        np.ndarray[double, ndim=1, mode="c"] qdot,
-        np.ndarray[double, ndim=1, mode="c"] qddot
-):
-    crbdl.UpdateKinematics(
-            model.thisptr[0],
-            NumpyToVectorNd (q),
-            NumpyToVectorNd (qdot),
-            NumpyToVectorNd (qddot)
-    )
-
-
 def CalcBodyToBaseCoordinates (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
-        unsigned int body_id,
+        int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return Vector3dToNumpy (crbdl.CalcBodyToBaseCoordinates (
@@ -2042,7 +1872,7 @@ def CalcBodyToBaseCoordinates (Model model,
 
 def CalcBaseToBodyCoordinates (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
-        unsigned int body_id,
+        int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return Vector3dToNumpy (crbdl.CalcBaseToBodyCoordinates (
@@ -2053,21 +1883,10 @@ def CalcBaseToBodyCoordinates (Model model,
             update_kinematics
             ))
 
-def CalcBodyWorldOrientation (Model model,
-        np.ndarray[double, ndim=1, mode="c"] q,
-        unsigned int body_id,
-        update_kinematics=True):
-    return Matrix3dToNumpy (crbdl.CalcBodyWorldOrientation (
-            model.thisptr[0],
-            NumpyToVectorNd (q),
-            body_id,
-            update_kinematics
-            ))
-
 def CalcPointVelocity (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
         np.ndarray[double, ndim=1, mode="c"] qdot,
-        unsigned int body_id,
+        int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return Vector3dToNumpy (crbdl.CalcPointVelocity (
@@ -2083,7 +1902,7 @@ def CalcPointAcceleration (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
         np.ndarray[double, ndim=1, mode="c"] qdot,
         np.ndarray[double, ndim=1, mode="c"] qddot,
-        unsigned int body_id,
+        int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return Vector3dToNumpy (crbdl.CalcPointAcceleration (
@@ -2099,7 +1918,7 @@ def CalcPointAcceleration (Model model,
 def CalcPointVelocity6D (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
         np.ndarray[double, ndim=1, mode="c"] qdot,
-        unsigned int body_id,
+        int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return SpatialVectorToNumpy (crbdl.CalcPointVelocity6D (
@@ -2115,7 +1934,7 @@ def CalcPointAcceleration6D (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
         np.ndarray[double, ndim=1, mode="c"] qdot,
         np.ndarray[double, ndim=1, mode="c"] qddot,
-        unsigned int body_id,
+        int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         update_kinematics=True):
     return SpatialVectorToNumpy (crbdl.CalcPointAcceleration6D (
@@ -2130,7 +1949,7 @@ def CalcPointAcceleration6D (Model model,
 
 def CalcPointJacobian (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
-        unsigned int body_id,
+        int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         np.ndarray[double, ndim=2, mode="c"] G,
         update_kinematics=True):
@@ -2145,7 +1964,7 @@ def CalcPointJacobian (Model model,
 
 def CalcPointJacobian6D (Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
-        unsigned int body_id,
+        int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         np.ndarray[double, ndim=2, mode="c"] G,
         update_kinematics=True):
@@ -2160,7 +1979,7 @@ def CalcPointJacobian6D (Model model,
 
 def CalcBodySpatialJacobian(Model model,
         np.ndarray[double, ndim=1, mode="c"] q,
-        unsigned int body_id,
+        int body_id,
         np.ndarray[double, ndim=1, mode="c"] body_point_position,
         np.ndarray[double, ndim=2, mode="c"] G,
         update_kinematics=True):
@@ -2278,34 +2097,6 @@ def ForwardDynamics (Model model,
             <double*>qddot.data,
             NULL
             )
-
-##############################
-#
-# Constraints.h
-#
-##############################
-
-def ForwardDynamicsForwardDynamicsConstraintsDirect (
-        Model model,
-        np.ndarray[double, ndim=1, mode="c"] q,
-        np.ndarray[double, ndim=1, mode="c"] qdot,
-        np.ndarray[double, ndim=1, mode="c"] tau,
-        ConstraintSet CS,
-        np.ndarray[double, ndim=1, mode="c"] qddot):
-    crbdl.ForwardDynamicsConstraintsDirectPtr (
-            model.thisptr[0],
-            <double*>q.data,
-            <double*>qdot.data,
-            <double*>tau.data,
-            CS.thisptr[0],
-            <double*>qddot.data
-            )
-
-##############################
-#
-# Utilities
-#
-##############################
 
 def loadModel (
         filename,

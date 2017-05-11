@@ -14,7 +14,10 @@ namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
 
 struct ADConstraintSet {
-  int ndirs;
+  unsigned int ndirs;
+  unsigned int dof_count;
+
+  const ConstraintSet* CS;
 
   std::vector<Math::MatrixNd> G;
   std::vector<Math::MatrixNd> Gi;
@@ -37,6 +40,8 @@ struct ADConstraintSet {
 
   ADConstraintSet() {}
   ADConstraintSet(const ConstraintSet &CS, int dof_count);
+
+  void resize_directions (const unsigned int& requested_ndirs);
 };
 
 // -----------------------------------------------------------------------------

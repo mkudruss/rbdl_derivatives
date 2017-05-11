@@ -300,6 +300,8 @@ void InverseDynamics(
   unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == qddot_dirs.cols());
+  ad_model.resize_directions(ndirs);
+
   if (f_ext) {
     for (unsigned i = 0; i < f_ext_dirs->size(); i++) {
       assert(ndirs == (*f_ext_dirs)[i].size());
@@ -492,9 +494,10 @@ void NonlinearEffects (
     const MatrixNd & qdot_dirs,
     VectorNd & tau,
     MatrixNd & ad_tau) {
-	unsigned ndirs = q_dirs.cols();
+  unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs <= ad_tau.cols());
+  ad_model.resize_directions(ndirs);
 
   LOG << "-------- " << __func__ << " --------" << std::endl;
 
@@ -625,8 +628,8 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
   }
   assert (H.rows() == model.dof_count && H.cols() == model.dof_count);
 
-	size_t ndirs = q_dirs.cols();
-//	ad_model.resize_directions(ndirs);
+  size_t ndirs = q_dirs.cols();
+  ad_model.resize_directions(ndirs);
 
   for (unsigned int i = 1; i < model.mBodies.size(); i++) {
     if (update_kinematics) {
@@ -670,6 +673,7 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
 
     // derivative evaluation
     for (unsigned idir = 0; idir < ndirs; idir++) {
+      // TODO this assumes 1DoF joints all over
       ad_model.F[i][idir] = ad_model.Ic[i][idir] * model.S[i];
     }
     // nominal evaluation

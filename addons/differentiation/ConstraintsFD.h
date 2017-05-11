@@ -28,22 +28,6 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     ADConstraintSet &fd_CS);
 
 RBDL_DLLAPI
-void ForwardDynamicsContactsDirect(
-    Model   &model,
-    ADModel *fd_model, // NULL means execution without fd_model update
-    const Math::VectorNd &q,
-    const Math::MatrixNd &q_dirs,
-    const Math::VectorNd &qdot,
-    const Math::MatrixNd &qdot_dirs,
-    const Math::VectorNd &tau,
-    const Math::MatrixNd &tau_dirs,
-    ConstraintSet   &cs,
-    ADConstraintSet &fd_cs,
-    Math::VectorNd  &qddot,
-    Math::MatrixNd  &fd_qddot
-    );
-
-RBDL_DLLAPI
 void CalcConstraintsJacobian (
     Model &model,
     ADModel *fd_model, // NULL means execution without fd_model update
@@ -69,6 +53,23 @@ void ComputeConstraintImpulsesDirect (
     );
 
 RBDL_DLLAPI
+void ForwardDynamicsConstraintsDirect (
+    Model   &model,
+    ADModel *fd_model, // NULL means execution without fd_model update
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    const Math::VectorNd &qdot,
+    const Math::MatrixNd &qdot_dirs,
+    const Math::VectorNd &tau,
+    const Math::MatrixNd &tau_dirs,
+    ConstraintSet   &cs,
+    ADConstraintSet &fd_cs,
+    Math::VectorNd  &qddot,
+    Math::MatrixNd  &fd_qddot
+    );
+
+
+RBDL_DLLAPI
 void ComputeConstraintImpulsesDirect (
     Model & model,
     ADModel * fd_model,
@@ -84,8 +85,9 @@ void ComputeConstraintImpulsesDirect (
     Math::MatrixNd & fd_qdot_plus
     );
 
+
 RBDL_DLLAPI
-void SolveContactSystemDirect (
+void SolveConstrainedSystemDirect (
     const Math::MatrixNd &H,
     const std::vector<Math::MatrixNd> & H_dirs,
     const Math::MatrixNd &G,
@@ -102,7 +104,7 @@ void SolveContactSystemDirect (
     Math::MatrixNd & x_fd,
     Math::LinearSolver & linear_solver,
     int ndirs
-    );
+);
 
 
 // -----------------------------------------------------------------------------
