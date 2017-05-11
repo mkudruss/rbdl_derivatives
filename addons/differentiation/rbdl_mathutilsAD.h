@@ -311,9 +311,7 @@ inline void Xrotz (const double &zrot,
                    const double &zrot_dirs,
                    SpatialTransform & ad_result) {
   ad_result.setZero();
-
   double s, c;
-
   s = sin (zrot) * zrot_dirs;
   c = cos (zrot) * zrot_dirs;
   Matrix3d E(-s,  c, 0.,
@@ -328,9 +326,7 @@ inline void Xrotz (const double &zrot,
                    const double &zrot_dirs,
                    SpatialMatrix & ad_result) {
   ad_result.setZero();
-
   double s, c;
-
   s = sin (zrot) * zrot_dirs;
   c = cos (zrot) * zrot_dirs;
   Matrix3d E(-s,  c, 0.,
@@ -356,7 +352,6 @@ inline SpatialTransform Xrotz (
              0., 0., 0.);
 
   ad_result.E = E;
-
   return ad_result;
 }
 

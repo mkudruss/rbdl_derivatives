@@ -214,43 +214,72 @@ RBDL_DLLAPI void jcalc_X_lambda_S (
 
   if (model.mJoints[joint_id].mJointType == JointTypeRevoluteX) {
     // derivative evaluation
-    for (unsigned int idir = 0; idir < ndirs; ++idir) {
-      // NOTE: X_T is a constant model dependent transformation
-      ad_model.X_lambda[joint_id][idir] = AD::Xrotx (
-            q[model.mJoints[joint_id].q_index],
-          q_dirs(model.mJoints[joint_id].q_index, idir))
-          * model.X_T[joint_id];
-      //					ad_model.X_lambda[joint_id][idir] = Math::AD::Xrotx (
-      //								q[model.mJoints[joint_id].q_index],
-      //								q_dirs(model.mJoints[joint_id].q_index, idir))
-      //							* model.X_T[joint_id].toMatrix();
+//    for (unsigned int idir = 0; idir < ndirs; ++idir) {
+//      // NOTE: X_T is a constant model dependent transformation
+//      ad_model.X_lambda[joint_id][idir] = AD::Xrotx (
+//            q[model.mJoints[joint_id].q_index],
+//          q_dirs(model.mJoints[joint_id].q_index, idir))
+//          * model.X_T[joint_id];
+//    }
+    SpatialTransform st_xrotx = Math::Xrotx (q[model.mJoints[joint_id].q_index]);
+    std::vector<SpatialTransform> ad_st_xrotx(ndirs);
+    for (unsigned idir = 0; idir < ndirs; ++idir) {
+      ad_st_xrotx[idir] = AD::Xrotx (
+          q[model.mJoints[joint_id].q_index],
+          q_dirs(model.mJoints[joint_id].q_index, idir));
     }
+    mulSTST(ndirs, st_xrotx, ad_st_xrotx,
+        model.X_T[joint_id],
+        model.X_lambda[joint_id],
+        ad_model.X_lambda[joint_id]);
     // nominal evaluation
-    model.X_lambda[joint_id] = Math::Xrotx (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
+    model.X_lambda[joint_id] = st_xrotx * model.X_T[joint_id];
     model.S[joint_id] = model.mJoints[joint_id].mJointAxes[0];
   } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteY) {
-    // derivative evaluation
-    for (unsigned int idir = 0; idir < ndirs; ++idir) {
-      // NOTE: X_T is a constant model dependent transformation
-      ad_model.X_lambda[joint_id][idir] = AD::Xroty (
+//    // derivative evaluation
+//    for (unsigned int idir = 0; idir < ndirs; ++idir) {
+//      // NOTE: X_T is a constant model dependent transformation
+//      ad_model.X_lambda[joint_id][idir] = AD::Xroty (
+//            q[model.mJoints[joint_id].q_index],
+//          q_dirs(model.mJoints[joint_id].q_index, idir))
+//          * model.X_T[joint_id];
+//    }
+    SpatialTransform st_xroty = Math::Xroty (q[model.mJoints[joint_id].q_index]);
+    std::vector<SpatialTransform> ad_st_xroty(ndirs);
+    for (unsigned idir = 0; idir < ndirs; ++idir) {
+        ad_st_xroty[idir] = AD::Xroty (
             q[model.mJoints[joint_id].q_index],
-          q_dirs(model.mJoints[joint_id].q_index, idir))
-          * model.X_T[joint_id];
+            q_dirs(model.mJoints[joint_id].q_index, idir));
     }
+    mulSTST(ndirs, st_xroty, ad_st_xroty,
+          model.X_T[joint_id],
+          model.X_lambda[joint_id],
+          ad_model.X_lambda[joint_id]);
     // nominal evaluation
-    model.X_lambda[joint_id] = Math::Xroty (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
+    model.X_lambda[joint_id] = st_xroty * model.X_T[joint_id];
     model.S[joint_id] = model.mJoints[joint_id].mJointAxes[0];
   } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteZ) {
     // derivative evaluation
+//    for (unsigned idir = 0; idir < ndirs; ++idir) {
+//      // NOTE: X_T is a constant model dependent transformation
+//      ad_model.X_lambda[joint_id][idir] = AD::Xrotz (
+//            q[model.mJoints[joint_id].q_index],
+//          q_dirs(model.mJoints[joint_id].q_index, idir))
+//          * model.X_T[joint_id];
+//    }
+    SpatialTransform st_xrotz = Math::Xrotz (q[model.mJoints[joint_id].q_index]);
+    std::vector<SpatialTransform> ad_st_xrotz(ndirs);
     for (unsigned idir = 0; idir < ndirs; ++idir) {
-      // NOTE: X_T is a constant model dependent transformation
-      ad_model.X_lambda[joint_id][idir] = AD::Xrotz (
-            q[model.mJoints[joint_id].q_index],
-          q_dirs(model.mJoints[joint_id].q_index, idir))
-          * model.X_T[joint_id];
+        ad_st_xrotz[idir] = AD::Xrotz (
+                    q[model.mJoints[joint_id].q_index],
+                  q_dirs(model.mJoints[joint_id].q_index, idir));
     }
+    mulSTST(ndirs, st_xrotz, ad_st_xrotz,
+            model.X_T[joint_id],
+            model.X_lambda[joint_id],
+            ad_model.X_lambda[joint_id]);
     // nominal evaluation
-    model.X_lambda[joint_id] = Math::Xrotz (q[model.mJoints[joint_id].q_index]) * model.X_T[joint_id];
+    model.X_lambda[joint_id] = st_xrotz * model.X_T[joint_id];
     model.S[joint_id] = model.mJoints[joint_id].mJointAxes[0];
   } else if (model.mJoints[joint_id].mDoFCount == 1) {
     // derivative evaluation
