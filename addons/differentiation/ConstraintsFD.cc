@@ -44,7 +44,8 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
 
     CalcConstrainedSystemVariables(*modelh, qh, qdoth, tauh, csh);
 
-    computeFDEntry(cs, csh, h, idir, fd_cs);
+    // TODO make it analogue to ADMOdel with pointer arithmetic
+    // computeFDEntry(cs, csh, h, idir, fd_cs);
 
     if (fd_model) {
       computeFDEntry(model, *modelh, h, idir, *fd_model);
@@ -54,7 +55,7 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
 }
 
 
-RBDL_DLLAPI void ForwardDynamicsContactsDirect (
+RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
     Model &model,
     ADModel *fd_model,
     const VectorNd &q,
@@ -92,7 +93,8 @@ RBDL_DLLAPI void ForwardDynamicsContactsDirect (
     ForwardDynamicsConstraintsDirect(*modelh, qh, qdoth, tauh, csh, qddoth);
 
     fd_qddot.col(idir) = (qddoth - qddot) / h;
-    computeFDEntry(cs, csh, h, idir, fd_cs);
+    // TODO add pointer arithmetic for fd_cs
+    // computeFDEntry(cs, csh, h, idir, fd_cs);
 
     if (fd_model) {
       computeFDEntry(model, *modelh, h, idir, *fd_model);
@@ -237,7 +239,7 @@ void ComputeConstraintImpulsesDirect (
 }
 
 RBDL_DLLAPI
-void SolveContactSystemDirect (
+void SolveConstrainedSystemDirect (
     const MatrixNd &H,
     const vector<MatrixNd> & H_dirs,
     const MatrixNd &G,

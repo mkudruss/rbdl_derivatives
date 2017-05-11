@@ -497,9 +497,8 @@ struct FixedBase6DoF {
 struct FixedBase6DoF9DoF {
     FixedBase6DoF9DoF () {
         ClearLogOutput();
-        model = new RigidBodyDynamics::Model;
 
-        model->gravity = RigidBodyDynamics::Math::Vector3d  (0., -9.81, 0.);
+        model.gravity = RigidBodyDynamics::Math::Vector3d  (0., -9.81, 0.);
 
         /* 3 DoF (rot.) joint at base
          * 3 DoF (rot.) joint child origin
@@ -524,7 +523,7 @@ struct FixedBase6DoF9DoF {
                 RigidBodyDynamics::Math::SpatialVector (0., 1., 0., 0., 0., 0.),
                 RigidBodyDynamics::Math::SpatialVector (1., 0., 0., 0., 0., 0.)
                 );
-        base_id = model->AddBody (
+        base_id = model.AddBody (
                 0,
                 RigidBodyDynamics::Math::Xtrans (
                     RigidBodyDynamics::Math::Vector3d (0., 0., 0.)
@@ -538,7 +537,7 @@ struct FixedBase6DoF9DoF {
                 RigidBodyDynamics::Math::Vector3d (0., 0.5, 0.),
                 RigidBodyDynamics::Math::Vector3d (1., 1., 1.)
                 );
-        child_id = model->AddBody (
+        child_id = model.AddBody (
                 base_id,
                 RigidBodyDynamics::Math::Xtrans (
                     RigidBodyDynamics::Math::Vector3d (0., 0., 0.)
@@ -552,7 +551,7 @@ struct FixedBase6DoF9DoF {
                 RigidBodyDynamics::Math::Vector3d (0., 0.5, 0.),
                 RigidBodyDynamics::Math::Vector3d (1., 1., 1.)
                 );
-        child_2_id = model->AddBody (
+        child_2_id = model.AddBody (
                 child_id,
                 RigidBodyDynamics::Math::Xtrans (
                     RigidBodyDynamics::Math::Vector3d (0., 0., 0.)
@@ -561,25 +560,20 @@ struct FixedBase6DoF9DoF {
                 child_2
                 );
 
-        Q = RigidBodyDynamics::Math::VectorNd::Constant (model->mBodies.size() - 1, 0.);
-        QDot = RigidBodyDynamics::Math::VectorNd::Constant (model->mBodies.size() - 1, 0.);
-        QDDot = RigidBodyDynamics::Math::VectorNd::Constant (model->mBodies.size() - 1, 0.);
-        Tau = RigidBodyDynamics::Math::VectorNd::Constant (model->mBodies.size() - 1, 0.);
+        Q = RigidBodyDynamics::Math::VectorNd::Constant (model.mBodies.size() - 1, 0.);
+        QDot = RigidBodyDynamics::Math::VectorNd::Constant (model.mBodies.size() - 1, 0.);
+        QDDot = RigidBodyDynamics::Math::VectorNd::Constant (model.mBodies.size() - 1, 0.);
+        Tau = RigidBodyDynamics::Math::VectorNd::Constant (model.mBodies.size() - 1, 0.);
 
         contact_body_id = child_id;
         contact_point = RigidBodyDynamics::Math::Vector3d  (0.5, 0.5, 0.);
         contact_normal =RigidBodyDynamics::Math::Vector3d  (0., 1., 0.);
 
         ClearLogOutput();
-        ad_model = new ADModel(*model);
     }
 
-    ~FixedBase6DoF9DoF () {
-        delete model;
-        delete ad_model;
-    }
-    RigidBodyDynamics::Model *model;
-    ADModel *ad_model;
+    RigidBodyDynamics::Model model;
+    ADModel ad_model;
 
     unsigned int base_id, child_id, child_2_id;
 

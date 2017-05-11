@@ -206,7 +206,7 @@ void ForwardDynamicsConstraintsDirectTemplate(
           ad_cs, ad_d_cs,
           ad_qdd, ad_qdd_dirs);
 
-    FD::ForwardDynamicsContactsDirect(
+    FD::ForwardDynamicsConstraintsDirect(
           fd_model, &fd_d_model,
           q, q_dirs,
           qd, qd_dirs,
@@ -228,7 +228,7 @@ void ForwardDynamicsConstraintsDirectTemplate(
   }
 }
 
-TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsContactsDirect) {
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsConstraintsDirect) {
   // add contacts and bind them to constraint set
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
@@ -308,7 +308,7 @@ TEST (SolveContactSystemDirectTest) {
     MatrixNd fd_x_dirs(nm + nc, ndirs);
     fd_b_dirs.setZero();
     fd_x_dirs.setZero();
-    FD::SolveContactSystemDirect(H, H_dirs, G, G_dirs, c, c_dirs, gamma,
+    FD::SolveConstrainedSystemDirect(H, H_dirs, G, G_dirs, c, c_dirs, gamma,
                                  gamma_dirs, fd_A, fd_A_dirs, fd_b, fd_b_dirs,
                                  fd_x, fd_x_dirs, ls, ndirs);
 

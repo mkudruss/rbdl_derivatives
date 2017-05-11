@@ -14,25 +14,53 @@ namespace RigidBodyDynamics {
 
 using namespace RigidBodyDynamics::Math;
 
-ADConstraintSet::ADConstraintSet(const ConstraintSet & CS, int dof_count) {
+ADConstraintSet::ADConstraintSet(const ConstraintSet & CS_, int _dof_count) {
+  dof_count = _dof_count;
   ndirs = 4 * dof_count;
 
-  G.resize(ndirs,  MatrixNd::Zero(CS.G.rows(), CS.G.cols()));
+  CS = &CS_;
+
+  G.resize(ndirs,  MatrixNd::Zero(CS->G.rows(), CS->G.cols()));
   Gi.resize(ndirs, MatrixNd::Zero(3, dof_count));
   GSpi.resize(ndirs, MatrixNd::Zero(6, dof_count));
   GSsi.resize(ndirs, MatrixNd::Zero(6, dof_count));
-  A.resize(ndirs,  MatrixNd::Zero(CS.A.rows(), CS.A.cols()));
-  H.resize(ndirs,  MatrixNd::Zero(CS.H.rows(), CS.H.cols()));
-  b             = MatrixNd::Zero(CS.b.rows(), ndirs);
-  v_plus        = MatrixNd::Zero(CS.v_plus.rows(), ndirs);
-  x             = MatrixNd::Zero(CS.x.rows(), ndirs);
-  impulse       = MatrixNd::Zero(CS.impulse.rows(), ndirs);
-  QDDot_0       = MatrixNd::Zero(CS.QDDot_0.rows(), ndirs);
-  C             = MatrixNd::Zero(CS.C.rows(), ndirs);
-  gamma         = MatrixNd::Zero(CS.gamma.rows(), ndirs);
-  force         = MatrixNd::Zero(CS.force.rows(), ndirs);
-  err           = MatrixNd::Zero(CS.err.rows(), ndirs);
-  errd          = MatrixNd::Zero(CS.errd.rows(), ndirs);
+  A.resize(ndirs,  MatrixNd::Zero(CS->A.rows(), CS->A.cols()));
+  H.resize(ndirs,  MatrixNd::Zero(CS->H.rows(), CS->H.cols()));
+  b             = MatrixNd::Zero(CS->b.rows(), ndirs);
+  v_plus        = MatrixNd::Zero(CS->v_plus.rows(), ndirs);
+  x             = MatrixNd::Zero(CS->x.rows(), ndirs);
+  impulse       = MatrixNd::Zero(CS->impulse.rows(), ndirs);
+  QDDot_0       = MatrixNd::Zero(CS->QDDot_0.rows(), ndirs);
+  C             = MatrixNd::Zero(CS->C.rows(), ndirs);
+  gamma         = MatrixNd::Zero(CS->gamma.rows(), ndirs);
+  force         = MatrixNd::Zero(CS->force.rows(), ndirs);
+  err           = MatrixNd::Zero(CS->err.rows(), ndirs);
+  errd          = MatrixNd::Zero(CS->errd.rows(), ndirs);
+}
+
+void ADConstraintSet::resize_directions(const unsigned int& requested_ndirs) {
+  if (ndirs < requested_ndirs) {
+    ndirs = requested_ndirs;
+
+    G.resize(ndirs,  MatrixNd::Zero(CS->G.rows(), CS->G.cols()));
+    Gi.resize(ndirs, MatrixNd::Zero(3, dof_count));
+    GSpi.resize(ndirs, MatrixNd::Zero(6, dof_count));
+    GSsi.resize(ndirs, MatrixNd::Zero(6, dof_count));
+
+    A.resize(ndirs,  MatrixNd::Zero(CS->A.rows(), CS->A.cols()));
+    H.resize(ndirs,  MatrixNd::Zero(CS->H.rows(), CS->H.cols()));
+
+    b             = MatrixNd::Zero(CS->b.rows(), ndirs);
+    v_plus        = MatrixNd::Zero(CS->v_plus.rows(), ndirs);
+    x             = MatrixNd::Zero(CS->x.rows(), ndirs);
+    impulse       = MatrixNd::Zero(CS->impulse.rows(), ndirs);
+    QDDot_0       = MatrixNd::Zero(CS->QDDot_0.rows(), ndirs);
+    C             = MatrixNd::Zero(CS->C.rows(), ndirs);
+    gamma         = MatrixNd::Zero(CS->gamma.rows(), ndirs);
+    force         = MatrixNd::Zero(CS->force.rows(), ndirs);
+    err           = MatrixNd::Zero(CS->err.rows(), ndirs);
+    errd          = MatrixNd::Zero(CS->errd.rows(), ndirs);
+  }
 }
 
 // -----------------------------------------------------------------------------
