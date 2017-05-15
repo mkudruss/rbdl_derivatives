@@ -493,7 +493,8 @@ void NonlinearEffects (
     const VectorNd & qdot,
     const MatrixNd & qdot_dirs,
     VectorNd & tau,
-    MatrixNd & ad_tau) {
+    MatrixNd & ad_tau
+) {
   unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs <= ad_tau.cols());

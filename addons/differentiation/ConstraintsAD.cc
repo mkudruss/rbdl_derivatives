@@ -507,6 +507,8 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
   unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == tau_dirs.cols());
+  ad_model.resize_directions(ndirs);
+  ad_CS.resize_directions(ndirs);
 
   // Compute C
   NonlinearEffects (model, ad_model, q, q_dirs, qdot, qdot_dirs, CS.C, ad_CS.C);
@@ -689,8 +691,13 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
   assert(ndirs == static_cast<unsigned>(tau_dirs.cols()));
 
   // derivative and nominal code
-  CalcConstrainedSystemVariables (model, ad_model, q, q_dirs, qdot, qdot_dirs,
-                              tau, tau_dirs, CS, ad_CS);
+  CalcConstrainedSystemVariables (
+      model, ad_model,
+      q, q_dirs,
+      qdot, qdot_dirs,
+      tau, tau_dirs,
+      CS, ad_CS
+  );
 
   // derivative and nominal code
   VectorNd c    = tau - CS.C;

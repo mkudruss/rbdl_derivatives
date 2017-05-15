@@ -135,17 +135,17 @@ RBDL_DLLAPI Vector3d CalcBaseToBodyCoordinates (
 
 
 RBDL_DLLAPI void UpdateKinematicsCustom (
-		Model &model,
-		ADModel & ad_model,
-		const VectorNd * q,
-		const MatrixNd * q_dirs,
-		const VectorNd * qdot,
-		const MatrixNd * qdot_dirs,
-		const VectorNd * qddot,
-		const MatrixNd * qddot_dirs) {
-	LOG << "-------- " << __func__ << " --------" << std::endl;
-	unsigned int i;
-	unsigned int ndirs = 0;
+    Model &model,
+    ADModel & ad_model,
+    const VectorNd * q,
+    const MatrixNd * q_dirs,
+    const VectorNd * qdot,
+    const MatrixNd * qdot_dirs,
+    const VectorNd * qddot,
+    const MatrixNd * qddot_dirs) {
+  LOG << "-------- " << __func__ << " --------" << std::endl;
+  unsigned int i;
+  unsigned int ndirs = 0;
 
   if (q) {
     ndirs = q_dirs->cols();
@@ -160,39 +160,39 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
 
   ad_model.resize_directions(ndirs);
 
-	if (q) {
-		for (i = 1; i < model.mBodies.size(); i++) {
-			unsigned int lambda = model.lambda[i];
+  if (q) {
+    for (i = 1; i < model.mBodies.size(); i++) {
+      unsigned int lambda = model.lambda[i];
 
-			VectorNd QDot_zero (model.q_size);
-			QDot_zero.setZero();
-			MatrixNd QDot_zero_dirs (model.q_size, ndirs);
-			QDot_zero_dirs.setZero();
+      VectorNd QDot_zero (model.q_size);
+      QDot_zero.setZero();
+      MatrixNd QDot_zero_dirs (model.q_size, ndirs);
+      QDot_zero_dirs.setZero();
 
-			// Derivative evaluation and nominal evaluation
-			jcalc (model, ad_model, i, *q, *q_dirs, QDot_zero, QDot_zero_dirs);
+      // Derivative evaluation and nominal evaluation
+      jcalc (model, ad_model, i, *q, *q_dirs, QDot_zero, QDot_zero_dirs);
 
-//			// derivative evaluation
-//			for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-//				// NOTE: X_T is a constant model dependent transformation
+//      // derivative evaluation
+//      for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+//        // NOTE: X_T is a constant model dependent transformation
 //        ad_model.X_lambda[i][idirs] = ad_model.X_J[i][idirs] * model.X_T[i].toMatrix();
-//			}
-//			// nominal evaluation
-//			model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+//      }
+//      // nominal evaluation
+//      model.X_lambda[i] = model.X_J[i] * model.X_T[i];
       mulSTST(ndirs,
               model.X_J[i], ad_model.X_J[i],
               model.X_T[i],
               model.X_lambda[i], ad_model.X_lambda[i]);
 
-			if (lambda != 0) {
-//				// derivative evaluation
-//				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-//					ad_model.X_base[i][idirs] =
-//							ad_model.X_lambda[i][idirs] * model.X_base[lambda].toMatrix()
-//							+ model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idirs];
-//				}
-//				// nominal evaluation
-//				model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+      if (lambda != 0) {
+//        // derivative evaluation
+//        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+//          ad_model.X_base[i][idirs] =
+//              ad_model.X_lambda[i][idirs] * model.X_base[lambda].toMatrix()
+//              + model.X_lambda[i].toMatrix() * ad_model.X_base[lambda][idirs];
+//        }
+//        // nominal evaluation
+//        model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
 
         mulSTST(ndirs,
                 model.X_lambda[i], ad_model.X_lambda[i],
@@ -200,15 +200,15 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
                 model.X_base[i], ad_model.X_base[i]);
 
       } else {
-				// derivative evaluation
-				for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-					ad_model.X_base[i][idirs] = ad_model.X_lambda[i][idirs];
-				}
-				// nominal evaluation
-				model.X_base[i] = model.X_lambda[i];
-			}
-		}
-	}
+        // derivative evaluation
+        for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
+          ad_model.X_base[i][idirs] = ad_model.X_lambda[i][idirs];
+        }
+        // nominal evaluation
+        model.X_base[i] = model.X_lambda[i];
+      }
+    }
+  }
 
   if (qdot) {
     for (i = 1; i < model.mBodies.size(); i++) {
@@ -399,127 +399,127 @@ RBDL_DLLAPI void UpdateKinematics (
 
 
 RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
-		Model & model,
-		ADModel & ad_model,
-		VectorNd const & q,
-		MatrixNd const & q_dirs,
-		const unsigned int body_id,
-		vector<Matrix3d> & ad_derivative,
-		bool update_kinematics) {
-	unsigned ndirs = q_dirs.cols();
-	assert(ad_derivative.size() == ndirs);
+    Model & model,
+    ADModel & ad_model,
+    VectorNd const & q,
+    MatrixNd const & q_dirs,
+    const unsigned int body_id,
+    vector<Matrix3d> & ad_derivative,
+    bool update_kinematics) {
+  unsigned ndirs = q_dirs.cols();
+  assert(ad_derivative.size() == ndirs);
 
-	// update the Kinematics if necessary
-	if (update_kinematics) {
-		UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
-	}
+  // update the Kinematics if necessary
+  if (update_kinematics) {
+    UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
+  }
 
-	if (body_id >= model.fixed_body_discriminator) {
-		std::cerr << "Fixed bodies not yet supported!" << std::endl;
-		abort();
-	}
+  if (body_id >= model.fixed_body_discriminator) {
+    std::cerr << "Fixed bodies not yet supported!" << std::endl;
+    abort();
+  }
 
-	for (unsigned int idir = 0; idir < ndirs; idir++) {
+  for (unsigned int idir = 0; idir < ndirs; idir++) {
     ad_derivative[idir] = ad_model.X_base[body_id][idir].E;
-	}
-	// nominal evaluation
-	return model.X_base[body_id].E;
+  }
+  // nominal evaluation
+  return model.X_base[body_id].E;
 }
 
 
 RBDL_DLLAPI Vector3d CalcPointVelocity (
-		Model & model,
-		ADModel & ad_model,
-		VectorNd const & q,
-		MatrixNd const & q_dirs,
-		VectorNd const & qdot,
-		MatrixNd const & qdot_dirs,
-		unsigned int body_id,
-		Vector3d const & point_position,
-		MatrixNd & ad_point_velocity,
-		bool update_kinematics) {
-	unsigned ndirs = q_dirs.cols();
+    Model & model,
+    ADModel & ad_model,
+    VectorNd const & q,
+    MatrixNd const & q_dirs,
+    VectorNd const & qdot,
+    MatrixNd const & qdot_dirs,
+    unsigned int body_id,
+    Vector3d const & point_position,
+    MatrixNd & ad_point_velocity,
+    bool update_kinematics) {
+  unsigned ndirs = q_dirs.cols();
 
-	assert(qdot_dirs.cols() == ndirs);
-	assert (model.IsBodyId(body_id));
-	assert (model.q_size == q.rows());
-	assert (model.qdot_size == qdot.rows());
+  assert(qdot_dirs.cols() == ndirs);
+  assert (model.IsBodyId(body_id));
+  assert (model.q_size == q.rows());
+  assert (model.qdot_size == qdot.rows());
 
-	// Reset the velocity of the root body
-	// derivative code
-	for (unsigned idir = 0; idir < ndirs; idir++) {
-		ad_model.v[0][idir].setZero();
-	}
-	// nominal code
-	model.v[0].setZero();
+  // Reset the velocity of the root body
+  // derivative code
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_model.v[0][idir].setZero();
+  }
+  // nominal code
+  model.v[0].setZero();
 
 
-	// update the Kinematics with zero acceleration
-	if (update_kinematics) {
-		UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, &qdot, &qdot_dirs,
-														0, 0);
-	}
+  // update the Kinematics with zero acceleration
+  if (update_kinematics) {
+    UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, &qdot, &qdot_dirs,
+                            0, 0);
+  }
 
-	unsigned int reference_body_id = body_id;
-	Vector3d reference_point = point_position;
+  unsigned int reference_body_id = body_id;
+  Vector3d reference_point = point_position;
 
-	MatrixNd ad_base_coords(3, ndirs);
-	MatrixNd ad_reference_point(3, ndirs);
+  MatrixNd ad_base_coords(3, ndirs);
+  MatrixNd ad_reference_point(3, ndirs);
 
-	if (model.IsFixedBodyId(body_id)) {
-		unsigned fbody_id = body_id - model.fixed_body_discriminator;
-		reference_body_id = model.mFixedBodies[fbody_id].mMovableParent;
-		// nominal and derivative code
-		Vector3d base_coords = CalcBodyToBaseCoordinates (model, ad_model, q, q_dirs,
-																											body_id, point_position, ad_base_coords, false);
+  if (model.IsFixedBodyId(body_id)) {
+    unsigned fbody_id = body_id - model.fixed_body_discriminator;
+    reference_body_id = model.mFixedBodies[fbody_id].mMovableParent;
+    // nominal and derivative code
+    Vector3d base_coords = CalcBodyToBaseCoordinates (model, ad_model, q, q_dirs,
+                                                      body_id, point_position, ad_base_coords, false);
 
-		// nominal and derivative code
-		reference_point = CalcBaseToBodyCoordinates (model, ad_model, q, q_dirs,
-																								 reference_body_id, base_coords, ad_base_coords, ad_reference_point,
-																								 false);
-	}
+    // nominal and derivative code
+    reference_point = CalcBaseToBodyCoordinates (model, ad_model, q, q_dirs,
+                                                 reference_body_id, base_coords, ad_base_coords, ad_reference_point,
+                                                 false);
+  }
 
-	// derivative and nominal code
-	vector<Matrix3d> ad_bwo(ndirs, Matrix3d::Zero());
-	Matrix3d bwo = CalcBodyWorldOrientation(model, ad_model, q, q_dirs,
-																					reference_body_id, ad_bwo, false);
+  // derivative and nominal code
+  vector<Matrix3d> ad_bwo(ndirs, Matrix3d::Zero());
+  Matrix3d bwo = CalcBodyWorldOrientation(model, ad_model, q, q_dirs,
+                                          reference_body_id, ad_bwo, false);
 
-	// derivative code
-	vector<SpatialMatrix> ad_st(ndirs);
-	for (unsigned idir = 0; idir < ndirs; idir++) {
-		Matrix3d ad_Erx = ad_bwo[idir].transpose() * Matrix3d(
-					0., -reference_point[2],  reference_point[1],
-				reference_point[2],                  0., -reference_point[0],
-				-reference_point[1],  reference_point[0],                  0.);
-		ad_st[idir].block<3,3>(0, 0) = ad_bwo[idir].transpose();
-		ad_st[idir].block<3,3>(0, 3) = Matrix3dZero;
-		ad_st[idir].block<3,3>(3, 0) = -ad_Erx;
-		ad_st[idir].block<3,3>(3, 3) = ad_bwo[idir].transpose();
-	}
+  // derivative code
+  vector<SpatialMatrix> ad_st(ndirs);
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Matrix3d ad_Erx = ad_bwo[idir].transpose() * Matrix3d(
+          0., -reference_point[2],  reference_point[1],
+        reference_point[2],                  0., -reference_point[0],
+        -reference_point[1],  reference_point[0],                  0.);
+    ad_st[idir].block<3,3>(0, 0) = ad_bwo[idir].transpose();
+    ad_st[idir].block<3,3>(0, 3) = Matrix3dZero;
+    ad_st[idir].block<3,3>(3, 0) = -ad_Erx;
+    ad_st[idir].block<3,3>(3, 3) = ad_bwo[idir].transpose();
+  }
 
-	// nominal code
-	SpatialTransform st(bwo.transpose(), reference_point);
+  // nominal code
+  SpatialTransform st(bwo.transpose(), reference_point);
 
-	vector<SpatialVector> ad_point_spatial_velocity(ndirs);
-	// derivative code
-	for (unsigned idir = 0; idir < ndirs; idir++) {
-		ad_point_spatial_velocity[idir] = ad_st[idir] * model.v[reference_body_id]
-				+ st.apply(ad_model.v[reference_body_id][idir]);
-	}
-	// nominal code
-	SpatialVector point_spatial_velocity =
-			st.apply(model.v[reference_body_id]);
+  vector<SpatialVector> ad_point_spatial_velocity(ndirs);
+  // derivative code
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_point_spatial_velocity[idir] = ad_st[idir] * model.v[reference_body_id]
+        + st.apply(ad_model.v[reference_body_id][idir]);
+  }
+  // nominal code
+  SpatialVector point_spatial_velocity =
+      st.apply(model.v[reference_body_id]);
 
-	// derivative code
-	for (unsigned idir = 0; idir < ndirs; idir++) {
-		ad_point_velocity.col(idir) = ad_point_spatial_velocity[idir].segment(3, 3);
-	}
-	// nominal code
-	return Vector3d (
-			point_spatial_velocity[3],
-			point_spatial_velocity[4],
-			point_spatial_velocity[5]
-			);
+  // derivative code
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    ad_point_velocity.col(idir) = ad_point_spatial_velocity[idir].segment(3, 3);
+  }
+  // nominal code
+  return Vector3d (
+      point_spatial_velocity[3],
+      point_spatial_velocity[4],
+      point_spatial_velocity[5]
+      );
 }
 
 RBDL_DLLAPI SpatialVector CalcPointVelocity6D(
@@ -593,109 +593,111 @@ RBDL_DLLAPI SpatialVector CalcPointVelocity6D(
 }
 
 RBDL_DLLAPI Vector3d CalcPointAcceleration (
-		Model &model,
-		ADModel &ad_model,
-		const Math::VectorNd &q,
-		const Math::MatrixNd &q_dirs,
-		const Math::VectorNd &qdot,
-		const Math::MatrixNd &qdot_dirs,
-		const Math::VectorNd &qddot,
-		const Math::MatrixNd &qddot_dirs,
-		unsigned int body_id,
-		const Math::Vector3d &point_position,
-		Math::MatrixNd &ad_derivative,
-		bool update_kinematics) {
-	LOG << "-------- " << __func__ << " --------" << std::endl;
+    Model &model,
+    ADModel &ad_model,
+    const Math::VectorNd &q,
+    const Math::MatrixNd &q_dirs,
+    const Math::VectorNd &qdot,
+    const Math::MatrixNd &qdot_dirs,
+    const Math::VectorNd &qddot,
+    const Math::MatrixNd &qddot_dirs,
+    unsigned int body_id,
+    const Math::Vector3d &point_position,
+    Math::MatrixNd &ad_derivative,
+    bool update_kinematics) {
+  LOG << "-------- " << __func__ << " --------" << std::endl;
 
-	int const ndirs = q_dirs.cols();
-	assert(ndirs == ad_derivative.cols());
-	assert(3     == ad_derivative.rows());
+  int const ndirs = q_dirs.cols();
+  assert(ndirs == ad_derivative.cols());
+  assert(3     == ad_derivative.rows());
 
-	ad_model.resize_directions(ndirs);
+  ad_model.resize_directions(ndirs);
 
-	// Reset the velocity of the root body
-	model.v[0].setZero();
-	model.a[0].setZero();
+  // Reset the velocity of the root body
+  model.v[0].setZero();
+  model.a[0].setZero();
 
-	if (update_kinematics) {
-		// derivative evaluation
-		UpdateKinematics (model, ad_model, q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs);
-		// nominal evaluation
-		// NOTE: Kinematics are already updated in ad_UpdateKinematics
-		//UpdateKinematics (model, q, qdot, qddot);
-	}
+  if (update_kinematics) {
+    // derivative evaluation
+    UpdateKinematics (model, ad_model, q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs);
+    // nominal evaluation
+    // NOTE: Kinematics are already updated in ad_UpdateKinematics
+    //UpdateKinematics (model, q, qdot, qddot);
+  }
 
-	LOG << std::endl;
+  LOG << std::endl;
 
-	unsigned int reference_body_id = body_id;
-	Vector3d reference_point = point_position;
+  unsigned int reference_body_id = body_id;
+  Vector3d reference_point = point_position;
 
-	if (model.IsFixedBodyId(body_id)) {
-		std::cerr << "Fixed bodies not yet supported!" << std::endl;
-		abort();
-	}
+  if (model.IsFixedBodyId(body_id)) {
+    std::cerr << "Fixed bodies not yet supported!" << std::endl;
+    abort();
+  }
 
-	vector<Matrix3d> ad_E(ndirs);
-	Matrix3d E = CalcBodyWorldOrientation(model, ad_model, q, q_dirs, reference_body_id, ad_E, false);
+  vector<Matrix3d> ad_E(ndirs);
+  Matrix3d E = CalcBodyWorldOrientation(
+    model, ad_model, q, q_dirs, reference_body_id, ad_E, false
+  );
 
-	// derivative evaluation
-	vector<SpatialMatrix> ad_p_X_i(ndirs);
-	for (int idir = 0; idir < ndirs; idir++) {
-		Matrix3d ad_ETrx = ad_E[idir].transpose() * Matrix3d(
-					0., -reference_point[2],  reference_point[1],
-				reference_point[2],                  0., -reference_point[0],
-				-reference_point[1],  reference_point[0],                  0.);
-		// + E.transpose() * Matrix3dZero;
-		ad_p_X_i[idir].block<3,3>(0, 0) = ad_E[idir].transpose();
-		ad_p_X_i[idir].block<3,3>(0, 3) = Matrix3dZero;
-		ad_p_X_i[idir].block<3,3>(3, 0) = -ad_ETrx;
-		ad_p_X_i[idir].block<3,3>(3, 3) = ad_E[idir].transpose();
-	}
-	// nominal evaluation
-	SpatialTransform p_X_i (E.transpose(), reference_point);
+  // derivative evaluation
+  vector<SpatialMatrix> ad_p_X_i(ndirs);
+  for (int idir = 0; idir < ndirs; idir++) {
+    Matrix3d ad_ETrx = ad_E[idir].transpose() * Matrix3d(
+          0., -reference_point[2],  reference_point[1],
+        reference_point[2],                  0., -reference_point[0],
+        -reference_point[1],  reference_point[0],                  0.);
+    // + E.transpose() * Matrix3dZero;
+    ad_p_X_i[idir].block<3,3>(0, 0) = ad_E[idir].transpose();
+    ad_p_X_i[idir].block<3,3>(0, 3) = Matrix3dZero;
+    ad_p_X_i[idir].block<3,3>(3, 0) = -ad_ETrx;
+    ad_p_X_i[idir].block<3,3>(3, 3) = ad_E[idir].transpose();
+  }
+  // nominal evaluation
+  SpatialTransform p_X_i (E.transpose(), reference_point);
 
-	// derivative evaluation
-	vector<SpatialVector> ad_p_v_i(ndirs);
-	for (int idir = 0; idir < ndirs; idir++) {
-		ad_p_v_i[idir] = ad_p_X_i[idir] * model.v[reference_body_id]
-				+ p_X_i.apply(ad_model.v[reference_body_id][idir]);
-	}
-	// nominal evaluation
-	SpatialVector p_v_i = p_X_i.apply(model.v[reference_body_id]);
+  // derivative evaluation
+  vector<SpatialVector> ad_p_v_i(ndirs);
+  for (int idir = 0; idir < ndirs; idir++) {
+    ad_p_v_i[idir] = ad_p_X_i[idir] * model.v[reference_body_id]
+        + p_X_i.apply(ad_model.v[reference_body_id][idir]);
+  }
+  // nominal evaluation
+  SpatialVector p_v_i = p_X_i.apply(model.v[reference_body_id]);
 
-	Vector3d p_v_i_0t2(p_v_i[0], p_v_i[1], p_v_i[2]);
-	Vector3d p_v_i_3t5(p_v_i[3], p_v_i[4], p_v_i[5]);
-	// derivative evaluation
-	vector<Vector3d> ad_a_dash(ndirs);
-	for (int idir = 0; idir < ndirs; idir++) {
-		Vector3d ad_p_v_i_0t2_idir = ad_p_v_i[idir].block<3,1>(0, 0);
-		Vector3d ad_p_v_i_3t5_idir = ad_p_v_i[idir].block<3,1>(3, 0);
-		ad_a_dash[idir] = p_v_i_0t2.cross(ad_p_v_i_3t5_idir)
-				+ ad_p_v_i_0t2_idir.cross(p_v_i_3t5);
-	}
-	// nominal evaluation
-	Vector3d a_dash = p_v_i_0t2.cross(p_v_i_3t5);
+  Vector3d p_v_i_0t2(p_v_i[0], p_v_i[1], p_v_i[2]);
+  Vector3d p_v_i_3t5(p_v_i[3], p_v_i[4], p_v_i[5]);
+  // derivative evaluation
+  vector<Vector3d> ad_a_dash(ndirs);
+  for (int idir = 0; idir < ndirs; idir++) {
+    Vector3d ad_p_v_i_0t2_idir = ad_p_v_i[idir].block<3,1>(0, 0);
+    Vector3d ad_p_v_i_3t5_idir = ad_p_v_i[idir].block<3,1>(3, 0);
+    ad_a_dash[idir] = p_v_i_0t2.cross(ad_p_v_i_3t5_idir)
+        + ad_p_v_i_0t2_idir.cross(p_v_i_3t5);
+  }
+  // nominal evaluation
+  Vector3d a_dash = p_v_i_0t2.cross(p_v_i_3t5);
 
-	// derivative evaluation
-	vector<SpatialVector> ad_p_a_i(ndirs);
-	for (int idir = 0; idir < ndirs; idir++) {
-		ad_p_a_i[idir] = ad_p_X_i[idir] * model.a[reference_body_id]
-				+ p_X_i.apply(ad_model.a[reference_body_id][idir]);
-	}
-	// nominal evaluation
-	SpatialVector p_a_i = p_X_i.apply(model.a[reference_body_id]);
+  // derivative evaluation
+  vector<SpatialVector> ad_p_a_i(ndirs);
+  for (int idir = 0; idir < ndirs; idir++) {
+    ad_p_a_i[idir] = ad_p_X_i[idir] * model.a[reference_body_id]
+        + p_X_i.apply(ad_model.a[reference_body_id][idir]);
+  }
+  // nominal evaluation
+  SpatialVector p_a_i = p_X_i.apply(model.a[reference_body_id]);
 
-	// derivative evaluation
-	for (int idir = 0; idir < ndirs; idir++) {
-		ad_derivative(0, idir) = ad_p_a_i[idir][3] + ad_a_dash[idir][0];
-		ad_derivative(1, idir) = ad_p_a_i[idir][4] + ad_a_dash[idir][1];
-		ad_derivative(2, idir) = ad_p_a_i[idir][5] + ad_a_dash[idir][2];
-	}
-	// nominal evaluation
-	return Vector3d (
-				p_a_i[3] + a_dash[0],
-			p_a_i[4] + a_dash[1],
-			p_a_i[5] + a_dash[2]);
+  // derivative evaluation
+  for (int idir = 0; idir < ndirs; idir++) {
+    ad_derivative(0, idir) = ad_p_a_i[idir][3] + ad_a_dash[idir][0];
+    ad_derivative(1, idir) = ad_p_a_i[idir][4] + ad_a_dash[idir][1];
+    ad_derivative(2, idir) = ad_p_a_i[idir][5] + ad_a_dash[idir][2];
+  }
+  // nominal evaluation
+  return Vector3d (
+        p_a_i[3] + a_dash[0],
+      p_a_i[4] + a_dash[1],
+      p_a_i[5] + a_dash[2]);
 }
 
 RBDL_DLLAPI
