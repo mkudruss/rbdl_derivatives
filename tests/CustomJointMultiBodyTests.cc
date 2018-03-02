@@ -5,7 +5,7 @@
  */
 
 
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -31,19 +31,19 @@ const int NUMBER_OF_BODIES = 3;
 //==============================================================================
 /*
 
-  The purpose of this test is to test that all of the code in RBDL 
+  The purpose of this test is to test that all of the code in RBDL
   related to a multibody mechanism that includes a custom joint functions.
   Specifically this test is for the multi-pass algorithms in rbdl ... namely
   the CompositeRigidBodyAlgorithm. However, because these tests have already
   been written for CustomJointSingleBodyTests.cc, we'll run them all on the
-  multibody models that we will be testing. 
+  multibody models that we will be testing.
 
-  We will be testing 3 models to get good coverage of the 
+  We will be testing 3 models to get good coverage of the
   CompositeRigidBodyAlgorithm:
 
   1. Rx   - multidof - custom
-  2. Rx   - custom   - multidof 
-  3. custom - multidof - Rx  
+  2. Rx   - custom   - multidof
+  3. custom - multidof - Rx
 
   As before, to test that the model works, we will create a model using
   standard RBDL versions (the reference model), and then we will create
@@ -104,7 +104,7 @@ struct CustomEulerZYXJoint : public CustomJoint {
   virtual void jcalc (Model &model,
                       unsigned int joint_id,
                       const Math::VectorNd &q,
-                      const Math::VectorNd &qdot) 
+                      const Math::VectorNd &qdot)
   {
     double q0 = q[model.mJoints[joint_id].q_index];
     double q1 = q[model.mJoints[joint_id].q_index + 1];
@@ -149,10 +149,10 @@ struct CustomEulerZYXJoint : public CustomJoint {
 
   virtual void jcalc_X_lambda_S ( Model &model,
                                   unsigned int joint_id,
-                                  const Math::VectorNd &q) 
+                                  const Math::VectorNd &q)
   {
 
-      
+
       double q0 = q[model.mJoints[joint_id].q_index];
       double q1 = q[model.mJoints[joint_id].q_index + 1];
       double q2 = q[model.mJoints[joint_id].q_index + 2];
@@ -164,15 +164,15 @@ struct CustomEulerZYXJoint : public CustomJoint {
       double s2 = sin (q2);
       double c2 = cos (q2);
 
-      
-      model.X_lambda[joint_id] = SpatialTransform ( 
+
+      model.X_lambda[joint_id] = SpatialTransform (
           Matrix3d(
                            c0 * c1,                s0 * c1,     -s1,
             c0 * s1 * s2 - s0 * c2, s0 * s1 * s2 + c0 * c2, c1 * s2,
             c0 * s1 * c2 + s0 * s2, s0 * s1 * c2 - c0 * s2, c1 * c2
             ),
           Vector3d (0., 0., 0.)) * model.X_T[joint_id];
-      
+
       S.setZero();
       S(0,0) = -s1;
       S(0,2) = 1.;
@@ -195,7 +195,7 @@ struct CustomEulerZYXJoint : public CustomJoint {
 
 struct CustomJointMultiBodyFixture {
   CustomJointMultiBodyFixture () {
-     
+
     reference_model.resize(NUMBER_OF_MODELS);
     custom_model.resize(NUMBER_OF_MODELS);
 
@@ -491,7 +491,7 @@ struct CustomJointMultiBodyFixture {
 
 //==============================================================================
 //
-// Tests 
+// Tests
 //  UpdateKinematicsCustom
 //  Jacobians
 //  InverseDynamics
@@ -568,7 +568,7 @@ TEST_FIXTURE ( CustomJointMultiBodyFixture, UpdateKinematics ) {
 }
 
 TEST_FIXTURE (CustomJointMultiBodyFixture, UpdateKinematicsCustom) {
-  
+
   for(int idx =0; idx < NUMBER_OF_MODELS; ++idx){
     int dof = reference_model.at(idx).dof_count;
     for (unsigned int i = 0; i < dof; i++) {
@@ -635,7 +635,7 @@ TEST_FIXTURE (CustomJointMultiBodyFixture, UpdateKinematicsCustom) {
       TEST_PREC);
   }
 
-   
+
 }
 
 TEST_FIXTURE (CustomJointMultiBodyFixture, Jacobians) {
@@ -961,13 +961,13 @@ TEST_FIXTURE (CustomJointMultiBodyFixture, ForwardDynamicsContactsKokkevis){
 
 
       //Reference
-      constraint_set_ref.AddContactConstraint(   
+      constraint_set_ref.AddContactConstraint(
                           reference_body_id.at(idx).at(NUMBER_OF_BODIES-1),
                           contact_point,
                           Vector3d (1., 0., 0.),
                           "ground_x");
 
-      constraint_set_ref.AddContactConstraint(   
+      constraint_set_ref.AddContactConstraint(
                           reference_body_id.at(idx).at(NUMBER_OF_BODIES-1),
                           contact_point,
                           Vector3d (0., 1., 0.),
@@ -976,13 +976,13 @@ TEST_FIXTURE (CustomJointMultiBodyFixture, ForwardDynamicsContactsKokkevis){
       constraint_set_ref.Bind (reference_model.at(idx));
 
       //Custom
-      constraint_set_cus.AddContactConstraint(   
+      constraint_set_cus.AddContactConstraint(
                           custom_body_id.at(idx).at(NUMBER_OF_BODIES-1),
                           contact_point,
                           Vector3d (1., 0., 0.),
                           "ground_x");
 
-      constraint_set_cus.AddContactConstraint(   
+      constraint_set_cus.AddContactConstraint(
                           custom_body_id.at(idx).at(NUMBER_OF_BODIES-1),
                           contact_point,
                           Vector3d (0., 1., 0.),

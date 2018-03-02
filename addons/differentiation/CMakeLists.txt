@@ -24,6 +24,7 @@ SET (CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # define add-on sources
 SET ( DIFFERENTIATION_SOURCES
 	ModelAD.cc
+	# ModelED.cc
 	FdModelEntry.cc
 	ConstraintsAD.cc
 	ConstraintsFD.cc
@@ -31,13 +32,19 @@ SET ( DIFFERENTIATION_SOURCES
 	KinematicsFD.cc
 	DynamicsAD.cc
 	DynamicsFD.cc
+	# DynamicsED.cc
 	JointAD.cc
+	# JointED.cc
 	rbdl_utilsAD.cc
 	rbdl_utilsFD.cc
 )
 
+MESSAGE(STATUS "In RBDL:DIFFERENTIATION")
+MESSAGE(STATUS "RBDL_SOURCES: ${RBDL_SOURCES}")
+
 IF ( RBDL_BUILD_STATIC )
 	ADD_LIBRARY ( rbdl_ad-static STATIC
+		${RBDL_SOURCES}
 		${DIFFERENTIATION_SOURCES}
 		)
 	# target_compile_features(rbdl_ad-static PRIVATE cxx_range_for)
@@ -49,7 +56,11 @@ IF ( RBDL_BUILD_STATIC )
 		ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 	)
 ELSE (RBDL_BUILD_STATIC)
-	ADD_LIBRARY ( rbdl_ad SHARED ${DIFFERENTIATION_SOURCES} )
+	ADD_LIBRARY (
+		rbdl_ad SHARED
+		${RBDL_SOURCES}
+		${DIFFERENTIATION_SOURCES}
+	)
 	# target_compile_features(rbdl_ad PRIVATE cxx_range_for)
 	SET_TARGET_PROPERTIES ( rbdl_ad PROPERTIES
 		VERSION ${RBDL_VERSION}

@@ -4,10 +4,10 @@ CMAKE_POLICY(SET CMP0048 NEW)
 SET ( RBDL_VERSION_MAJOR 2 )
 SET ( RBDL_VERSION_MINOR 5 )
 SET ( RBDL_VERSION_PATCH 0 )
-SET ( RBDL_VERSION 
+SET ( RBDL_VERSION
 	${RBDL_VERSION_MAJOR}.${RBDL_VERSION_MINOR}.${RBDL_VERSION_PATCH}
 )
-SET ( RBDL_SO_VERSION 
+SET ( RBDL_SO_VERSION
 	${RBDL_VERSION_MAJOR}.${RBDL_VERSION_MINOR}.${RBDL_VERSION_PATCH}
 )
 SET (PROJECT_VERSION ${RBDL_VERSION})
@@ -66,6 +66,19 @@ OPTION (RBDL_BUILD_PYTHON_WRAPPER "Build experimental python wrapper" OFF)
 OPTION (RBDL_BUILD_ADDON_GEOMETRY "Build the geometry library" ON)
 OPTION (RBDL_BUILD_ADDON_MUSCLE "Build the muscle library" ON)
 
+# Source files for RBDL
+SET ( RBDL_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rbdl_version.cc
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rbdl_mathutils.cc
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rbdl_utils.cc
+	${CMAKE_CURRENT_SOURCE_DIR}/src/Constraints.cc
+	${CMAKE_CURRENT_SOURCE_DIR}/src/Dynamics.cc
+	${CMAKE_CURRENT_SOURCE_DIR}/src/Logging.cc
+	${CMAKE_CURRENT_SOURCE_DIR}/src/Joint.cc
+	${CMAKE_CURRENT_SOURCE_DIR}/src/Model.cc
+	${CMAKE_CURRENT_SOURCE_DIR}/src/Kinematics.cc
+	)
+
 # Addons
 IF (RBDL_BUILD_ADDON_URDFREADER)
   ADD_SUBDIRECTORY ( addons/urdfreader )
@@ -87,7 +100,7 @@ IF(RBDL_BUILD_ADDON_MUSCLE)
   SET(RBDL_BUILD_ADDON_GEOMETRY ON CACHE BOOL "Build the geometry library" FORCE)
   ADD_SUBDIRECTORY ( addons/muscle )
   IF(RBDL_BUILD_TESTS)
-  	ADD_SUBDIRECTORY ( addons/muscle/tests ) 
+  	ADD_SUBDIRECTORY ( addons/muscle/tests )
   ENDIF(RBDL_BUILD_TESTS)
 ENDIF(RBDL_BUILD_ADDON_MUSCLE)
 
@@ -95,7 +108,7 @@ ENDIF(RBDL_BUILD_ADDON_MUSCLE)
 IF(RBDL_BUILD_ADDON_GEOMETRY)
   ADD_SUBDIRECTORY ( addons/geometry )
   IF(RBDL_BUILD_TESTS)
-  	ADD_SUBDIRECTORY ( addons/geometry/tests ) 
+  	ADD_SUBDIRECTORY ( addons/geometry/tests )
   ENDIF(RBDL_BUILD_TESTS)
 ENDIF(RBDL_BUILD_ADDON_GEOMETRY)
 
@@ -105,23 +118,10 @@ IF (RBDL_BUILD_TESTS)
  ADD_SUBDIRECTORY ( tests )
 ENDIF (RBDL_BUILD_TESTS)
 
-# Source files for RBDL
-SET ( RBDL_SOURCES
-	src/rbdl_version.cc
-	src/rbdl_mathutils.cc
-	src/rbdl_utils.cc
-	src/Constraints.cc
-	src/Dynamics.cc
-	src/Logging.cc
-	src/Joint.cc
-	src/Model.cc
-	src/Kinematics.cc
-	)
-
-IF (MSVC AND NOT RBDL_BUILD_STATIC)	
+IF (MSVC AND NOT RBDL_BUILD_STATIC)
   MESSAGE (FATAL_ERROR, "Compiling RBDL as a DLL currently not supported. Please enable RBDL_BUILD_STATIC.")
-ENDIF (MSVC AND NOT RBDL_BUILD_STATIC)	
-	
+ENDIF (MSVC AND NOT RBDL_BUILD_STATIC)
+
 # Static / dynamic builds
 IF (RBDL_BUILD_STATIC)
   ADD_LIBRARY ( rbdl-static STATIC ${RBDL_SOURCES} )

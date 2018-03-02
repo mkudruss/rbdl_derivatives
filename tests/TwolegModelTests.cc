@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -182,7 +182,7 @@ Vector3d medial_point (0., 0., 0.);
 
 void init_model (Model* model) {
   assert (model);
-  
+
   constraint_set_right = ConstraintSet();
   constraint_set_left = ConstraintSet();
   constraint_set_left_flat = ConstraintSet();

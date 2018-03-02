@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -99,7 +99,7 @@ TEST_FIXTURE(FixedBase3DoF, TestCalcPointRotatingBodyB) {
 
   ref_body_id = 3;
   QDot[1] = 1.;
-  point_position = Vector3d (1., 0., 0.); 
+  point_position = Vector3d (1., 0., 0.);
   point_acceleration = CalcPointAcceleration(*model, Q, QDot, QDDot, ref_body_id, point_position);
 
   // cout << LogOutput.str() << endl;
@@ -109,7 +109,7 @@ TEST_FIXTURE(FixedBase3DoF, TestCalcPointRotatingBodyB) {
   CHECK_CLOSE(  0., point_acceleration[2], TEST_PREC);
 
   // move it a bit further up (acceleration should stay the same)
-  point_position = Vector3d (1., 1., 0.); 
+  point_position = Vector3d (1., 1., 0.);
   point_acceleration = CalcPointAcceleration(*model, Q, QDot, QDDot, ref_body_id, point_position);
 
   // cout << LogOutput.str() << endl;
@@ -125,7 +125,7 @@ TEST_FIXTURE(FixedBase3DoF, TestCalcPointBodyOrigin) {
   QDot[0] = 1.;
 
   ref_body_id = body_b_id;
-  point_position = Vector3d (0., 0., 0.); 
+  point_position = Vector3d (0., 0., 0.);
   point_acceleration = CalcPointAcceleration(*model, Q, QDot, QDDot, ref_body_id, point_position);
 
   // cout << LogOutput.str() << endl;
@@ -143,7 +143,7 @@ TEST_FIXTURE(FixedBase3DoF, TestAccelerationLinearFuncOfQddot) {
   QDot[2] = 1.5;
 
   ref_body_id = body_c_id;
-  point_position = Vector3d (1., 1., 1.); 
+  point_position = Vector3d (1., 1., 1.);
 
   VectorNd qddot_1 = VectorNd::Zero (model->dof_count);
   VectorNd qddot_2 = VectorNd::Zero (model->dof_count);
@@ -204,7 +204,7 @@ TEST_FIXTURE(FixedBase3DoF, TestCalcPointRotationFixedJoint) {
 
   CHECK_ARRAY_CLOSE (point_acceleration_reference.data(),
       point_acceleration.data(),
-      3, 
+      3,
       TEST_PREC);
 }
 
@@ -229,7 +229,7 @@ TEST_FIXTURE(FixedBase3DoF, TestCalcPointRotationFixedJointRotatedTransform) {
 
   CHECK_ARRAY_CLOSE (point_acceleration_reference.data(),
       point_acceleration.data(),
-      3, 
+      3,
       TEST_PREC);
 }
 

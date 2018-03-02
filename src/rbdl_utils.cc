@@ -22,7 +22,7 @@ using namespace std;
 using namespace Math;
 
 string get_dof_name (const SpatialVector &joint_dof) {
-  if (joint_dof == SpatialVector (1., 0., 0., 0., 0., 0.)) 
+  if (joint_dof == SpatialVector (1., 0., 0., 0., 0., 0.))
     return "RX";
   else if (joint_dof == SpatialVector (0., 1., 0., 0., 0., 0.))
     return "RY";
@@ -139,7 +139,7 @@ RBDL_DLLAPI std::string GetNamedBodyOriginsOverview (Model &model) {
   for (unsigned int body_id = 0; body_id < model.mBodies.size(); body_id++) {
     std::string body_name = model.GetBodyName (body_id);
 
-    if (body_name.size() == 0) 
+    if (body_name.size() == 0)
       continue;
 
     Vector3d position = CalcBodyToBaseCoordinates (model, Q, body_id, Vector3d (0., 0., 0.), false);
@@ -151,13 +151,13 @@ RBDL_DLLAPI std::string GetNamedBodyOriginsOverview (Model &model) {
 }
 
 RBDL_DLLAPI void CalcCenterOfMass (
-    Model &model, 
-    const Math::VectorNd &q, 
-    const Math::VectorNd &qdot, 
-    double &mass, 
-    Math::Vector3d &com, 
-    Math::Vector3d *com_velocity, 
-    Vector3d *angular_momentum, 
+    Model &model,
+    const Math::VectorNd &q,
+    const Math::VectorNd &qdot,
+    double &mass,
+    Math::Vector3d &com,
+    Math::Vector3d *com_velocity,
+    Vector3d *angular_momentum,
     bool update_kinematics) {
   if (update_kinematics)
     UpdateKinematicsCustom (model, &q, &qdot, NULL);
@@ -186,7 +186,7 @@ RBDL_DLLAPI void CalcCenterOfMass (
   com = Itot.h / mass;
   LOG << "mass = " << mass << " com = " << com.transpose() << " htot = " << htot.transpose() << std::endl;
 
-  if (com_velocity) 
+  if (com_velocity)
     *com_velocity = Vector3d (htot[3] / mass, htot[4] / mass, htot[5] / mass);
 
   if (angular_momentum) {
@@ -196,9 +196,85 @@ RBDL_DLLAPI void CalcCenterOfMass (
   }
 }
 
+RBDL_DLLAPI void CalcZeroMomentPoint (
+  Model &model,
+  const Math::VectorNd &q,
+  const Math::VectorNd &qdot,
+  const Math::VectorNd &qddot,
+  Vector3d* zmp,
+  const Math::Vector3d &normal,
+  const Math::Vector3d &point,
+  bool update_kinematics
+) {
+  if (zmp == nullptr) {
+    cerr << "ZMP (output) is 'nullptr'!" << endl;
+    abort();
+  }
+
+  // update kinematics if required
+  // NOTE UpdateKinematics computes model.a[i] and model.v[i] required for
+  //      change of momentum
+  if (update_kinematics) {
+    UpdateKinematicsCustom (model, &q, &qdot, &qddot);
+  }
+
+  // compute change of momentum of each single body (same as in RNEA/InverseDynamics)
+  for (size_t i = 1; i < model.mBodies.size(); i++) {
+    model.Ic[i] = model.I[i];
+    model.hdotc[i] = model.Ic[i] * model.a[i] + crossf(model.v[i], model.Ic[i] * model.v[i]);
+  }
+
+  SpatialRigidBodyInertia I_tot (0., Vector3d (0., 0., 0.), Matrix3d::Zero(3,3));
+  SpatialVector h_tot (SpatialVector::Zero(6));
+  SpatialVector hdot_tot (SpatialVector::Zero(6));
+
+  // compute total change of momentum and CoM wrt to root body (idx = 0)
+  // by recursively summing up local change of momentum
+  for (size_t i = model.mBodies.size() - 1; i > 0; i--) {
+    unsigned int lambda = model.lambda[i];
+
+    if (lambda != 0) {
+      model.Ic[lambda] = model.Ic[lambda] + model.X_lambda[i].applyTranspose (model.Ic[i]);
+      model.hc[lambda] = model.hc[lambda] + model.X_lambda[i].applyTranspose (model.hc[i]);
+      model.hdotc[lambda] = model.hdotc[lambda] + model.X_lambda[i].applyTranspose (model.hdotc[i]);
+    } else {
+      I_tot = I_tot + model.X_lambda[i].applyTranspose (model.Ic[i]);
+      h_tot = h_tot + model.X_lambda[i].applyTranspose (model.hc[i]);
+      hdot_tot = hdot_tot + model.X_lambda[i].applyTranspose (model.hdotc[i]);
+    }
+  }
+
+  // compute CoM from mass and total inertia
+  const double mass = I_tot.m;
+  const Vector3d com = I_tot.h / mass;
+
+  // project angular momentum onto CoM
+  SpatialTransform Xcom = Xtrans (com);
+  hdot_tot = Xcom.applyAdjoint (hdot_tot);
+
+  // compute net external force at CoM by removing effects due to gravity
+  hdot_tot = hdot_tot - mass * SpatialVector (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);
+
+  // express total change of momentum in world coordinates
+  hdot_tot = Xcom.inverse().applyAdjoint (hdot_tot);
+
+  // project purified change of momentum onto surface
+  // z = n x n_0
+  //     -------
+  //     n * f
+  Vector3d n_0 = hdot_tot.head(3);
+  Vector3d f = hdot_tot.tail(3);
+  *zmp = normal.cross(n_0) / normal.dot(f);
+
+  // double distance = (hdot_tot - point).dot(normal);
+  // zmp = hdot_tot - distance * normal;
+
+  return;
+}
+
 RBDL_DLLAPI double CalcPotentialEnergy (
-    Model &model, 
-    const Math::VectorNd &q, 
+    Model &model,
+    const Math::VectorNd &q,
     bool update_kinematics) {
   double mass;
   Vector3d com;
@@ -211,9 +287,9 @@ RBDL_DLLAPI double CalcPotentialEnergy (
 }
 
 RBDL_DLLAPI double CalcKineticEnergy (
-    Model &model, 
-    const Math::VectorNd &q, 
-    const Math::VectorNd &qdot, 
+    Model &model,
+    const Math::VectorNd &q,
+    const Math::VectorNd &qdot,
     bool update_kinematics) {
   if (update_kinematics)
     UpdateKinematicsCustom (model, &q, &qdot, NULL);

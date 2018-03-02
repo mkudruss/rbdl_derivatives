@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -30,7 +30,7 @@ struct KinematicsFixture {
      *              _/
      *            _/  (-Z)
      *      Z    /
-     *      *---* 
+     *      *---*
      *      |
      *      |
      *  Z   |
@@ -88,7 +88,7 @@ struct KinematicsFixture6DoF {
 
     model->gravity = Vector3d  (0., -9.81, 0.);
 
-    /* 
+    /*
      *
      *          X Contact point (ref child)
      *          |
@@ -295,7 +295,7 @@ TEST(TestCalcPointJacobian) {
   Model model;
   Body base_body (1., Vector3d (0., 0., 0.), Vector3d (1., 1., 1.));
 
-  unsigned int base_body_id = model.AddBody (0, SpatialTransform(), 
+  unsigned int base_body_id = model.AddBody (0, SpatialTransform(),
       Joint (
         SpatialVector (0., 0., 0., 1., 0., 0.),
         SpatialVector (0., 0., 0., 0., 1., 0.),
@@ -371,7 +371,7 @@ TEST_FIXTURE(KinematicsFixture, TestInverseKinematicSimple) {
   Vector3d effector;
   effector = CalcBodyToBaseCoordinates(*model, Qres, body_id, body_point, false);
 
-  CHECK_ARRAY_CLOSE (target.data(), effector.data(), 3, TEST_PREC);	
+  CHECK_ARRAY_CLOSE (target.data(), effector.data(), 3, TEST_PREC);
 }
 
 TEST_FIXTURE(KinematicsFixture6DoF, TestInverseKinematicUnreachable) {
@@ -403,7 +403,7 @@ TEST_FIXTURE(KinematicsFixture6DoF, TestInverseKinematicUnreachable) {
   Vector3d effector;
   effector = CalcBodyToBaseCoordinates(*model, Qres, body_id, body_point, false);
 
-  CHECK_ARRAY_CLOSE (Vector3d (2.0, 0., 0.).data(), effector.data(), 3, 1.0e-7);	
+  CHECK_ARRAY_CLOSE (Vector3d (2.0, 0., 0.).data(), effector.data(), 3, 1.0e-7);
 }
 
 TEST_FIXTURE(KinematicsFixture6DoF, TestInverseKinematicTwoPoints) {
@@ -440,10 +440,10 @@ TEST_FIXTURE(KinematicsFixture6DoF, TestInverseKinematicTwoPoints) {
 
   // testing with very low precision
   effector = CalcBodyToBaseCoordinates(*model, Qres, body_ids[0], body_points[0], false);
-  CHECK_ARRAY_CLOSE (target_pos[0].data(), effector.data(), 3, 1.0e-1);	
+  CHECK_ARRAY_CLOSE (target_pos[0].data(), effector.data(), 3, 1.0e-1);
 
   effector = CalcBodyToBaseCoordinates(*model, Qres, body_ids[1], body_points[1], false);
-  CHECK_ARRAY_CLOSE (target_pos[1].data(), effector.data(), 3, 1.0e-1);	
+  CHECK_ARRAY_CLOSE (target_pos[1].data(), effector.data(), 3, 1.0e-1);
 }
 
 TEST ( FixedJointBodyCalcBodyToBase ) {
@@ -481,7 +481,7 @@ TEST ( FixedJointBodyCalcBodyToBaseRotated ) {
   ClearLogOutput();
   Q[0] = M_PI * 0.5;
   Vector3d base_coords = CalcBodyToBaseCoordinates (model, Q, fixed_body_id, Vector3d (1., 0., 0.));
-  //	cout << LogOutput.str() << endl;	
+  //	cout << LogOutput.str() << endl;
 
   CHECK_ARRAY_CLOSE (Vector3d (0., 2., 0.).data(), base_coords.data(), 3, TEST_PREC);
 }
@@ -521,7 +521,7 @@ TEST ( FixedJointBodyCalcBaseToBodyRotated ) {
   ClearLogOutput();
   Q[0] = M_PI * 0.5;
   Vector3d base_coords = CalcBaseToBodyCoordinates (model, Q, fixed_body_id, Vector3d (0., 2., 0.));
-  // cout << LogOutput.str() << endl;	
+  // cout << LogOutput.str() << endl;
 
   CHECK_ARRAY_CLOSE (Vector3d (1., 0., 0.).data(), base_coords.data(), 3, TEST_PREC);
 }
@@ -570,7 +570,7 @@ TEST ( FixedJointCalcPointJacobian ) {
 
   Vector3d point_position (1., 0., 0.);
 
-  MatrixNd G = MatrixNd::Zero (3, model.dof_count);	
+  MatrixNd G = MatrixNd::Zero (3, model.dof_count);
   CalcPointJacobian (model, Q, fixed_body_id, point_position, G);
   Vector3d point_velocity_jacobian = G * QDot;
   Vector3d point_velocity_reference = CalcPointVelocity (model, Q, QDot, fixed_body_id, point_position);
@@ -638,7 +638,7 @@ TEST_FIXTURE ( Human36, CalcPointVelocity6D ) {
   unsigned int foot_r_id = model->GetBodyId ("foot_r");
   Vector3d point_local (1.1, 2.2, 3.3);
 
-  // Compute the 6-D velocity 
+  // Compute the 6-D velocity
   SpatialVector v_foot_0 = CalcPointVelocity6D (*model, q, qdot, foot_r_id, point_local);
 
   // Compute the 6-D velocity by transforming the body velocity to the
@@ -657,7 +657,7 @@ TEST_FIXTURE ( Human36, CalcPointAcceleration6D ) {
   unsigned int foot_r_id = model->GetBodyId ("foot_r");
   Vector3d point_local (1.1, 2.2, 3.3);
 
-  // Compute the 6-D acceleration 
+  // Compute the 6-D acceleration
   SpatialVector a_foot_0 = CalcPointAcceleration6D (*model, q, qdot, qddot, foot_r_id, point_local);
 
   // Compute the 6-D acceleration by adding the coriolis term to the
@@ -670,8 +670,8 @@ TEST_FIXTURE ( Human36, CalcPointAcceleration6D ) {
   SpatialTransform X_foot (Matrix3d::Identity(), r_point);
   UpdateKinematicsCustom (*model, &q, &qdot, NULL);
   SpatialVector a_foot_0_ref = X_foot.apply(
-      model->X_base[foot_r_id].inverse().apply(model->a[foot_r_id]) 
-      - crossm(rdot, 
+      model->X_base[foot_r_id].inverse().apply(model->a[foot_r_id])
+      - crossm(rdot,
         model->X_base[foot_r_id].inverse().apply(model->v[foot_r_id])
         )
       );

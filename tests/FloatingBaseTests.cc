@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -35,7 +35,7 @@ struct FloatingBaseFixture {
 };
 
 TEST_FIXTURE ( FloatingBaseFixture, TestCalcPointTransformation ) {
-  base_body_id = model->AddBody (0, SpatialTransform(), 
+  base_body_id = model->AddBody (0, SpatialTransform(),
       Joint (
         SpatialVector (0., 0., 0., 1., 0., 0.),
         SpatialVector (0., 0., 0., 0., 1., 0.),
@@ -44,7 +44,7 @@ TEST_FIXTURE ( FloatingBaseFixture, TestCalcPointTransformation ) {
         SpatialVector (0., 1., 0., 0., 0., 0.),
         SpatialVector (1., 0., 0., 0., 0., 0.)
         ),
-      base);	
+      base);
 
   q = VectorNd::Constant(model->dof_count, 0.);
   qdot = VectorNd::Constant(model->dof_count, 0.);
@@ -62,7 +62,7 @@ TEST_FIXTURE ( FloatingBaseFixture, TestCalcPointTransformation ) {
 
 TEST_FIXTURE(FloatingBaseFixture, TestCalcDynamicFloatingBaseDoubleImplicit) {
   // floating base
-  base_body_id = model->AddBody (0, SpatialTransform(), 
+  base_body_id = model->AddBody (0, SpatialTransform(),
       Joint (
         SpatialVector (0., 0., 0., 1., 0., 0.),
         SpatialVector (0., 0., 0., 0., 1., 0.),
@@ -71,7 +71,7 @@ TEST_FIXTURE(FloatingBaseFixture, TestCalcDynamicFloatingBaseDoubleImplicit) {
         SpatialVector (0., 1., 0., 0., 0., 0.),
         SpatialVector (1., 0., 0., 0., 0., 0.)
         ),
-      base);	
+      base);
 
   // body_a
   Body body_a (1., Vector3d (1., 0., 0), Vector3d (1., 1., 1.));
@@ -160,7 +160,7 @@ TEST_FIXTURE(FloatingBaseFixture, TestCalcDynamicFloatingBaseDoubleImplicit) {
 
 TEST_FIXTURE(FloatingBaseFixture, TestCalcPointVelocityFloatingBaseSimple) {
   // floating base
-  base_body_id = model->AddBody (0, SpatialTransform(), 
+  base_body_id = model->AddBody (0, SpatialTransform(),
       Joint (
         SpatialVector (0., 0., 0., 1., 0., 0.),
         SpatialVector (0., 0., 0., 0., 1., 0.),
@@ -169,7 +169,7 @@ TEST_FIXTURE(FloatingBaseFixture, TestCalcPointVelocityFloatingBaseSimple) {
         SpatialVector (0., 1., 0., 0., 0., 0.),
         SpatialVector (1., 0., 0., 0., 0., 0.)
         ),
-      base);	
+      base);
 
   VectorNd Q = VectorNd::Zero (model->dof_count);
   VectorNd QDot = VectorNd::Zero (model->dof_count);
@@ -208,7 +208,7 @@ TEST_FIXTURE(FloatingBaseFixture, TestCalcPointVelocityFloatingBaseSimple) {
   //	cout << LogOutput.str() << endl;
 
   // Now we calculate the velocity when rotating around the Z axis and the
-  // base is rotated around the z axis by 90 degrees 
+  // base is rotated around the z axis by 90 degrees
   ClearLogOutput();
   Q[3] = M_PI * 0.5;
   QDot[3] = 1.;
@@ -225,8 +225,8 @@ TEST_FIXTURE(FloatingBaseFixture, TestCalcPointVelocityFloatingBaseSimple) {
 
 TEST_FIXTURE(FloatingBaseFixture, TestCalcPointVelocityCustom) {
   // floating base
-  base = Body (1., Vector3d (0., 1., 0.), Vector3d (1., 1., 1.));	
-  base_body_id = model->AddBody (0, SpatialTransform(), 
+  base = Body (1., Vector3d (0., 1., 0.), Vector3d (1., 1., 1.));
+  base_body_id = model->AddBody (0, SpatialTransform(),
       Joint (
         SpatialVector (0., 0., 0., 1., 0., 0.),
         SpatialVector (0., 0., 0., 0., 1., 0.),
@@ -235,7 +235,7 @@ TEST_FIXTURE(FloatingBaseFixture, TestCalcPointVelocityCustom) {
         SpatialVector (0., 1., 0., 0., 0., 0.),
         SpatialVector (1., 0., 0., 0., 0., 0.)
         ),
-      base);	
+      base);
 
   VectorNd q = VectorNd::Zero (model->dof_count);
   VectorNd qdot = VectorNd::Zero (model->dof_count);
@@ -288,8 +288,8 @@ TEST_FIXTURE(FloatingBaseFixture, TestCalcPointVelocityCustom) {
  */
 TEST_FIXTURE(FloatingBaseFixture, TestCalcPointAccelerationNoQDDot) {
   // floating base
-  base = Body (1., Vector3d (0., 1., 0.), Vector3d (1., 1., 1.));	
-  base_body_id = model->AddBody (0, SpatialTransform(), 
+  base = Body (1., Vector3d (0., 1., 0.), Vector3d (1., 1., 1.));
+  base_body_id = model->AddBody (0, SpatialTransform(),
       Joint (
         SpatialVector (0., 0., 0., 1., 0., 0.),
         SpatialVector (0., 0., 0., 0., 1., 0.),
@@ -298,7 +298,7 @@ TEST_FIXTURE(FloatingBaseFixture, TestCalcPointAccelerationNoQDDot) {
         SpatialVector (0., 1., 0., 0., 0., 0.),
         SpatialVector (1., 0., 0., 0., 0., 0.)
         ),
-      base);	
+      base);
 
   VectorNd q = VectorNd::Zero (model->dof_count);
   VectorNd qdot = VectorNd::Zero (model->dof_count);
@@ -369,20 +369,20 @@ TEST_FIXTURE(FloatingBaseFixture, TestCalcPointAccelerationNoQDDot) {
   CHECK_ARRAY_CLOSE (humans_point_acceleration.data(), point_world_acceleration.data(), 3, TEST_PREC);
 }
 
-/** \brief Compares computation of acceleration values for zero q and qdot 
+/** \brief Compares computation of acceleration values for zero q and qdot
  *
  * Ensures that computation of position, velocity, and acceleration of a
  * point produce the same values as in an equivalent model that was
  * created with the HuMAnS toolbox
  *    http://www.inrialpes.fr/bipop/software/humans/ .
- * 
+ *
  * Here we set q and qdot to zero and only take into account values that
  * are dependent on qddot.
  */
 TEST_FIXTURE(FloatingBaseFixture, TestCalcPointAccelerationOnlyQDDot) {
   // floating base
-  base = Body (1., Vector3d (0., 1., 0.), Vector3d (1., 1., 1.));	
-  base_body_id = model->AddBody (0, SpatialTransform(), 
+  base = Body (1., Vector3d (0., 1., 0.), Vector3d (1., 1., 1.));
+  base_body_id = model->AddBody (0, SpatialTransform(),
       Joint (
         SpatialVector (0., 0., 0., 1., 0., 0.),
         SpatialVector (0., 0., 0., 0., 1., 0.),
@@ -452,20 +452,20 @@ TEST_FIXTURE(FloatingBaseFixture, TestCalcPointAccelerationOnlyQDDot) {
   CHECK_ARRAY_CLOSE (humans_point_acceleration.data(), point_world_acceleration.data(), 3, TEST_PREC);
 }
 
-/** \brief Compares computation of acceleration values for zero q and qdot 
+/** \brief Compares computation of acceleration values for zero q and qdot
  *
  * Ensures that computation of position, velocity, and acceleration of a
  * point produce the same values as in an equivalent model that was
  * created with the HuMAnS toolbox
  *    http://www.inrialpes.fr/bipop/software/humans/ .
- * 
+ *
  * Here we set q and qdot to zero and only take into account values that
  * are dependent on qddot.
  */
 TEST_FIXTURE(FloatingBaseFixture, TestCalcPointAccelerationFull) {
   // floating base
-  base = Body (1., Vector3d (0., 1., 0.), Vector3d (1., 1., 1.));	
-  base_body_id = model->AddBody (0, SpatialTransform(), 
+  base = Body (1., Vector3d (0., 1., 0.), Vector3d (1., 1., 1.));
+  base_body_id = model->AddBody (0, SpatialTransform(),
       Joint (
         SpatialVector (0., 0., 0., 1., 0., 0.),
         SpatialVector (0., 0., 0., 0., 1., 0.),
@@ -525,7 +525,7 @@ TEST_FIXTURE(FloatingBaseFixture, TestCalcPointAccelerationFull) {
       -6.357089363622626e-01, -6.831041744630977e-01, 2.968974805916970e+00
       );
   Vector3d humans_point_velocity (
-      3.091226260907569e-01, 3.891012095550828e+00, 4.100277995030419e+00	
+      3.091226260907569e-01, 3.891012095550828e+00, 4.100277995030419e+00
       );
   Vector3d humans_point_acceleration (
       -4.993637532756404e+00, 1.043238173517606e+01, -6.948370826218673e-01

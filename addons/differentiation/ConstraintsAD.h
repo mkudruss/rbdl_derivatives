@@ -38,8 +38,15 @@ struct ADConstraintSet {
   Math::MatrixNd              err;
   Math::MatrixNd              errd;
 
-  ADConstraintSet() {}
+  ADConstraintSet() : CS (0) {}
   ADConstraintSet(const ConstraintSet &CS, int dof_count);
+
+  // ~ADConstraintSet() {
+  //   // set reference to NULL
+  //   if (CS != 0){
+  //     CS = 0;
+  //   }
+  // }
 
   void resize_directions (const unsigned int& requested_ndirs);
 };

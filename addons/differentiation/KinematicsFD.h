@@ -79,7 +79,7 @@ RBDL_DLLAPI Math::Vector3d CalcPointAcceleration (
 
 RBDL_DLLAPI void CalcPointJacobian (
     Model &model,
-    ADModel &ad_model,
+    ADModel *fd_model,
     Math::VectorNd const &q,
     Math::MatrixNd const &q_dirs,
     unsigned int body_id,
@@ -99,9 +99,9 @@ RBDL_DLLAPI void CalcPointJacobian6D (
 
 RBDL_DLLAPI void UpdateKinematicsCustom (
     Model & model,
-    ADModel & fd_model,
+    ADModel *fd_model,
     Math::VectorNd const & q,
-    Math::MatrixNd const &q_dirs,
+    Math::MatrixNd const & q_dirs,
     Math::VectorNd const & qd,
     Math::MatrixNd const & qd_dirs,
     Math::VectorNd const & qdd,

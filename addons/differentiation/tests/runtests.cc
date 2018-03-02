@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 #include <iostream>
 #include <string>
 
@@ -10,7 +10,7 @@ int main (int argc, char *argv[])
 
 	if (argc > 1) {
 		std::string arg (argv[1]);
-	
+
 		if (arg == "-v" || arg == "--version")
 			rbdl_print_version();
 	}

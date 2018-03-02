@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include "ModelCheckADvsFD.h"
 
@@ -14,9 +14,9 @@ void checkModelsADvsFD(
     ADModel const & ad_d_model,
     Model const & fd_model,
     ADModel const & fd_d_model) {
-        
+
   // nominal check
-  CHECK_EQUAL(ad_model.v_J.size(), fd_model.v_J.size());  
+  CHECK_EQUAL(ad_model.v_J.size(), fd_model.v_J.size());
   for (unsigned i = 0; i < ad_model.v_J.size(); i++) {
     CHECK_ARRAY_EQUAL(ad_model.v_J[i].data(), fd_model.v_J[i].data(), 6);
   }

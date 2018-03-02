@@ -122,19 +122,19 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
   CalcConstraintsJacobian(model, q, cs, G, update_kinematics);
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    Model *modelh = &model;
     VectorNd qh = q + h * q_dirs.col(idir);
     ConstraintSet csh = cs_in;
-    MatrixNd Gh = MatrixNd::Zero (3, model.dof_count);
+    MatrixNd Gh = MatrixNd::Zero (G.rows(), G.cols());
 
+    Model *modelh;
     if (fd_model) {
       modelh = new Model(model);
+    } else {
+      modelh = &model;
     }
 
     CalcConstraintsJacobian(*modelh, qh, csh, Gh, update_kinematics);
-
     G_dirs[idir] = (Gh - G) / h;
-    computeFDEntry(cs, csh, h, idir, fd_CS);
 
     if (fd_model) {
       computeFDEntry(model, *modelh, h, idir, *fd_model);

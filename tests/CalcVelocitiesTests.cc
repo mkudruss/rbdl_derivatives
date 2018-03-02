@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -122,7 +122,7 @@ TEST_FIXTURE(ModelVelocitiesFixture, TestCalcPointRotatingBaseXAxis) {
 
 TEST_FIXTURE(ModelVelocitiesFixture, TestCalcPointRotatedBaseXAxis) {
   // perform the previous test with the first joint rotated by pi/2
-  // upwards 
+  // upwards
   ClearLogOutput();
 
   ref_body_id = 3;

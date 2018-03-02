@@ -218,7 +218,7 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
 RBDL_DLLAPI
 void CalcPointJacobian (
     Model &model,
-    ADModel &fd_model,
+    ADModel *fd_model,
     Math::VectorNd const &q,
     Math::MatrixNd const &q_dirs,
     unsigned int body_id,
@@ -226,28 +226,36 @@ void CalcPointJacobian (
     Math::MatrixNd &G,
     std::vector<Math::MatrixNd> &G_dirs) {
   unsigned int ndirs = q_dirs.cols();
-  fd_model.resize_directions(ndirs);
+  if (fd_model) {
+    fd_model->resize_directions(ndirs);
+  }
 
   double const h = 1e-8;
   bool const update_kinematics = true;
 
   // temporary evaluation at current point
-  CalcPointJacobian (
-        model, q, body_id, point_position, G, update_kinematics
-        );
+  CalcPointJacobian (model, q, body_id, point_position, G, update_kinematics);
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    Model modelh = model;
+    Model *modelh;
+    if (fd_model) {
+      modelh = new Model(model);
+    } else {
+      modelh = &model;
+    }
+
     VectorNd q_dir = q_dirs.block(0, idir, model.q_size, 1);
     MatrixNd Gh = MatrixNd::Zero (3, model.dof_count);
 
-
     // temporary evaluation at perturbed point
     CalcPointJacobian (
-          modelh, q + h * q_dir, body_id, point_position, Gh, update_kinematics
-          );
+      *modelh, q + h * q_dir, body_id, point_position, Gh, update_kinematics
+    );
     G_dirs[idir] = (Gh - G) / h;
-    computeFDEntry(model, modelh, h, idir, fd_model);
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
   }
 }
 
@@ -268,11 +276,14 @@ RBDL_DLLAPI void CalcPointJacobian6D (
   CalcPointJacobian6D(model, q, body_id, point_position, G);
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    Model *modelh = &model;
     MatrixNd Gh(G.rows(), G.cols());
     VectorNd qh = q + h * q_dirs.col(idir);
+
+    Model *modelh;
     if (fd_model) {
       modelh = new Model(model);
+    } else {
+      modelh = &model;
     }
 
     Gh.setZero();
@@ -289,8 +300,8 @@ RBDL_DLLAPI void CalcPointJacobian6D (
 
 RBDL_DLLAPI
 void UpdateKinematicsCustom (
-    Model & model,
-    ADModel & fd_model,
+    Model &model,
+    ADModel *fd_model,
     VectorNd const & q,
     MatrixNd const & q_dirs,
     VectorNd const & qd,
@@ -303,13 +314,21 @@ void UpdateKinematicsCustom (
   UpdateKinematicsCustom(model, &q, &qd, &qdd);
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    Model modelh = model;
+    Model *modelh;
+    if (fd_model) {
+      modelh = new Model(model);
+    } else {
+      modelh = &model;
+    }
     VectorNd qh   = q + h * q_dirs.col(idir);
     VectorNd qdh  = qd + h * qd_dirs.col(idir);
     VectorNd qddh = qdd + h * qdd_dirs.col(idir);
 
-    UpdateKinematicsCustom(modelh, &qh, &qdh, &qddh);
-    computeFDEntry(model, modelh, h, idir, fd_model);
+    UpdateKinematicsCustom(*modelh, &qh, &qdh, &qddh);
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -44,7 +44,7 @@ void UpdateKinematicsCustomTemplate(
 
     AD::UpdateKinematicsCustom(ad_model, ad_d_model, &q, &q_dirs, &qd, &qd_dirs, &qdd, &qdd_dirs);
 
-    FD::UpdateKinematicsCustom(fd_model, fd_d_model, q, q_dirs, qd, qd_dirs, qdd, qdd_dirs);
+    FD::UpdateKinematicsCustom(fd_model, &fd_d_model, q, q_dirs, qd, qd_dirs, qdd, qdd_dirs);
 
     checkModelsADvsFD(
           ndirs,
@@ -579,7 +579,7 @@ void CalcPointJacobianTemplate(
             update_kinematics);
 
       FD::CalcPointJacobian (
-            fd_model, fd_d_model,
+            fd_model, &fd_d_model,
             q, q_dirs,
             body_id,
             point_position,

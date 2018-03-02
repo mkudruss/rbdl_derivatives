@@ -31,7 +31,7 @@ struct RBDL_DLLAPI SpatialRigidBodyInertia {
     Ixx (0.), Iyx(0.), Iyy(0.), Izx(0.), Izy(0.), Izz(0.)
   {}
   SpatialRigidBodyInertia (
-      double mass, const Vector3d &com_mass, const Matrix3d &inertia) : 
+      double mass, const Vector3d &com_mass, const Matrix3d &inertia) :
     m (mass), h (com_mass),
     Ixx (inertia(0,0)),
     Iyx (inertia(1,0)), Iyy(inertia(1,1)),
@@ -128,7 +128,7 @@ struct RBDL_DLLAPI SpatialRigidBodyInertia {
     mat(2,3) = -h[1]; mat(2,4) =  h[0]; mat(2,5) =    0.;
 
     mat(3,3) =     m; mat(3,4) =    0.; mat(3,5) =    0.;
-    mat(4,3) =    0.; mat(4,4) =     m; mat(4,5) =    0.; 
+    mat(4,3) =    0.; mat(4,4) =     m; mat(4,5) =    0.;
     mat(5,3) =    0.; mat(5,4) =    0.; mat(5,5) =     m;
   }
 
@@ -218,13 +218,13 @@ struct RBDL_DLLAPI SpatialTransform {
     return SpatialRigidBodyInertia (
         rbi.m,
         E * (rbi.h - rbi.m * r),
-        E * 
-        ( 
+        E *
+        (
          Matrix3d (
            rbi.Ixx, rbi.Iyx, rbi.Izx,
            rbi.Iyx, rbi.Iyy, rbi.Izy,
            rbi.Izx, rbi.Izy, rbi.Izz
-           ) 
+           )
          + VectorCrossMatrix (r) * VectorCrossMatrix (rbi.h)
          + (VectorCrossMatrix(rbi.h - rbi.m * r) * VectorCrossMatrix (r))
         )
@@ -239,13 +239,13 @@ struct RBDL_DLLAPI SpatialTransform {
     return SpatialRigidBodyInertia (
         rbi.m,
         E_T_mr,
-        E.transpose() * 
+        E.transpose() *
         Matrix3d (
           rbi.Ixx, rbi.Iyx, rbi.Izx,
           rbi.Iyx, rbi.Iyy, rbi.Izy,
           rbi.Izx, rbi.Izy, rbi.Izz
           ) * E
-        - VectorCrossMatrix(r) * VectorCrossMatrix (E.transpose() * rbi.h)  
+        - VectorCrossMatrix(r) * VectorCrossMatrix (E.transpose() * rbi.h)
         - VectorCrossMatrix (E_T_mr) * VectorCrossMatrix (r));
   }
 
@@ -344,7 +344,7 @@ struct RBDL_DLLAPI SpatialTransform {
 
 inline std::ostream& operator<<(std::ostream& output, const SpatialRigidBodyInertia &rbi) {
   output << "rbi.m = " << rbi.m << std::endl;
-  output << "rbi.h = " << rbi.h.transpose();
+  output << "rbi.h = " << rbi.h.transpose() << std::endl;
   output << "rbi.Ixx = " << rbi.Ixx << std::endl;
   output << "rbi.Iyx = " << rbi.Iyx << " rbi.Iyy = " << rbi.Iyy << std::endl;
   output << "rbi.Izx = " << rbi.Izx << " rbi.Izy = " << rbi.Izy << " rbi.Izz = " << rbi.Izz  << std::endl;
@@ -454,7 +454,7 @@ inline SpatialTransform Xtrans (const Vector3d &r) {
 inline SpatialMatrix crossm (const SpatialVector &v) {
   return SpatialMatrix (
       0,  -v[2],  v[1],         0,          0,         0,
-      v[2],          0, -v[0],         0,          0,         0, 
+      v[2],          0, -v[0],         0,          0,         0,
       -v[1],   v[0],         0,         0,          0,         0,
       0,  -v[5],  v[4],         0,  -v[2],  v[1],
       v[5],          0, -v[3],  v[2],          0, -v[0],

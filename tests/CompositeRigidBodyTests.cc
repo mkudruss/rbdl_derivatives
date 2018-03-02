@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -29,7 +29,7 @@ struct CompositeRigidBodyFixture {
 TEST_FIXTURE(CompositeRigidBodyFixture, TestCompositeRigidBodyForwardDynamicsFloatingBase) {
   Body base_body(1., Vector3d (1., 0., 0.), Vector3d (1., 1., 1.));
 
-  model->AddBody (0, SpatialTransform(), 
+  model->AddBody (0, SpatialTransform(),
       Joint (
         SpatialVector (0., 0., 0., 1., 0., 0.),
         SpatialVector (0., 0., 0., 0., 1., 0.),
@@ -253,7 +253,7 @@ TEST_FIXTURE(CompositeRigidBodyFixture, TestCompositeRigidBodyForwardDynamicsSph
 
   Matrix3d H_ref (
       1., 0., 0.,
-      0., 2., 0., 
+      0., 2., 0.,
       0., 0., 3.
       );
 

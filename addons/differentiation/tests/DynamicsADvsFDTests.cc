@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -9,6 +9,7 @@
 #include "Fixtures.h"
 #include "Human36Fixture.h"
 #include "ModelAD.h"
+#include "DynamicsED.h"
 #include "DynamicsAD.h"
 #include "DynamicsFD.h"
 #include "rbdl_mathutilsAD.h"
@@ -352,15 +353,15 @@ void CompositeRigidBodyAlgorithmADTestTemplate(
 }
 
 TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-7);
+  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-8);
 }
 
 TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-7);
+  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-8);
 }
 
 TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-7);
+  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-8);
 }
 
 TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmADTest) {
@@ -368,11 +369,11 @@ TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmADTest) {
 }
 
 TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-7);
+  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-6);
 }
 
 TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-7);
+  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-6);
 }
 
 // TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {

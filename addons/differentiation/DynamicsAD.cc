@@ -329,7 +329,7 @@ void InverseDynamics(
 		jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
 		// nominal evaluation
 		// NOTE joints are already calculated in ad_jcalc
-		// jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
+    // jcalc (model, i, Q, QDot);
 
 		if (lambda != 0) {
 			// derivative evaluation

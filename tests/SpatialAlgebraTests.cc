@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 #include <iomanip>
@@ -474,7 +474,7 @@ TEST(TestSpatialTransformApplySpatialRigidBodyInertiaAdd) {
   // cout << "rbi = " << endl << rbi.toMatrix() << endl;
   // cout << "rbi_added = " << endl << rbi_added.toMatrix() << endl;
   // cout << "rbi_matrix_added = " << endl << rbi_matrix_added << endl;
-  // cout << "diff = " << endl << 
+  // cout << "diff = " << endl <<
   //  	rbi_added.toMatrix() - rbi_matrix_added << endl;
 
   CHECK_ARRAY_CLOSE (

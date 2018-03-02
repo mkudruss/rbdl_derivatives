@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -86,10 +86,10 @@ struct CustomJointFixture {
     reference_body_id = reference_model.AddBody (0,SpatialTransform(), Joint(JointTypeEulerZYX), body);
     custom_body_id = custom_model.AddBodyCustomJoint (0, SpatialTransform(), custom_joint, body);
 
-    q = VectorNd::Zero (reference_model.q_size);    
-    qdot = VectorNd::Zero (reference_model.qdot_size);    
-    qddot = VectorNd::Zero (reference_model.qdot_size);   
-    tau = VectorNd::Zero (reference_model.qdot_size);   
+    q = VectorNd::Zero (reference_model.q_size);
+    qdot = VectorNd::Zero (reference_model.qdot_size);
+    qddot = VectorNd::Zero (reference_model.qdot_size);
+    tau = VectorNd::Zero (reference_model.qdot_size);
   }
 
   ~CustomJointFixture () {

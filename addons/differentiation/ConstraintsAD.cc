@@ -14,7 +14,9 @@ namespace RigidBodyDynamics {
 
 using namespace RigidBodyDynamics::Math;
 
-ADConstraintSet::ADConstraintSet(const ConstraintSet & CS_, int _dof_count) {
+ADConstraintSet::ADConstraintSet(const ConstraintSet & CS_, int _dof_count) :
+  CS (0)
+{
   dof_count = _dof_count;
   ndirs = 4 * dof_count;
 
@@ -689,6 +691,9 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
   unsigned const ndirs = q_dirs.cols();
   assert(ndirs == static_cast<unsigned>(qdot_dirs.cols()));
   assert(ndirs == static_cast<unsigned>(tau_dirs.cols()));
+
+  ad_model.resize_directions(ndirs);
+  ad_CS.resize_directions(ndirs);
 
   // derivative and nominal code
   CalcConstrainedSystemVariables (

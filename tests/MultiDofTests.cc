@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -22,9 +22,9 @@ struct SphericalJoint {
   SphericalJoint () {
     ClearLogOutput();
 
-    emulated_model.gravity = Vector3d (0., 0., -9.81); 
-    multdof3_model.gravity = Vector3d (0., 0., -9.81); 
-    eulerzyx_model.gravity = Vector3d (0., 0., -9.81); 
+    emulated_model.gravity = Vector3d (0., 0., -9.81);
+    multdof3_model.gravity = Vector3d (0., 0., -9.81);
+    eulerzyx_model.gravity = Vector3d (0., 0., -9.81);
 
     body = Body (1., Vector3d (1., 0., 0.), Vector3d (1., 1., 1.));
 
@@ -391,7 +391,7 @@ TEST_FIXTURE(SphericalJoint, TestCRBA ) {
     // compute ID (model, q, qdot, zero)
     VectorNd id_zero = VectorNd::Zero (multdof3_model.qdot_size);
     InverseDynamics (multdof3_model, sphQ, sphQDot, QDDot_zero, id_zero);
-  
+
     H_col = id_delta - id_zero;
     H_id.block(0, i, multdof3_model.qdot_size, 1) = H_col;
   }
@@ -445,7 +445,7 @@ TEST_FIXTURE(SphericalJoint, TestContactsLagrangian) {
   constraint_set_sph.AddContactConstraint (sph_child_id, Vector3d (0., 0., -1.), Vector3d (0., 0., 1.));
 
   constraint_set_sph.Bind(multdof3_model);
-  
+
   ForwardDynamicsConstraintsDirect (emulated_model, emuQ, emuQDot, emuTau, constraint_set_emu, emuQDDot);
   VectorNd emu_force_lagrangian = constraint_set_emu.force;
   ForwardDynamicsConstraintsDirect (multdof3_model, sphQ, sphQDot, sphTau, constraint_set_sph, sphQDDot);
@@ -470,7 +470,7 @@ TEST_FIXTURE(SphericalJoint, TestContacts) {
   constraint_set_sph.AddContactConstraint (sph_child_id, Vector3d (0., 0., -1.), Vector3d (0., 0., 1.));
 
   constraint_set_sph.Bind(multdof3_model);
-  
+
   ForwardDynamicsContactsKokkevis (emulated_model, emuQ, emuQDot, emuTau, constraint_set_emu, emuQDDot);
   VectorNd emu_force_kokkevis = constraint_set_emu.force;
   ForwardDynamicsContactsKokkevis (multdof3_model, sphQ, sphQDot, sphTau, constraint_set_sph, sphQDDot);

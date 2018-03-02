@@ -1,4 +1,4 @@
-#include <UnitTest++.h>
+#include <unittest++/UnitTest++.h>
 
 #include <iostream>
 
@@ -19,7 +19,7 @@ TEST ( TestComputeSpatialInertiaFromAbsoluteRadiiGyration ) {
 
   Matrix3d inertia_C (
       1.4, 0., 0.,
-      0., 2., 0., 
+      0., 2., 0.,
       0., 0., 3.);
 
   SpatialMatrix reference_inertia (
