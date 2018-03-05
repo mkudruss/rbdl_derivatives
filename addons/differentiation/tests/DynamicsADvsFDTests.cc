@@ -143,9 +143,6 @@ void ForwardDynamicsADTestTemplate(
       fd_dqddot.cols() * fd_dqddot.rows(),
       array_close_prec
     );
-
-    std::cout << (fdc_dqddot - fd_dqddot).cwiseAbs().maxCoeff() << std::endl;
-    std::cout << (fdc_dqddot - ad_dqddot).cwiseAbs().maxCoeff() << std::endl;
   }
 }
 
