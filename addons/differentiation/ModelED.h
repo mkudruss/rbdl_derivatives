@@ -35,7 +35,7 @@ struct EDModel {
     // derivative values
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_lambda;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_base;
-    std::vector<std::vector<RigidBodyDynamics::Math::ED::SpatialTransformDot> > X_J;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_J;
 
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v_J;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v;
@@ -63,7 +63,7 @@ struct EDModel {
     EDModel ();
     EDModel (RigidBodyDynamics::Model& model);
 
-    void resize_directions (unsigned requested_ndirs);
+    void resize_directions (unsigned int requested_ndirs);
 
 };
 

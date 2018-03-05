@@ -9,9 +9,9 @@
 #include "Fixtures.h"
 #include "Human36Fixture.h"
 #include "ModelAD.h"
-#include "DynamicsED.h"
 #include "DynamicsAD.h"
 #include "DynamicsFD.h"
+#include "DynamicsFDC.h"
 #include "rbdl_mathutilsAD.h"
 
 #include "ModelCheckADvsFD.h"
@@ -28,11 +28,14 @@ template <typename T>
 void ForwardDynamicsADTestTemplate(
     T & obj,
     unsigned int trial_count,
-    double array_close_prec) {
+    double array_close_prec
+) {
   Model ad_model = obj.model;
   Model fd_model = obj.model;
+  Model fdc_model = obj.model;
   ADModel ad_d_model = obj.ad_model;
   ADModel fd_d_model = obj.ad_model;
+  ADModel fdc_d_model = obj.ad_model;
   srand(666);
 
   for(unsigned int trial = 0; trial < trial_count; trial++) {
@@ -70,8 +73,10 @@ void ForwardDynamicsADTestTemplate(
 
     VectorNd ad_qddot (VectorNd::Zero(obj.model.q_size));
     VectorNd fd_qddot (VectorNd::Zero(obj.model.q_size));
+    VectorNd fdc_qddot (VectorNd::Zero(obj.model.q_size));
     MatrixNd ad_dqddot  = MatrixNd::Zero(obj.model.qdot_size, ndirs);
     MatrixNd fd_dqddot  = MatrixNd::Zero(obj.model.qdot_size, ndirs);
+    MatrixNd fdc_dqddot = MatrixNd::Zero(obj.model.qdot_size, ndirs);
 
     AD::ForwardDynamics(
           ad_model,
@@ -91,23 +96,64 @@ void ForwardDynamicsADTestTemplate(
           fd_qddot, fd_dqddot,
           &f_ext, &f_ext_dirs);
 
+    FDC::ForwardDynamics(
+          fdc_model,
+          &fdc_d_model,
+          q, q_dirs,
+          qdot, qdot_dirs,
+          tau, tau_dirs,
+          fdc_qddot, fdc_dqddot,
+          &f_ext, &f_ext_dirs
+    );
+
     checkModelsADvsFD(
           ndirs,
           ad_model, ad_d_model,
           fd_model, fd_d_model);
 
-    CHECK_ARRAY_CLOSE(ad_qddot.data(), fd_qddot.data(), obj.model.q_size,
-                      array_close_prec);
+    // checkModelsADvsFD(
+    //       ndirs,
+    //       ad_model, ad_d_model,
+    //       fdc_model, fdc_d_model);
 
-    CHECK_ARRAY_CLOSE(fd_dqddot.data(), ad_dqddot.data(),
-                      fd_dqddot.cols() * fd_dqddot.rows(), array_close_prec);
+    CHECK_ARRAY_CLOSE(
+      ad_qddot.data(),
+      fd_qddot.data(),
+      obj.model.q_size,
+      array_close_prec
+    );
+
+    CHECK_ARRAY_CLOSE(
+      ad_qddot.data(),
+      fdc_qddot.data(),
+      obj.model.q_size,
+      array_close_prec
+    );
+
+    CHECK_ARRAY_CLOSE(
+      fd_dqddot.data(),
+      ad_dqddot.data(),
+      fd_dqddot.cols() * fd_dqddot.rows(),
+      array_close_prec
+    );
+
+    CHECK_ARRAY_CLOSE(
+      fdc_dqddot.data(),
+      ad_dqddot.data(),
+      fd_dqddot.cols() * fd_dqddot.rows(),
+      array_close_prec
+    );
+
+    std::cout << (fdc_dqddot - fd_dqddot).cwiseAbs().maxCoeff() << std::endl;
+    std::cout << (fdc_dqddot - ad_dqddot).cwiseAbs().maxCoeff() << std::endl;
   }
 }
 
 TEST_FIXTURE(CartPendulum, CartPendulumForwardDynamicsADTest){
-  ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
+  ForwardDynamicsADTestTemplate(*this, 1, 1e-5);
 }
 
+/*
 TEST_FIXTURE(Arm2DofX, Arm2DofXForwardDynamicsADTest){
   ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
 }
@@ -123,6 +169,7 @@ TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpForwardDynamicsADTest){
 TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpForwardDynamicsADTest){
   ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
 }
+*/
 
 // -----------------------------------------------------------------------------
 

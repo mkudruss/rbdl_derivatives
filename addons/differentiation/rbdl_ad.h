@@ -10,8 +10,10 @@
 
 #include "ConstraintsAD.h"
 #include "ConstraintsFD.h"
+#include "ConstraintsFDC.h"
 #include "DynamicsAD.h"
 #include "DynamicsFD.h"
+#include "DynamicsFDC.h"
 #include "DynamicsED.h"
 #include "FdModelEntry.h"
 #include "JointAD.h"

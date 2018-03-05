@@ -43,7 +43,7 @@ RBDL_DLLAPI void jcalc (
   // receive number of directions
   const unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
-  assert(ndirs == qddot_dirs.cols());
+  // assert(ndirs == qddot_dirs.cols());
 
   // resize container if necessary
   ad_model.resize_directions(ndirs);
@@ -93,12 +93,12 @@ RBDL_DLLAPI void jcalc (
   } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteZ) {
 
     // derivative evaluation
-    // Math::ED::Xrotz(
-    //   model.X_J[joint_id], ad_model.X_J[joint_id],
-    //   q[model.mJoints[joint_id].q_index],
-    //   q_dirs.row(model.mJoints[joint_id].q_index),
-    //   ndirs
-    // );
+    Math::ED::Xrotz(
+      model.X_J[joint_id], ad_model.X_J[joint_id],
+      q[model.mJoints[joint_id].q_index],
+      q_dirs.row(model.mJoints[joint_id].q_index),
+      ndirs
+    );
     // for (unsigned idir = 0; idir < ndirs; idir++) {
     //   // TODO: Most entries of q_dirs are ZERO !!!
     //   // TODO implement structure exploitation of zero entries?
@@ -179,7 +179,7 @@ RBDL_DLLAPI void jcalc_X_lambda_S (
 
   // receive number of directions
   const unsigned ndirs = q_dirs.cols();
-  assert(ndirs == qdot_dirs.cols());
+  // assert(ndirs == qdot_dirs.cols());
 
   // resize container if necessary
   ad_model.resize_directions(ndirs);

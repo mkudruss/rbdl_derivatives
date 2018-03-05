@@ -31,7 +31,7 @@ EDModel::EDModel (RigidBodyDynamics::Model& model) {
     // NOTE: old initialization values
     std::vector<SpatialRigidBodyInertia> SRBI(ndirs);
     std::vector<SpatialTransform> T(ndirs, SpatialTransform::Zero());
-    std::vector<ED::SpatialTransformDot> Tdot(ndirs, ED::SpatialTransformDot::Zero());
+    std::vector<SpatialTransform> Tdot(ndirs, SpatialTransform::Zero());
     std::vector<SpatialMatrix> X(ndirs, SpatialMatrix::Zero());
     std::vector<SpatialVector> vec(ndirs, SpatialVector::Zero());
     //std::vector<double> double(ndirs, 0.0);
@@ -62,7 +62,7 @@ EDModel::EDModel (RigidBodyDynamics::Model& model) {
     d.setZero();
 }
 
-void EDModel::resize_directions (unsigned requested_ndirs){
+void EDModel::resize_directions (unsigned int requested_ndirs){
     if (ndirs < requested_ndirs) {
         ndirs = requested_ndirs;
 

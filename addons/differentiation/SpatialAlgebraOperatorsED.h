@@ -475,7 +475,7 @@ inline SpatialTransform Xroty (
 
 inline void Xrotz (
   SpatialTransform &res,
-  std::vector<SpatialTransformDot> &res_dirs,
+  std::vector<SpatialTransform> &res_dirs,
   const double &zrot,
   const VectorNd &zrot_dirs,
   const unsigned int &ndirs
@@ -500,7 +500,7 @@ inline void Xrotz (
       -c_t, -s_t, 0.,
         0.,   0., 0.
     );
-    res_dirs[idir].Erx.setZero();
+    res_dirs[idir].r.setZero();
   }
 
   return;
