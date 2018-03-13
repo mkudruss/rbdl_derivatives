@@ -53,7 +53,7 @@ ADConstraintSet::ADConstraintSet(const ConstraintSet & CS_, int _dof_count) :
 
   d_pA.resize(CS->d_pA.size(),  MatrixNd::Zero(6, ndirs));
   d_a.resize(CS->d_a.size(),  MatrixNd::Zero(6, ndirs));
-  d_u = MatrixNd::Zero(3, ndirs);
+  d_u = MatrixNd::Zero(CS->d_u.rows(), ndirs);
   d_multdof3_u.resize(CS->d_multdof3_u.size(),  MatrixNd::Zero(3, ndirs));
 
   point_accel_t = MatrixNd::Zero(3, ndirs);

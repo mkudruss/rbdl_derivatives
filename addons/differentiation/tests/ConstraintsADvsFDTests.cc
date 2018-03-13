@@ -282,11 +282,10 @@ void ForwardDynamicsAccelerationDeltasTemplate(
     q_dirs.setRandom();
     qd_dirs.setRandom();
     tau_dirs.setRandom();
-
-    std::vector<SpatialVector> f_t
-      = std::vector<SpatialVector> (cs.size(), SpatialVector::Random());
-    std::vector<MatrixNd> ad_f_t
-      = std::vector<MatrixNd> (cs.size(), SpatialMatrix::Random(6, ndirs));
+  std::vector<SpatialVector> f_t
+    = std::vector<SpatialVector> (model.mBodies.size(), SpatialVector::Random());
+  std::vector<MatrixNd> ad_f_t
+    = std::vector<MatrixNd> (model.mBodies.size(), SpatialMatrix::Random(6, ndirs));
 
     UpdateKinematics(model, q, qd, qdd);
     UpdateKinematics(ad_model, q, qd, qdd);

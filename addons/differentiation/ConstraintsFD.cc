@@ -287,7 +287,7 @@ void ForwardDynamicsAccelerationDeltas (
   const std::vector<SpatialVector> &f_t,
   const std::vector<MatrixNd> &f_t_dirs
 ) {
-  const unsigned int ndirs = f_t_dirs.size();
+  const unsigned int ndirs = f_t_dirs[0].cols();
 
   double const h = 1e-8;
   ConstraintSet const cs_in = cs;
