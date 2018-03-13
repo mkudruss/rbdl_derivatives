@@ -13,8 +13,8 @@ SET ( TESTS_SRCS
     runtests.cc
     rbdl_mathutilsADvsFDTests.cc
     rbdl_utilsADvsFDTests.cc
-    DynamicsADvsFDTests.cc
-    KinematicsADvsFDTests.cc
+#    DynamicsADvsFDTests.cc
+#    KinematicsADvsFDTests.cc
     ConstraintsADvsFDTests.cc
     ModelCheckADvsFD.cc
 )

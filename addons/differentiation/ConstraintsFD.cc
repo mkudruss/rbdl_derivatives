@@ -281,7 +281,7 @@ void SolveConstrainedSystemDirect (
 RBDL_DLLAPI
 void ForwardDynamicsAccelerationDeltas (
   Model &model, ADModel *fd_model,
-  ConstraintSet &cs, ADConstraintSet &ad_cs,
+  ConstraintSet &cs, ADConstraintSet &fd_cs,
   VectorNd &QDDot_t, MatrixNd &fd_QDDot_t,
   const unsigned int body_id,
   const std::vector<SpatialVector> &f_t,
@@ -314,7 +314,7 @@ void ForwardDynamicsAccelerationDeltas (
 
     fd_QDDot_t.col(idir) = (QDDot_t_h - QDDot_t) / h;
     // TODO add pointer arithmetic for fd_cs
-    // computeFDEntry(cs, csh, h, idir, fd_cs);
+    computeFDEntry(cs, csh, h, idir, fd_cs);
 
     if (fd_model) {
       computeFDEntry(model, *modelh, h, idir, *fd_model);

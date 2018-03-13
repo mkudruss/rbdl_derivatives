@@ -89,6 +89,10 @@ void computeFDEntry(
   fd_cs.force.col(idir) = (csh.force - cs.force) / h;
   fd_cs.err.col(idir) = (csh.err - cs.err) / h;
   fd_cs.errd.col(idir) = (csh.errd - cs.errd) / h;
+  for(unsigned i = 0; i < cs.d_a.size(); i++) {
+    fd_cs.d_a[i].col(idir) = (csh.d_a[i] - cs.d_a[i]) / h;
+  }
+  fd_cs.d_u.col(idir) = (csh.d_u - cs.d_u) / h;
 }
 
 // -----------------------------------------------------------------------------
