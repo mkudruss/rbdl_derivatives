@@ -780,13 +780,9 @@ void ForwardDynamicsAccelerationDeltas (
     MatrixNd &ad_QDDot_t,
     const unsigned int body_id,
     const std::vector<SpatialVector> &f_t,
-    const std::vector<MatrixNd> &ad_f_t
+    const std::vector<MatrixNd> &f_t_dirs
 ) {
   LOG << "-------- " << __func__ << " ------" << std::endl;
-
-  assert (CS.d_pA.size() == model.mBodies.size());
-  assert (CS.d_a.size() == model.mBodies.size());
-  assert (CS.d_u.size() == model.mBodies.size());
 
   const unsigned ndirs = ad_QDDot_t.cols();
   ad_model.resize_directions(ndirs);
@@ -814,12 +810,14 @@ void ForwardDynamicsAccelerationDeltas (
   for (unsigned int i = body_id; i > 0; i--) {
     if (i == body_id) {
       // derivative evaluation
-      for (unsigned int idir = 0; idir < ndirs; ++idir)
-      {
-        ad_CS.d_pA[i].col(idir) = -model.X_base[i].applyAdjoint(f_t_dirs[i].col(idir));
-      }
+      applyAdjointSTSV (
+        ndirs,
+        model.X_base[i], ad_model.X_base[i],
+        f_t[i], f_t_dirs[i],
+        CS.d_pA[i], ad_CS.d_pA[i]
+      );
       // nominal evaluation
-      CS.d_pA[i] = -model.X_base[i].applyAdjoint(f_t[i]);
+      // CS.d_pA[i] = -model.X_base[i].applyAdjoint(f_t[i]);
     }
 
     if (model.mJoints[i].mDoFCount == 3
@@ -844,7 +842,7 @@ void ForwardDynamicsAccelerationDeltas (
       // derivative evaluation
       for (unsigned int idir = 0; idir < ndirs; ++idir)
       {
-        ad_CS.d_u[i].col(idir) = - model.S[i].dot(ad_CS.d_pA[i].col(idir));
+        ad_CS.d_u(i, idir) = - model.S[i].dot(ad_CS.d_pA[i].col(idir));
       }
       // nominal evaluation
       CS.d_u[i] = - model.S[i].dot(CS.d_pA[i]);
@@ -858,7 +856,7 @@ void ForwardDynamicsAccelerationDeltas (
           temp_dirs.col(idir)
             = ad_CS.d_pA[i].col(idir)
             + ad_model.U[i][idir] * CS.d_u[i] / model.d[i]
-            + model.U[i] * ad_CS.d_u[i].col(idir) / model.d[i]
+            + model.U[i] * ad_CS.d_u(i, idir) / model.d[i]
             - model.U[i] * CS.d_u[i] / (ad_model.d(i, idir) * ad_model.d(i, idir))
           ;
         }
@@ -915,7 +913,7 @@ void ForwardDynamicsAccelerationDeltas (
   ad_QDDot_t.row(0).setZero();
   for (unsigned int idir = 0; idir < ndirs; ++idir)
   {
-    ad_CS.d_a[0].col(idir) = model.a[0][idir];
+    ad_CS.d_a[0].col(idir) = ad_model.a[0][idir];
   }
   std::vector<SpatialVector> ad_Xa
     = std::vector<SpatialVector> (ndirs, SpatialVector::Zero ());
@@ -959,10 +957,9 @@ void ForwardDynamicsAccelerationDeltas (
       {
         ad_QDDot_t(q_index, idir)
           = (
-              ad_CS.d_u(i, idir) - ad_model.U[i][idir].dot(Xa)
-              - model.U[i].dot(ad_Xa[idir])
-          ) / model.d[i];
-          - (CS.d_u[i] - model.U[i].dot(Xa) ) / (ad_model.d[i] * ad_model.d[i]);
+            ad_CS.d_u(i, idir) - ad_model.U[i][idir].dot(Xa) - model.U[i].dot(ad_Xa[idir])
+            ) / model.d[i]
+          - (CS.d_u[i] - model.U[i].dot(Xa) ) / (ad_model.d(i,idir) * ad_model.d(i,idir));
         ad_CS.d_a[i].col(idir) = ad_Xa[idir] + model.S[i] * ad_QDDot_t(q_index, idir);
       }
 
@@ -1192,10 +1189,10 @@ void ForwardDynamicsContactsKokkevis (
   assert (CS.QDDot_t.size() == model.dof_count);
   assert (CS.f_t.size() == CS.size());
   assert (CS.point_accel_0.size() == CS.size());
-  assert (CS.K.rows() == CS.size());
-  assert (CS.K.cols() == CS.size());
-  assert (CS.force.size() == CS.size());
-  assert (CS.a.size() == CS.size());
+  assert (static_cast<unsigned>(CS.K.rows()) == CS.size());
+  assert (static_cast<unsigned>(CS.K.cols()) == CS.size());
+  assert (static_cast<unsigned>(CS.force.size()) == CS.size());
+  assert (static_cast<unsigned>(CS.a.size()) == CS.size());
 
   const unsigned int ndirs = q_dirs.cols();
   assert(ndirs == static_cast<unsigned>(qdot_dirs.cols()));

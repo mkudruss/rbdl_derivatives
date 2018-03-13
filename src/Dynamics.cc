@@ -60,7 +60,7 @@ RBDL_DLLAPI void InverseDynamics (
     }else if(model.mJoints[i].mJointType == JointTypeCustom){
       unsigned int k = model.mJoints[i].custom_joint_index;
       VectorNd customJointQDDot(model.mCustomJoints[k]->mDoFCount);
-      for(int z=0; z<model.mCustomJoints[k]->mDoFCount; ++z){
+      for(unsigned int z=0; z<model.mCustomJoints[k]->mDoFCount; ++z){
         customJointQDDot[z] = QDDot[q_index+z];
       }
       model.a[i] =  model.X_lambda[i].apply(model.a[lambda])
@@ -534,7 +534,7 @@ RBDL_DLLAPI void ForwardDynamics (
             - model.mCustomJoints[kI]->U.transpose()
             * model.a[i]);
 
-      for(int z=0; z<dofI; ++z){
+      for(unsigned int z=0; z<dofI; ++z){
         QDDot[q_index+z] = qdd_temp[z];
       }
 
@@ -650,7 +650,7 @@ RBDL_DLLAPI void CalcMInvTimesTau ( Model &model,
   if (update_kinematics) {
     // Compute Articulate Body Inertias
     for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
-      unsigned int q_index = model.mJoints[i].q_index;
+      // unsigned int q_index = model.mJoints[i].q_index;
 
       if (model.mJoints[i].mDoFCount == 1
           && model.mJoints[i].mJointType != JointTypeCustom) {
@@ -707,7 +707,7 @@ RBDL_DLLAPI void CalcMInvTimesTau ( Model &model,
         }
       } else if (model.mJoints[i].mJointType == JointTypeCustom) {
         unsigned int kI     = model.mJoints[i].custom_joint_index;
-        unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
+        // unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
         model.mCustomJoints[kI]->U = model.IA[i] * model.mCustomJoints[kI]->S;
 
 #ifdef EIGEN_CORE_H
@@ -850,7 +850,7 @@ RBDL_DLLAPI void CalcMInvTimesTau ( Model &model,
         * (  model.mCustomJoints[kI]->u
             - model.mCustomJoints[kI]->U.transpose() * model.a[i]);
 
-      for(int z=0; z<dofI;++z){
+      for(unsigned int z=0; z<dofI;++z){
         QDDot[q_index+z]      = qdd_temp[z];
       }
 

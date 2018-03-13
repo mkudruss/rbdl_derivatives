@@ -194,6 +194,46 @@ inline void applySTSV(
       );
 }
 
+inline void applySTSV(
+    unsigned ndirs,
+    SpatialTransform const & st,
+    std::vector<SpatialTransform> const & st_dirs,
+    SpatialVector const & sv,
+    MatrixNd const & sv_dirs,
+    SpatialVector & res,
+    std::vector<SpatialVector> & res_dirs) {
+  assert(ndirs <= st_dirs.size());
+  assert(ndirs <= sv_dirs.cols());
+  assert(ndirs <= res_dirs.size());
+
+  Vector3d v_rxw (
+      sv[3] - st.r[1] * sv[2] + st.r[2] * sv[1],
+      sv[4] - st.r[2] * sv[0] + st.r[0] * sv[2],
+      sv[5] - st.r[0] * sv[1] + st.r[1] * sv[0]
+      );
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Vector3d w_dir = sv_dirs.col(idir).segment<3>(0);
+    res_dirs[idir].segment<3>(0) =
+        st.E * w_dir
+        + st_dirs[idir].E * sv.segment<3>(0);
+    res_dirs[idir].segment<3>(3) =
+        st.E * (sv_dirs.col(idir).segment<3>(3)
+                - st.r.cross(w_dir)
+                - st_dirs[idir].r.cross(sv.segment<3>(0)))
+        + st_dirs[idir].E * v_rxw;
+  }
+
+  res = SpatialVector(
+      st.E(0,0) * sv[0] + st.E(0,1) * sv[1] + st.E(0,2) * sv[2],
+      st.E(1,0) * sv[0] + st.E(1,1) * sv[1] + st.E(1,2) * sv[2],
+      st.E(2,0) * sv[0] + st.E(2,1) * sv[1] + st.E(2,2) * sv[2],
+      st.E(0,0) * v_rxw[0] + st.E(0,1) * v_rxw[1] + st.E(0,2) * v_rxw[2],
+      st.E(1,0) * v_rxw[0] + st.E(1,1) * v_rxw[1] + st.E(1,2) * v_rxw[2],
+      st.E(2,0) * v_rxw[0] + st.E(2,1) * v_rxw[1] + st.E(2,2) * v_rxw[2]
+      );
+}
+
 inline void applyTransposeSTSV (
     unsigned ndirs,
     SpatialTransform const & st,
@@ -235,9 +275,47 @@ inline void addApplyTransposeSTSV (
     SpatialTransform const & st,
     std::vector<SpatialTransform> const & st_dirs,
     SpatialVector const & sv,
+    MatrixNd const & sv_dirs,
+    SpatialVector & res,
+    MatrixNd & res_dirs
+) {
+  assert(ndirs <= st_dirs.size());
+  assert(ndirs <= sv_dirs.cols());
+  assert(ndirs <= res_dirs.cols());
+
+  Vector3d E_T_f = st.E.transpose() * sv.segment<3>(3);
+  Vector3d E_T_n = st.E.transpose() * sv.segment<3>(0);
+  Vector3d top = E_T_n + st.r.cross(E_T_f);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Vector3d E_T_f_dir = // if &res == &sv
+        st.E.transpose() * sv_dirs.col(idir).segment<3>(3)
+        + st_dirs[idir].E.transpose() * sv.segment<3>(3);
+
+    res_dirs.col(idir).segment<3>(0) +=
+        dscal * (
+        st.E.transpose() * sv_dirs.col(idir).segment<3>(0)
+        + st_dirs[idir].E.transpose() * sv.segment<3>(0)
+        + st_dirs[idir].r.cross(E_T_f)
+        + st.r.cross(E_T_f_dir));
+
+    res_dirs.col(idir).segment<3>(3) += dscal * E_T_f_dir;
+  }
+
+  res.segment<3>(0) += dscal * top;
+  res.segment<3>(3) += dscal * E_T_f;
+}
+
+inline void addApplyTransposeSTSV (
+    unsigned ndirs,
+    double dscal,
+    SpatialTransform const & st,
+    std::vector<SpatialTransform> const & st_dirs,
+    SpatialVector const & sv,
     std::vector<SpatialVector> const & sv_dirs,
     SpatialVector & res,
-    std::vector<SpatialVector> & res_dirs) {
+    std::vector<SpatialVector> & res_dirs
+) {
   assert(ndirs <= st_dirs.size());
   assert(ndirs <= sv_dirs.size());
   assert(ndirs <= res_dirs.size());
@@ -371,6 +449,44 @@ inline void applyAdjointSTSV (
         + st.E * sv_dirs[idir].segment<3>(3);
 
     res_dirs[idir].segment<3>(0) = En_rxf_dir;
+  }
+
+  res.segment<3>(0) = En_rxf;
+  res.segment<3>(3) = Ef;
+}
+
+inline void applyAdjointSTSV (
+  unsigned ndirs,
+  SpatialTransform const & st,
+  std::vector<SpatialTransform> const & st_dirs,
+  SpatialVector const & sv,
+  MatrixNd const & sv_dirs,
+  SpatialVector & res,
+  MatrixNd & res_dirs
+) {
+  assert(sv_dirs.rows() == 6);
+  assert(ndirs <= st_dirs.size());
+  assert(ndirs <= sv_dirs.cols());
+  assert(ndirs <= res_dirs.cols());
+
+  Vector3d n_rxf = sv.segment<3>(0) - st.r.cross(sv.segment<3>(3));
+  Vector3d En_rxf = st.E * n_rxf;
+  Vector3d Ef = st.E * sv.segment<3>(3);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Vector3d En_rxf_dir = // if &res == &sv
+        st_dirs[idir].E * n_rxf
+        + st.E * (
+          sv_dirs.col(idir).segment<3>(0)
+          - st.r.cross(sv_dirs.col(idir).segment<3>(3))
+          - st_dirs[idir].r.cross(sv.segment<3>(3))
+          );
+
+    res_dirs.col(idir).segment<3>(3) =
+        st_dirs[idir].E * sv.segment<3>(3)
+        + st.E * sv_dirs.col(idir).segment<3>(3);
+
+    res_dirs.col(idir).segment<3>(0) = En_rxf_dir;
   }
 
   res.segment<3>(0) = En_rxf;
