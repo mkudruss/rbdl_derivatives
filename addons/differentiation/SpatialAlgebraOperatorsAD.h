@@ -494,6 +494,42 @@ inline void applyAdjointSTSV (
   res.segment<3>(3) = Ef;
 }
 
+inline void applyAdjointSTSV (
+  unsigned ndirs,
+  SpatialTransform const & st,
+  std::vector<SpatialTransform> const & st_dirs,
+  SpatialVector const & sv,
+  SpatialVector & res,
+  MatrixNd & res_dirs
+) {
+  assert(res_dirs.rows() == 6);
+  assert(ndirs <= st_dirs.size());
+  assert(ndirs <= res_dirs.cols());
+
+  Vector3d n_rxf = sv.segment<3>(0) - st.r.cross(sv.segment<3>(3));
+  Vector3d En_rxf = st.E * n_rxf;
+  Vector3d Ef = st.E * sv.segment<3>(3);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Vector3d En_rxf_dir = // if &res == &sv
+        st_dirs[idir].E * n_rxf
+        + st.E * (
+          sv_dirs.col(idir).segment<3>(0)
+          - st.r.cross(sv_dirs.col(idir).segment<3>(3))
+          - st_dirs[idir].r.cross(sv.segment<3>(3))
+          );
+
+    res_dirs.col(idir).segment<3>(3) =
+        st_dirs[idir].E * sv.segment<3>(3)
+        + st.E * sv_dirs.col(idir).segment<3>(3);
+
+    res_dirs.col(idir).segment<3>(0) = En_rxf_dir;
+  }
+
+  res.segment<3>(0) = En_rxf;
+  res.segment<3>(3) = Ef;
+}
+
 inline void applyTransposeSTSI (
     unsigned ndirs,
     SpatialTransform const & st,

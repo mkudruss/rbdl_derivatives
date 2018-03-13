@@ -1298,6 +1298,7 @@ void ForwardDynamicsContactsKokkevis (
 
     unsigned int movable_body_id = 0;
     Vector3d point_global;
+    std::vec<SpatialTransform> ad_X_tmp = std::vec<SpatialTransform> (ndirs, SpatialTransform());
     SpatialTransform X_tmp;
     SpatialVector v_tmp;
 
@@ -1325,18 +1326,29 @@ void ForwardDynamicsContactsKokkevis (
         LOG << "point_global = " << point_global.transpose() << std::endl;
 
         // derivative evaluation
-        X_tmp = SpatialTransform(Matrix3d::Identity(), -point_global);
+        for (int idir = 0; idir < ndirs; ++idir)
+        {
+          ad_X_tmp[idir].E = Matrix3d::Zero();
+          ad_X_tmp[idir].r = -ad_CS.point_global.col(idir);
+        }
+        X_tmp.r = -point_global;
         v_tmp = SpatialVector (
           0., 0., 0. , -CS.normal[ci][0], -CS.normal[ci][1], -CS.normal[ci][2]
         );
-        for (unsigned int idir = 0; idir < ndirs; ++idir) {
-          X_tmp.r = -ad_CS.point_global.col(idir);
-          ad_CS.f_t[ci].col(idir) = X_tmp.applyAdjoint(v_tmp);
-        }
+        applyAdjointSTSV (
+          ndirs,
+          X_tmp, ad_X_tmp,
+          v_tmp,
+          CS.f_t[ci],
+          ad_CS.f_t[ci]
+        );
+        // for (unsigned int idir = 0; idir < ndirs; ++idir) {
+        //   X_tmp.r = -ad_CS.point_global.col(idir);
+        //   ad_CS.f_t[ci].col(idir) = X_tmp.applyAdjoint(v_tmp);
+        // }
         ad_CS.f_ext_constraints[movable_body_id] = ad_CS.f_t[ci];
         // nominal evaluation
-        X_tmp.r = -point_global;
-        CS.f_t[ci] = X_tmp.applyAdjoint(v_tmp);
+        // CS.f_t[ci] = X_tmp.applyAdjoint(v_tmp);
         CS.f_ext_constraints[movable_body_id] = CS.f_t[ci];
 
         LOG << "f_t[" << movable_body_id << "] = " << CS.f_t[ci].transpose()
