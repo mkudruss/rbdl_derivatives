@@ -790,13 +790,11 @@ void ForwardDynamicsAccelerationDeltas (
 
   // TODO reset all values (debug)
   for (unsigned int i = 0; i < model.mBodies.size(); i++) {
-    for (unsigned int idir = 0; idir < ndirs; ++idir)
-    {
-      ad_CS.d_pA[i].setZero();
-      ad_CS.d_a[i].setZero();
-      ad_CS.d_u.setZero();
-      ad_CS.d_multdof3_u[i].setZero();
-    }
+    ad_CS.d_pA[i].setZero();
+    ad_CS.d_a[i].setZero();
+    ad_CS.d_u.setZero();
+    ad_CS.d_multdof3_u[i].setZero();
+
     CS.d_pA[i].setZero();
     CS.d_a[i].setZero();
     CS.d_u[i] = 0.;
@@ -871,9 +869,9 @@ void ForwardDynamicsAccelerationDeltas (
           CS.d_pA[lambda], ad_CS.d_pA[lambda]
         );
         // nominal evaluation
-        CS.d_pA[lambda] += model.X_lambda[i].applyTranspose (
-              CS.d_pA[i] + model.U[i] * CS.d_u[i] / model.d[i]
-        );
+        // CS.d_pA[lambda] += model.X_lambda[i].applyTranspose (
+        //       CS.d_pA[i] + model.U[i] * CS.d_u[i] / model.d[i]
+        // );
       }
     } else if (model.mJoints[i].mJointType == JointTypeCustom){
       cerr << __FILE__ << " " << __LINE__
