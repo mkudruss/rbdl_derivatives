@@ -291,6 +291,15 @@ void ForwardDynamicsAccelerationDeltasTemplate(
     UpdateKinematics(ad_model, q, qd, qdd);
     UpdateKinematics(fd_model, q, qd, qdd);
 
+    ForwardDynamics(model, q, qd, tau, cs.QDDot_0);
+    ForwardDynamics(fd_model, q, qd, tau, cs.QDDot_0);
+    ForwardDynamics(ad_model, q, qd, tau, cs.QDDot_0);
+
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+
+    ForwardDynamicsAccelerationDeltas(
+          model, cs, qdd, obj.contact_body_id, f_t);
+
     AD::ForwardDynamicsAccelerationDeltas (
           ad_model, ad_d_model,
           ad_cs, ad_d_cs,
@@ -308,8 +317,11 @@ void ForwardDynamicsAccelerationDeltasTemplate(
     );
 
     checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
-    // checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, model, ad_d_model);
 
+    checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
+
+    CHECK_ARRAY_CLOSE(ad_qdd.data(), qdd.data(), nq, array_close_prec);
     CHECK_ARRAY_CLOSE(ad_qdd.data(), fd_qdd.data(), nq, array_close_prec);
     CHECK_ARRAY_CLOSE(ad_qdd_dirs.data(), fd_qdd_dirs.data(), nq*nq,
                       array_close_prec);

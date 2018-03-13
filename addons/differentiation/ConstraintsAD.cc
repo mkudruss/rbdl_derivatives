@@ -811,7 +811,7 @@ void ForwardDynamicsAccelerationDeltas (
       applyAdjointSTSV (
         ndirs,
         model.X_base[i], ad_model.X_base[i],
-        f_t[i], f_t_dirs[i],
+        -f_t[i], -f_t_dirs[i],
         CS.d_pA[i], ad_CS.d_pA[i]
       );
       // nominal evaluation

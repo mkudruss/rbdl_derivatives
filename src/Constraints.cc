@@ -1234,6 +1234,8 @@ void ForwardDynamicsAccelerationDeltas (
     }
   }
 
+//  std::cout << "NOM " << CS.d_u.transpose() << std::endl;
+
   for (unsigned int i = 0; i < f_t.size(); i++) {
     LOG << "f_t[" << i << "] = " << f_t[i].transpose() << std::endl;
   }
@@ -1253,6 +1255,8 @@ void ForwardDynamicsAccelerationDeltas (
     unsigned int lambda = model.lambda[i];
 
     SpatialVector Xa = model.X_lambda[i].apply(CS.d_a[lambda]);
+//    std::cout << i << " " << lambda << " CS d_a nominal " << CS.d_a[lambda].transpose() << std::endl;
+//    std::cout << i << " Xa nominal " << Xa.transpose() << std::endl;
 
     if (model.mJoints[i].mDoFCount == 3
         && model.mJoints[i].mJointType != JointTypeCustom) {
@@ -1269,6 +1273,9 @@ void ForwardDynamicsAccelerationDeltas (
 
       QDDot_t[q_index] = (CS.d_u[i] - model.U[i].dot(Xa) ) / model.d[i];
       CS.d_a[i] = Xa + model.S[i] * QDDot_t[q_index];
+//      std::cout << i << "NOMINAL : Xa " << Xa.transpose() << std::endl;
+//      std::cout << i << "NOMINAL : model.S[i] " << model.S[i].transpose() << std::endl;
+//      std::cout << i << "NOMINAL : QDDot_t[q_index] " << QDDot_t[q_index] << std::endl;
     } else if (model.mJoints[i].mJointType == JointTypeCustom){
       unsigned int kI     = model.mJoints[i].custom_joint_index;
       unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
