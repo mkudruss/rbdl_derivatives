@@ -29,10 +29,6 @@ struct ADConstraintSet {
   std::vector<Math::MatrixNd> H;
   std::vector<Math::MatrixNd> K;
 
-  std::vector<Math::MatrixNd> point_accel_0;
-  Math::MatrixNd point_accel_t;
-
-  Math::MatrixNd acceleration;
 
   Math::MatrixNd a;
   Math::MatrixNd b;
@@ -49,7 +45,14 @@ struct ADConstraintSet {
 
   std::vector<Math::MatrixNd> f_t;
   std::vector<Math::MatrixNd> f_ext_constraints;
+  std::vector<Math::MatrixNd> point_accel_0;
 
+  std::vector<Math::MatrixNd> d_pA;
+  std::vector<Math::MatrixNd> d_a;
+  Math::MatrixNd d_u;
+  std::vector<Math::MatrixNd> d_multdof3_u;
+
+  Math::MatrixNd point_accel_t;
   Math::MatrixNd point_global;
 
   ADConstraintSet() : CS (0) {}

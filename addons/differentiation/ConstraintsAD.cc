@@ -33,15 +33,6 @@ ADConstraintSet::ADConstraintSet(const ConstraintSet & CS_, int _dof_count) :
   H.resize(ndirs,  MatrixNd::Zero(CS->H.rows(), CS->H.cols()));
   K.resize(ndirs,  MatrixNd::Zero(CS->K.rows(), CS->K.cols()));
 
-  f_t.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
-  f_ext_constraints.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
-  point_accel_0.resize(
-    CS->point_accel_0.size(), MatrixNd::Zero(3, ndirs)
-  );
-  point_accel_t = MatrixNd::Zero(3, ndirs);
-
-  acceleration  = MatrixNd::Zero(CS->acceleration.rows(), ndirs);
-
   a             = MatrixNd::Zero(CS->a.rows(), ndirs);
   b             = MatrixNd::Zero(CS->b.rows(), ndirs);
   v_plus        = MatrixNd::Zero(CS->v_plus.rows(), ndirs);
@@ -55,11 +46,18 @@ ADConstraintSet::ADConstraintSet(const ConstraintSet & CS_, int _dof_count) :
   err           = MatrixNd::Zero(CS->err.rows(), ndirs);
   errd          = MatrixNd::Zero(CS->errd.rows(), ndirs);
 
-  point_global = MatrixNd::Zero(3, ndirs);
+  // Kokkevis values
+  f_t.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
+  f_ext_constraints.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
+  point_accel_0.resize(CS->point_accel_0.size(), MatrixNd::Zero(3, ndirs));
 
-  // first resize, else ndirs = requested_ndirs
-  // resize_directions(ndirs_);
-  // ndirs = ndirs_;
+  d_pA.resize(CS->d_pA.size(),  MatrixNd::Zero(6, ndirs));
+  d_a.resize(CS->d_a.size(),  MatrixNd::Zero(6, ndirs));
+  d_u = MatrixNd::Zero(3, ndirs);
+  d_multdof3_u.resize(CS->d_multdof3_u.size(),  MatrixNd::Zero(3, ndirs));
+
+  point_accel_t = MatrixNd::Zero(3, ndirs);
+  point_global = MatrixNd::Zero(3, ndirs);
 }
 
 void ADConstraintSet::resize_directions(const unsigned int& requested_ndirs) {
@@ -77,12 +75,6 @@ void ADConstraintSet::resize_directions(const unsigned int& requested_ndirs) {
     H.resize(ndirs,  MatrixNd::Zero(CS->H.rows(), CS->H.cols()));
     K.resize(ndirs,  MatrixNd::Zero(CS->K.rows(), CS->K.cols()));
 
-    f_t.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
-    f_ext_constraints.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
-    point_accel_0.resize(CS->point_accel_0.size(), MatrixNd::Zero(3, ndirs) );
-    point_accel_t = MatrixNd::Zero(3, ndirs);
-
-    acceleration  = MatrixNd::Zero(CS->acceleration.rows(), ndirs);
     a             = MatrixNd::Zero(CS->a.rows(), ndirs);
     b             = MatrixNd::Zero(CS->b.rows(), ndirs);
     v_plus        = MatrixNd::Zero(CS->v_plus.rows(), ndirs);
@@ -96,6 +88,17 @@ void ADConstraintSet::resize_directions(const unsigned int& requested_ndirs) {
     err           = MatrixNd::Zero(CS->err.rows(), ndirs);
     errd          = MatrixNd::Zero(CS->errd.rows(), ndirs);
 
+    // Kokkevis values
+    f_t.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
+    f_ext_constraints.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
+    point_accel_0.resize(CS->point_accel_0.size(), MatrixNd::Zero(3, ndirs));
+
+    d_pA.resize(CS->d_pA.size(),  MatrixNd::Zero(6, ndirs));
+    d_a.resize(CS->d_a.size(),  MatrixNd::Zero(6, ndirs));
+    d_u = MatrixNd::Zero(3, ndirs);
+    d_multdof3_u.resize(CS->d_multdof3_u.size(),  MatrixNd::Zero(3, ndirs));
+
+    point_accel_t = MatrixNd::Zero(3, ndirs);
     point_global = MatrixNd::Zero(3, ndirs);
   }
 }
