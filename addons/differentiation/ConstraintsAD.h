@@ -27,16 +27,30 @@ struct ADConstraintSet {
 
   std::vector<Math::MatrixNd> A;
   std::vector<Math::MatrixNd> H;
-  Math::MatrixNd              b;
-  Math::MatrixNd              v_plus;
-  Math::MatrixNd              x;
-  Math::MatrixNd              impulse;
-  Math::MatrixNd              QDDot_0;
-  Math::MatrixNd              C;
-  Math::MatrixNd              gamma;
-  Math::MatrixNd              force;
-  Math::MatrixNd              err;
-  Math::MatrixNd              errd;
+  std::vector<Math::MatrixNd> K;
+
+  std::vector<Math::MatrixNd> point_accel_0;
+  Math::MatrixNd point_accel_t;
+
+  Math::MatrixNd acceleration;
+
+  Math::MatrixNd a;
+  Math::MatrixNd b;
+  Math::MatrixNd v_plus;
+  Math::MatrixNd x;
+  Math::MatrixNd impulse;
+  Math::MatrixNd QDDot_t;
+  Math::MatrixNd QDDot_0;
+  Math::MatrixNd C;
+  Math::MatrixNd gamma;
+  Math::MatrixNd force;
+  Math::MatrixNd err;
+  Math::MatrixNd errd;
+
+  std::vector<Math::MatrixNd> f_t;
+  std::vector<Math::MatrixNd> f_ext_constraints;
+
+  Math::MatrixNd point_global;
 
   ADConstraintSet() : CS (0) {}
   ADConstraintSet(const ConstraintSet &CS, int dof_count);
@@ -129,17 +143,23 @@ void ForwardDynamicsContactsNullSpace (
 				Math::VectorNd &QDDot
 				);
 
+*/
+
 RBDL_DLLAPI
 void ForwardDynamicsContactsKokkevis (
-				Model &model,
-				const Math::VectorNd &Q,
-				const Math::VectorNd &QDot,
-				const Math::VectorNd &Tau,
-				ConstraintSet &CS,
-				Math::VectorNd &QDDot
+    Model   & model,
+    ADModel & ad_model,
+    const Math::VectorNd & q,
+    const Math::MatrixNd & q_dirs,
+    const Math::VectorNd & qdot,
+    const Math::MatrixNd & qdot_dirs,
+    const Math::VectorNd & tau,
+    const Math::MatrixNd & tau_dirs,
+    ConstraintSet   & CS,
+    ADConstraintSet & ad_CS,
+    Math::VectorNd  & qddot,
+    Math::MatrixNd  & ad_qddot
 				);
-
-*/
 
 RBDL_DLLAPI
 void ComputeConstraintImpulsesDirect(

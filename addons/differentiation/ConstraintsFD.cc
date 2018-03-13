@@ -279,6 +279,56 @@ void SolveConstrainedSystemDirect (
 }
 
 
+RBDL_DLLAPI
+void ForwardDynamicsContactsKokkevis (
+  Model &model,
+  ADModel *fd_model,
+  const Math::VectorNd &q,
+  const Math::MatrixNd &q_dirs,
+  const Math::VectorNd &qdot,
+  const Math::MatrixNd &qdot_dirs,
+  const Math::VectorNd &tau,
+  const Math::MatrixNd &tau_dirs,
+  ConstraintSet &cs,
+  ADConstraintSet &fd_cs,
+  Math::VectorNd &qddot,
+  Math::MatrixNd &fd_qddot
+) {
+  unsigned const ndirs = q_dirs.cols();
+  assert(ndirs == qdot_dirs.cols());
+  assert(ndirs == tau_dirs.cols());
+  assert(ndirs == fd_qddot.cols());
+
+  double const h = 1e-8;
+  ConstraintSet const cs_in = cs;
+
+  ForwardDynamicsContactsKokkevis (model, q, qdot, tau, cs, qddot);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model *modelh = &model;
+    VectorNd qh    = q + h * q_dirs.col(idir);
+    VectorNd qdoth = qdot + h * qdot_dirs.col(idir);
+    VectorNd tauh  = tau + h * tau_dirs.col(idir);
+    ConstraintSet csh = cs_in;
+    VectorNd qddoth = VectorNd::Zero(qddot.rows());
+
+    if (fd_model) {
+      modelh = new Model(model);
+    }
+
+    ForwardDynamicsContactsKokkevis (*modelh, qh, qdoth, tauh, csh, qddoth);
+
+    fd_qddot.col(idir) = (qddoth - qddot) / h;
+    // TODO add pointer arithmetic for fd_cs
+    // computeFDEntry(cs, csh, h, idir, fd_cs);
+
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
+  }
+}
+
 // -----------------------------------------------------------------------------
 } // namespace FD
 // -----------------------------------------------------------------------------

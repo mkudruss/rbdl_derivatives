@@ -17,8 +17,10 @@ using namespace RigidBodyDynamics::Math;
 ADConstraintSet::ADConstraintSet(const ConstraintSet & CS_, int _dof_count) :
   CS (0)
 {
+  // std::cout << "in " << __func__ << std::endl;
   dof_count = _dof_count;
   ndirs = 4 * dof_count;
+  // const unsigned int ndirs_ = 4 * dof_count;
 
   CS = &CS_;
 
@@ -26,22 +28,44 @@ ADConstraintSet::ADConstraintSet(const ConstraintSet & CS_, int _dof_count) :
   Gi.resize(ndirs, MatrixNd::Zero(3, dof_count));
   GSpi.resize(ndirs, MatrixNd::Zero(6, dof_count));
   GSsi.resize(ndirs, MatrixNd::Zero(6, dof_count));
+
   A.resize(ndirs,  MatrixNd::Zero(CS->A.rows(), CS->A.cols()));
   H.resize(ndirs,  MatrixNd::Zero(CS->H.rows(), CS->H.cols()));
+  K.resize(ndirs,  MatrixNd::Zero(CS->K.rows(), CS->K.cols()));
+
+  f_t.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
+  f_ext_constraints.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
+  point_accel_0.resize(
+    CS->point_accel_0.size(), MatrixNd::Zero(3, ndirs)
+  );
+  point_accel_t = MatrixNd::Zero(3, ndirs);
+
+  acceleration  = MatrixNd::Zero(CS->acceleration.rows(), ndirs);
+
+  a             = MatrixNd::Zero(CS->a.rows(), ndirs);
   b             = MatrixNd::Zero(CS->b.rows(), ndirs);
   v_plus        = MatrixNd::Zero(CS->v_plus.rows(), ndirs);
   x             = MatrixNd::Zero(CS->x.rows(), ndirs);
   impulse       = MatrixNd::Zero(CS->impulse.rows(), ndirs);
+  QDDot_t       = MatrixNd::Zero(CS->QDDot_t.rows(), ndirs);
   QDDot_0       = MatrixNd::Zero(CS->QDDot_0.rows(), ndirs);
   C             = MatrixNd::Zero(CS->C.rows(), ndirs);
   gamma         = MatrixNd::Zero(CS->gamma.rows(), ndirs);
   force         = MatrixNd::Zero(CS->force.rows(), ndirs);
   err           = MatrixNd::Zero(CS->err.rows(), ndirs);
   errd          = MatrixNd::Zero(CS->errd.rows(), ndirs);
+
+  point_global = MatrixNd::Zero(3, ndirs);
+
+  // first resize, else ndirs = requested_ndirs
+  // resize_directions(ndirs_);
+  // ndirs = ndirs_;
 }
 
 void ADConstraintSet::resize_directions(const unsigned int& requested_ndirs) {
+  // std::cout << "in " << __func__ << std::endl;
   if (ndirs < requested_ndirs) {
+    // std::cout << "resized!" << std::endl;
     ndirs = requested_ndirs;
 
     G.resize(ndirs,  MatrixNd::Zero(CS->G.rows(), CS->G.cols()));
@@ -51,17 +75,28 @@ void ADConstraintSet::resize_directions(const unsigned int& requested_ndirs) {
 
     A.resize(ndirs,  MatrixNd::Zero(CS->A.rows(), CS->A.cols()));
     H.resize(ndirs,  MatrixNd::Zero(CS->H.rows(), CS->H.cols()));
+    K.resize(ndirs,  MatrixNd::Zero(CS->K.rows(), CS->K.cols()));
 
+    f_t.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
+    f_ext_constraints.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
+    point_accel_0.resize(CS->point_accel_0.size(), MatrixNd::Zero(3, ndirs) );
+    point_accel_t = MatrixNd::Zero(3, ndirs);
+
+    acceleration  = MatrixNd::Zero(CS->acceleration.rows(), ndirs);
+    a             = MatrixNd::Zero(CS->a.rows(), ndirs);
     b             = MatrixNd::Zero(CS->b.rows(), ndirs);
     v_plus        = MatrixNd::Zero(CS->v_plus.rows(), ndirs);
     x             = MatrixNd::Zero(CS->x.rows(), ndirs);
     impulse       = MatrixNd::Zero(CS->impulse.rows(), ndirs);
+    QDDot_t       = MatrixNd::Zero(CS->QDDot_t.rows(), ndirs);
     QDDot_0       = MatrixNd::Zero(CS->QDDot_0.rows(), ndirs);
     C             = MatrixNd::Zero(CS->C.rows(), ndirs);
     gamma         = MatrixNd::Zero(CS->gamma.rows(), ndirs);
     force         = MatrixNd::Zero(CS->force.rows(), ndirs);
     err           = MatrixNd::Zero(CS->err.rows(), ndirs);
     errd          = MatrixNd::Zero(CS->errd.rows(), ndirs);
+
+    point_global = MatrixNd::Zero(3, ndirs);
   }
 }
 
@@ -345,9 +380,14 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
     ADConstraintSet  &ad_CS,
     MatrixNd         &G,
     vector<MatrixNd> &G_dirs,
-    bool update_kinematics) {
-  unsigned int ndirs = q_dirs.cols();
+    bool update_kinematics
+) {
+  const unsigned int ndirs = q_dirs.cols();
   assert(ndirs <= G_dirs.size());
+
+  // resize if required
+  ad_model.resize_directions(ndirs);
+  ad_CS.resize_directions(ndirs);
 
   if (update_kinematics) {
     // nominal + derivative evaluation
@@ -725,6 +765,666 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
   ad_CS.force = -ad_CS.x.block(model.dof_count, 0, CS.size(), ndirs);
   // nominal code
   CS.force    = -CS.x.segment(model.dof_count, CS.size());
+}
+
+/** \brief Computes the effect of external forces on the generalized accelerations.
+ *
+ * This function is essentially similar to ForwardDynamics() except that it
+ * tries to only perform computations of variables that change due to
+ * external forces defined in f_t.
+ */
+RBDL_DLLAPI
+void ForwardDynamicsAccelerationDeltas (
+    Model &model,
+    ADModel &ad_model,
+    ConstraintSet &CS,
+    ADConstraintSet &ad_CS,
+    VectorNd &QDDot_t,
+    MatrixNd &ad_QDDot_t,
+    const unsigned int body_id,
+    const std::vector<SpatialVector> &f_t,
+    const std::vector<MatrixNd> &ad_f_t
+) {
+  LOG << "-------- " << __func__ << " ------" << std::endl;
+
+  assert (CS.d_pA.size() == model.mBodies.size());
+  assert (CS.d_a.size() == model.mBodies.size());
+  assert (CS.d_u.size() == model.mBodies.size());
+
+  // TODO reset all values (debug)
+  for (unsigned int i = 0; i < model.mBodies.size(); i++) {
+    CS.d_pA[i].setZero();
+    CS.d_a[i].setZero();
+    CS.d_u[i] = 0.;
+    CS.d_multdof3_u[i].setZero();
+  }
+  for(unsigned int i=0; i<model.mCustomJoints.size();i++){
+    model.mCustomJoints[i]->d_u.setZero();
+  }
+
+  for (unsigned int i = body_id; i > 0; i--) {
+    if (i == body_id) {
+      CS.d_pA[i] = -model.X_base[i].applyAdjoint(f_t[i]);
+    }
+
+    if (model.mJoints[i].mDoFCount == 3
+        && model.mJoints[i].mJointType != JointTypeCustom) {
+      CS.d_multdof3_u[i] = - model.multdof3_S[i].transpose() * (CS.d_pA[i]);
+
+      unsigned int lambda = model.lambda[i];
+      if (lambda != 0) {
+        CS.d_pA[lambda] =   CS.d_pA[lambda]
+          + model.X_lambda[i].applyTranspose (
+              CS.d_pA[i] + (model.multdof3_U[i]
+                * model.multdof3_Dinv[i]
+                * CS.d_multdof3_u[i]));
+      }
+    } else if(model.mJoints[i].mDoFCount == 1
+        && model.mJoints[i].mJointType != JointTypeCustom) {
+      CS.d_u[i] = - model.S[i].dot(CS.d_pA[i]);
+      unsigned int lambda = model.lambda[i];
+
+      if (lambda != 0) {
+        CS.d_pA[lambda] = CS.d_pA[lambda]
+          + model.X_lambda[i].applyTranspose (
+              CS.d_pA[i] + model.U[i] * CS.d_u[i] / model.d[i]);
+      }
+    } else if (model.mJoints[i].mJointType == JointTypeCustom){
+
+      unsigned int kI     = model.mJoints[i].custom_joint_index;
+      // unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
+      //CS.
+      model.mCustomJoints[kI]->d_u =
+        - model.mCustomJoints[kI]->S.transpose() * (CS.d_pA[i]);
+      unsigned int lambda = model.lambda[i];
+      if (lambda != 0) {
+        CS.d_pA[lambda] =
+          CS.d_pA[lambda]
+          + model.X_lambda[i].applyTranspose (
+              CS.d_pA[i] + (   model.mCustomJoints[kI]->U
+                * model.mCustomJoints[kI]->Dinv
+                * model.mCustomJoints[kI]->d_u)
+              );
+      }
+    }
+  }
+
+  for (unsigned int i = 0; i < f_t.size(); i++) {
+    LOG << "f_t[" << i << "] = " << f_t[i].transpose() << std::endl;
+  }
+
+  for (unsigned int i = 0; i < model.mBodies.size(); i++) {
+    LOG << "i = " << i << ": d_pA[i] " << CS.d_pA[i].transpose() << std::endl;
+  }
+  for (unsigned int i = 0; i < model.mBodies.size(); i++) {
+    LOG << "i = " << i << ": d_u[i] = " << CS.d_u[i] << std::endl;
+  }
+
+  QDDot_t[0] = 0.;
+  CS.d_a[0] = model.a[0];
+
+  for (unsigned int i = 1; i < model.mBodies.size(); i++) {
+    unsigned int q_index = model.mJoints[i].q_index;
+    unsigned int lambda = model.lambda[i];
+
+    SpatialVector Xa = model.X_lambda[i].apply(CS.d_a[lambda]);
+
+    if (model.mJoints[i].mDoFCount == 3
+        && model.mJoints[i].mJointType != JointTypeCustom) {
+      Vector3d qdd_temp = model.multdof3_Dinv[i]
+        * (CS.d_multdof3_u[i] - model.multdof3_U[i].transpose() * Xa);
+
+      QDDot_t[q_index] = qdd_temp[0];
+      QDDot_t[q_index + 1] = qdd_temp[1];
+      QDDot_t[q_index + 2] = qdd_temp[2];
+      model.a[i] = model.a[i] + model.multdof3_S[i] * qdd_temp;
+      CS.d_a[i] = Xa + model.multdof3_S[i] * qdd_temp;
+    } else if (model.mJoints[i].mDoFCount == 1
+        && model.mJoints[i].mJointType != JointTypeCustom){
+
+      QDDot_t[q_index] = (CS.d_u[i] - model.U[i].dot(Xa) ) / model.d[i];
+      CS.d_a[i] = Xa + model.S[i] * QDDot_t[q_index];
+    } else if (model.mJoints[i].mJointType == JointTypeCustom){
+      unsigned int kI     = model.mJoints[i].custom_joint_index;
+      unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
+      VectorNd qdd_temp = VectorNd::Zero(dofI);
+
+      qdd_temp = model.mCustomJoints[kI]->Dinv
+        * (model.mCustomJoints[kI]->d_u
+            - model.mCustomJoints[kI]->U.transpose() * Xa);
+
+      for(unsigned int z=0; z<dofI;++z){
+        QDDot_t[q_index+z] = qdd_temp[z];
+      }
+
+      model.a[i] = model.a[i] + model.mCustomJoints[kI]->S * qdd_temp;
+      CS.d_a[i] = Xa + model.mCustomJoints[kI]->S * qdd_temp;
+    }
+
+    LOG << "QDDot_t[" << i - 1 << "] = " << QDDot_t[i - 1] << std::endl;
+    LOG << "d_a[i] = " << CS.d_a[i].transpose() << std::endl;
+  }
+}
+
+/** \brief Compute only the effects of external forces on the generalized accelerations
+ *
+ * This function is a reduced version of ForwardDynamics() which only
+ * computes the effects of the external forces on the generalized
+ * accelerations.
+ *
+ */
+RBDL_DLLAPI
+void ForwardDynamicsApplyConstraintForces (
+    Model &model,
+    ADModel &ad_model,
+    const VectorNd &Tau,
+    const MatrixNd &Tau_dirs,
+    ConstraintSet &CS,
+    ADConstraintSet &ad_CS,
+    VectorNd &QDDot,
+    MatrixNd &ad_QDDot
+) {
+  LOG << "-------- " << __func__ << " --------" << std::endl;
+  assert (QDDot.size() == model.dof_count);
+
+  unsigned int i = 0;
+
+  for (i = 1; i < model.mBodies.size(); i++) {
+    model.IA[i] = model.I[i].toMatrix();;
+    model.pA[i] = crossf(model.v[i],model.I[i] * model.v[i]);
+
+    if (CS.f_ext_constraints[i] != SpatialVector::Zero()) {
+      LOG << "External force (" << i << ") = " << model.X_base[i].toMatrixAdjoint() * CS.f_ext_constraints[i] << std::endl;
+      model.pA[i] -= model.X_base[i].toMatrixAdjoint() * CS.f_ext_constraints[i];
+    }
+  }
+
+  // ClearLogOutput();
+
+  LOG << "--- first loop ---" << std::endl;
+
+  for (i = model.mBodies.size() - 1; i > 0; i--) {
+    unsigned int q_index = model.mJoints[i].q_index;
+
+    if (model.mJoints[i].mDoFCount == 3
+        && model.mJoints[i].mJointType != JointTypeCustom) {
+      unsigned int lambda = model.lambda[i];
+      model.multdof3_u[i] = Vector3d (Tau[q_index],
+          Tau[q_index + 1],
+          Tau[q_index + 2])
+        - model.multdof3_S[i].transpose() * model.pA[i];
+
+      if (lambda != 0) {
+        SpatialMatrix Ia = model.IA[i] - (model.multdof3_U[i]
+            * model.multdof3_Dinv[i]
+            * model.multdof3_U[i].transpose());
+
+        SpatialVector pa = model.pA[i] + Ia * model.c[i]
+          + model.multdof3_U[i] * model.multdof3_Dinv[i] * model.multdof3_u[i];
+
+#ifdef EIGEN_CORE_H
+        model.IA[lambda].noalias() += (model.X_lambda[i].toMatrixTranspose()
+            * Ia * model.X_lambda[i].toMatrix());
+        model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
+#else
+        model.IA[lambda] += (model.X_lambda[i].toMatrixTranspose()
+            * Ia * model.X_lambda[i].toMatrix());
+        model.pA[lambda] += model.X_lambda[i].applyTranspose(pa);
+#endif
+        LOG << "pA[" << lambda << "] = " << model.pA[lambda].transpose()
+          << std::endl;
+      }
+    } else if (model.mJoints[i].mDoFCount == 1
+        && model.mJoints[i].mJointType != JointTypeCustom) {
+      model.u[i] = Tau[q_index] - model.S[i].dot(model.pA[i]);
+
+      unsigned int lambda = model.lambda[i];
+      if (lambda != 0) {
+        SpatialMatrix Ia = model.IA[i]
+          - model.U[i] * (model.U[i] / model.d[i]).transpose();
+        SpatialVector pa =  model.pA[i] + Ia * model.c[i]
+          + model.U[i] * model.u[i] / model.d[i];
+#ifdef EIGEN_CORE_H
+        model.IA[lambda].noalias() += (model.X_lambda[i].toMatrixTranspose()
+            * Ia * model.X_lambda[i].toMatrix());
+        model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
+#else
+        model.IA[lambda] += (model.X_lambda[i].toMatrixTranspose()
+            * Ia * model.X_lambda[i].toMatrix());
+        model.pA[lambda] += model.X_lambda[i].applyTranspose(pa);
+#endif
+        LOG << "pA[" << lambda << "] = "
+          << model.pA[lambda].transpose() << std::endl;
+      }
+    } else if(model.mJoints[i].mJointType == JointTypeCustom) {
+
+      unsigned int kI     = model.mJoints[i].custom_joint_index;
+      unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
+      unsigned int lambda = model.lambda[i];
+      VectorNd tau_temp = VectorNd::Zero(dofI);
+
+      for(unsigned int z=0; z<dofI;++z){
+        tau_temp[z] = Tau[q_index+z];
+      }
+
+      model.mCustomJoints[kI]->u = tau_temp
+        - (model.mCustomJoints[kI]->S.transpose()
+            * model.pA[i]);
+
+      if (lambda != 0) {
+        SpatialMatrix Ia = model.IA[i]
+          - (   model.mCustomJoints[kI]->U
+              * model.mCustomJoints[kI]->Dinv
+              * model.mCustomJoints[kI]->U.transpose());
+
+        SpatialVector pa = model.pA[i] + Ia * model.c[i]
+          + (   model.mCustomJoints[kI]->U
+              * model.mCustomJoints[kI]->Dinv
+              * model.mCustomJoints[kI]->u);
+#ifdef EIGEN_CORE_H
+        model.IA[lambda].noalias() += model.X_lambda[i].toMatrixTranspose()
+          * Ia * model.X_lambda[i].toMatrix();
+
+        model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
+#else
+        model.IA[lambda] += model.X_lambda[i].toMatrixTranspose()
+          * Ia * model.X_lambda[i].toMatrix();
+
+        model.pA[lambda] += model.X_lambda[i].applyTranspose(pa);
+#endif
+        LOG << "pA[" << lambda << "] = " << model.pA[lambda].transpose()
+          << std::endl;
+      }
+    }
+  }
+
+  model.a[0] = SpatialVector (0., 0., 0., -model.gravity[0], -model.gravity[1], -model.gravity[2]);
+
+  for (i = 1; i < model.mBodies.size(); i++) {
+    unsigned int q_index = model.mJoints[i].q_index;
+    unsigned int lambda = model.lambda[i];
+    SpatialTransform X_lambda = model.X_lambda[i];
+
+    model.a[i] = X_lambda.apply(model.a[lambda]) + model.c[i];
+    LOG << "a'[" << i << "] = " << model.a[i].transpose() << std::endl;
+
+    if (model.mJoints[i].mDoFCount == 3
+        && model.mJoints[i].mJointType != JointTypeCustom) {
+      Vector3d qdd_temp = model.multdof3_Dinv[i] *
+        (model.multdof3_u[i]
+         - model.multdof3_U[i].transpose() * model.a[i]);
+
+      QDDot[q_index] = qdd_temp[0];
+      QDDot[q_index + 1] = qdd_temp[1];
+      QDDot[q_index + 2] = qdd_temp[2];
+      model.a[i] = model.a[i] + model.multdof3_S[i] * qdd_temp;
+    } else if (model.mJoints[i].mDoFCount == 1
+        && model.mJoints[i].mJointType != JointTypeCustom) {
+      QDDot[q_index] = (1./model.d[i]) * (model.u[i] - model.U[i].dot(model.a[i]));
+      model.a[i] = model.a[i] + model.S[i] * QDDot[q_index];
+    } else if (model.mJoints[i].mJointType == JointTypeCustom){
+      unsigned int kI     = model.mJoints[i].custom_joint_index;
+      unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
+      VectorNd qdd_temp = VectorNd::Zero(dofI);
+
+      qdd_temp = model.mCustomJoints[kI]->Dinv
+        * (model.mCustomJoints[kI]->u
+            - model.mCustomJoints[kI]->U.transpose()
+            * model.a[i]);
+
+      for(unsigned int z=0; z<dofI;++z){
+        QDDot[q_index+z] = qdd_temp[z];
+      }
+
+      model.a[i] = model.a[i] + (model.mCustomJoints[kI]->S * qdd_temp);
+    }
+  }
+
+  LOG << "QDDot = " << QDDot.transpose() << std::endl;
+}
+
+RBDL_DLLAPI
+void ForwardDynamicsContactsKokkevis (
+    Model   & model,
+    ADModel & ad_model,
+    const Math::VectorNd & q,
+    const Math::MatrixNd & q_dirs,
+    const Math::VectorNd & qdot,
+    const Math::MatrixNd & qdot_dirs,
+    const Math::VectorNd & tau,
+    const Math::MatrixNd & tau_dirs,
+    ConstraintSet   & CS,
+    ADConstraintSet & ad_CS,
+    Math::VectorNd  & qddot,
+    Math::MatrixNd  & ad_qddot
+ ) {
+  LOG << "-------- " << __func__ << " ------" << std::endl;
+
+  assert (CS.f_ext_constraints.size() == model.mBodies.size());
+  assert (CS.QDDot_0.size() == model.dof_count);
+  assert (CS.QDDot_t.size() == model.dof_count);
+  assert (CS.f_t.size() == CS.size());
+  assert (CS.point_accel_0.size() == CS.size());
+  assert (CS.K.rows() == CS.size());
+  assert (CS.K.cols() == CS.size());
+  assert (CS.force.size() == CS.size());
+  assert (CS.a.size() == CS.size());
+
+  const unsigned int ndirs = q_dirs.cols();
+  assert(ndirs == static_cast<unsigned>(qdot_dirs.cols()));
+  assert(ndirs == static_cast<unsigned>(tau_dirs.cols()));
+
+  ad_model.resize_directions(ndirs);
+  ad_CS.resize_directions(ndirs);
+
+  Vector3d point_accel_t;
+
+  unsigned int ci = 0;
+
+  // The default acceleration only needs to be computed once
+  {
+    SUPPRESS_LOGGING;
+    // derivative and nominal code
+    ForwardDynamics(
+      model, ad_model,
+      q, q_dirs,
+      qdot, qdot_dirs,
+      tau, tau_dirs,
+      CS.QDDot_0, ad_CS.QDDot_0
+    );
+    // nominal code
+    // ForwardDynamics(model, q, qdot, tau, CS.QDDot_0);
+  }
+
+  LOG << "=== Initial Loop Start ===" << std::endl;
+  // we have to compute the standard accelerations first as we use them to
+  // compute the effects of each test force
+  for(ci = 0; ci < CS.size(); ci++) {
+
+    {
+      SUPPRESS_LOGGING;
+      // derivative and nominal code
+      UpdateKinematicsCustom(
+        model, ad_model,
+        NULL, NULL,
+        NULL, NULL,
+        &CS.QDDot_0, &ad_CS.QDDot_0
+      );
+      // nominal code
+      // UpdateKinematicsCustom(model, NULL, NULL, &CS.QDDot_0);
+    }
+
+    if(CS.constraintType[ci] == ConstraintSet::ContactConstraint)
+    {
+      LOG << "body_id = " << CS.body[ci] << std::endl;
+      LOG << "point = " << CS.point[ci] << std::endl;
+      LOG << "normal = " << CS.normal[ci] << std::endl;
+      LOG << "QDDot_0 = " << CS.QDDot_0.transpose() << std::endl;
+      {
+        SUPPRESS_LOGGING;
+        // derivative and nominal code
+        ad_CS.point_accel_0[ci] = ad_CS.point_accel_0[ci].leftCols(ndirs).eval();
+        CS.point_accel_0[ci] = AD::CalcPointAcceleration (
+          model, ad_model,
+          q, q_dirs,
+          qdot, qdot_dirs,
+          CS.QDDot_0, ad_CS.QDDot_0,
+          CS.body[ci], CS.point[ci],
+          ad_CS.point_accel_0[ci],
+          false
+        );
+        for (unsigned int idir = 0; idir < ndirs; ++idir) {
+          // NOTE CS.acceleration[ci] is a constant value
+          ad_CS.a(ci, idir) = CS.normal[ci].dot(ad_CS.point_accel_0[ci].col(idir));
+        }
+        // nominal code
+        // NOTE is already above
+        // CS.point_accel_0[ci]
+        //   = CalcPointAcceleration (
+        //     model, Q, QDot , CS.QDDot_0, CS.body[ci], CS.point[ci], false
+        //   );
+        CS.a[ci] = - CS.acceleration[ci]
+          + CS.normal[ci].dot(CS.point_accel_0[ci]);
+      }
+      LOG << "point_accel_0 = " << CS.point_accel_0[ci].transpose();
+    }
+    else
+    {
+      std::cerr << "Forward Dynamic Contact Kokkevis: unsupported constraint \
+        type." << std::endl;
+      assert(false);
+      abort();
+    }
+  }
+
+  // Now we can compute and apply the test forces and use their net effect
+  // to compute the inverse articlated inertia to fill K.
+  for (ci = 0; ci < CS.size(); ci++) {
+
+    LOG << "=== Testforce Loop Start ===" << std::endl;
+
+    unsigned int movable_body_id = 0;
+    Vector3d point_global;
+    SpatialTransform X_tmp;
+    SpatialVector v_tmp;
+
+    switch (CS.constraintType[ci]) {
+
+      case ConstraintSet::ContactConstraint:
+
+        movable_body_id = GetMovableBodyId(model, CS.body[ci]);
+
+        // assemble the test force
+        LOG << "normal = " << CS.normal[ci].transpose() << std::endl;
+
+        // derivative and nominal code
+        point_global = AD::CalcBodyToBaseCoordinates(
+          model, ad_model, q, q_dirs, CS.body[ci] , CS.point[ci],
+          ad_CS.point_global, false
+        );
+
+        // nominal evaluation
+        // NOTE evaluated in derivative code
+        // point_global = CalcBodyToBaseCoordinates(
+        //   model, Q, CS.body[ci], CS.point[ci], false
+        // );
+
+        LOG << "point_global = " << point_global.transpose() << std::endl;
+
+        // derivative evaluation
+        X_tmp = SpatialTransform(Matrix3d::Identity(), -point_global);
+        v_tmp = SpatialVector (
+          0., 0., 0. , -CS.normal[ci][0], -CS.normal[ci][1], -CS.normal[ci][2]
+        );
+        for (unsigned int idir = 0; idir < ndirs; ++idir) {
+          X_tmp.r = -ad_CS.point_global.col(idir);
+          ad_CS.f_t[ci].col(idir) = X_tmp.applyAdjoint(v_tmp);
+        }
+        ad_CS.f_ext_constraints[movable_body_id] = ad_CS.f_t[ci];
+        // nominal evaluation
+        X_tmp.r = -point_global;
+        CS.f_t[ci] = X_tmp.applyAdjoint(v_tmp);
+        CS.f_ext_constraints[movable_body_id] = CS.f_t[ci];
+
+        LOG << "f_t[" << movable_body_id << "] = " << CS.f_t[ci].transpose()
+          << std::endl;
+
+        {
+          // derivative evaluation
+          AD::ForwardDynamicsAccelerationDeltas(
+            model, ad_model, CS, ad_CS,
+            CS.QDDot_t, ad_CS.QDDot_t,
+            movable_body_id,
+            CS.f_ext_constraints,
+            ad_CS.f_ext_constraints
+          );
+          // nominal evaluation
+          // ForwardDynamicsAccelerationDeltas(
+          //   model, CS, CS.QDDot_t , movable_body_id, CS.f_ext_constraints
+          // );
+
+          LOG << "QDDot_0 = " << CS.QDDot_0.transpose() << std::endl;
+          LOG << "QDDot_t = " << (CS.QDDot_t + CS.QDDot_0).transpose()
+            << std::endl;
+          LOG << "QDDot_t - QDDot_0 = " << (CS.QDDot_t).transpose() << std::endl;
+        }
+
+        // derivative evaluation
+        ad_CS.f_ext_constraints[movable_body_id].setZero();
+        // nominal evaluation
+        CS.f_ext_constraints[movable_body_id].setZero();
+
+        // derivative evaluation
+        ad_CS.QDDot_t += ad_CS.QDDot_0;
+        // nominal evaluation
+        CS.QDDot_t += CS.QDDot_0;
+
+        // compute the resulting acceleration
+        {
+          SUPPRESS_LOGGING;
+          // derivative evaluation
+          AD::UpdateKinematicsCustom(
+            model, ad_model,
+            NULL, NULL,
+            NULL, NULL,
+            &CS.QDDot_t, &ad_CS.QDDot_t
+          );
+          // nominal evaluation
+          // UpdateKinematicsCustom(model, NULL, NULL, &CS.QDDot_t);
+        }
+
+        // resize matrix once
+        ad_CS.point_accel_t = ad_CS.point_accel_t.leftCols(ndirs).eval();
+        for(unsigned int cj = 0; cj < CS.size(); cj++)
+        {
+          { SUPPRESS_LOGGING;
+            // derivative evaluation
+            point_accel_t = AD::CalcPointAcceleration (
+              model, ad_model,
+              q, q_dirs,
+              qdot, qdot_dirs,
+              CS.QDDot_t, ad_CS.QDDot_t,
+              CS.body[cj], CS.point[cj],
+              ad_CS.point_accel_t,
+              false
+            );
+            // nominal evaluation
+            // point_accel_t = CalcPointAcceleration(
+            //   model, q, qdot, CS.QDDot_t, CS.body[cj], CS.point[cj], false
+            // );
+          }
+
+          LOG << "point_accel_0  = " << CS.point_accel_0[ci].transpose()
+            << std::endl;
+          LOG << "point_accel_t = " << point_accel_t.transpose() << std::endl;
+
+          // derivative evaluation
+          for (unsigned int idir = 0; idir < ndirs; ++idir) {
+             ad_CS.K[idir](ci,cj)
+              = CS.normal[cj].dot(
+                ad_CS.point_accel_t.col(idir) - ad_CS.point_accel_0[cj].col(idir)
+              );
+           }
+          // nominal evaluation
+          CS.K(ci,cj) = CS.normal[cj].dot(point_accel_t - CS.point_accel_0[cj]);
+
+        }
+
+      break;
+
+      default:
+
+        std::cerr << "Forward Dynamic Contact Kokkevis: unsupported constraint \
+          type." << std::endl;
+        assert(false);
+        abort();
+
+      break;
+
+    }
+
+  }
+
+  LOG << "K = " << std::endl << CS.K << std::endl;
+  LOG << "a = " << std::endl << CS.a << std::endl;
+
+#ifndef RBDL_USE_SIMPLE_MATH
+  Eigen::HouseholderQR<MatrixNd> householderQR;
+  Eigen::HouseholderQR<MatrixNd> colPivHouseholderQR;
+  Eigen::HouseholderQR<MatrixNd> partialPivLU;
+  switch (CS.linear_solver) {
+    case (LinearSolverPartialPivLU) :
+      // nominal evaluation
+      partialPivLU.compute(CS.K);
+      CS.force = partialPivLU.solve(CS.a);
+      // derivative evaluation
+      for (unsigned int idir = 0; idir < ndirs; ++idir) {
+        ad_CS.force.col(idir) = partialPivLU.solve(
+          ad_CS.a.col(idir) - ad_CS.K[idir]*CS.force
+        );
+      }
+      break;
+    case (LinearSolverColPivHouseholderQR) :
+      // nominal evaluation
+      colPivHouseholderQR.compute(CS.K);
+      CS.force = colPivHouseholderQR.solve(CS.a);
+      // derivative evaluation
+      for (unsigned int idir = 0; idir < ndirs; ++idir) {
+        ad_CS.force.col(idir) = colPivHouseholderQR.solve(
+          ad_CS.a.col(idir) - ad_CS.K[idir]*CS.force
+        );
+      }
+      break;
+    case (LinearSolverHouseholderQR) :
+      // nominal evaluation
+      householderQR.compute(CS.K);
+      CS.force = householderQR.solve(CS.a);
+      // derivative evaluation
+      for (unsigned int idir = 0; idir < ndirs; ++idir) {
+        ad_CS.force.col(idir) = householderQR.solve(
+          ad_CS.a.col(idir) - ad_CS.K[idir]*CS.force
+        );
+      }
+      break;
+    default:
+      LOG << "Error: Invalid linear solver: " << CS.linear_solver << std::endl;
+      assert (0);
+      break;
+  }
+#else
+  LOG << "Error: Linear solver not implemented for AD!" << std::endl;
+  assert (0);
+  bool solve_successful = LinSolveGaussElimPivot (CS.K, CS.a, CS.force);
+  assert (solve_successful);
+#endif
+
+  LOG << "f = " << CS.force.transpose() << std::endl;
+
+  for (ci = 0; ci < CS.size(); ci++) {
+    unsigned int body_id = CS.body[ci];
+    unsigned int movable_body_id = body_id;
+
+    if (model.IsFixedBodyId(body_id)) {
+      unsigned int fbody_id = body_id - model.fixed_body_discriminator;
+      movable_body_id = model.mFixedBodies[fbody_id].mMovableParent;
+    }
+
+    CS.f_ext_constraints[movable_body_id] -= CS.f_t[ci] * CS.force[ci];
+    LOG << "f_ext[" << movable_body_id << "] = " << CS.f_ext_constraints[movable_body_id].transpose() << std::endl;
+  }
+
+  {
+    SUPPRESS_LOGGING;
+    // derivative evaluation
+    AD::ForwardDynamicsApplyConstraintForces (
+      model, ad_model, tau, tau_dirs, CS, ad_CS, qddot, ad_qddot
+    );
+    // nominal evaluation
+    // ForwardDynamicsApplyConstraintForces (model, tau, CS, qddot);
+  }
+
+  LOG << "QDDot after applying f_ext: " << qddot.transpose() << std::endl;
+  return;
 }
 
 // -----------------------------------------------------------------------------

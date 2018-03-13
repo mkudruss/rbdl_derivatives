@@ -604,7 +604,8 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
     unsigned int body_id,
     const Math::Vector3d &point_position,
     Math::MatrixNd &ad_derivative,
-    bool update_kinematics) {
+    bool update_kinematics
+) {
   LOG << "-------- " << __func__ << " --------" << std::endl;
 
   int const ndirs = q_dirs.cols();

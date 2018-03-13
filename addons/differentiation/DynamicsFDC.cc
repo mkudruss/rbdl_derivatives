@@ -139,13 +139,7 @@ void InverseDynamics(
           "fd_tau and tau have different dimensions");
 
 
-  unsigned int ndirs   = q_dirs.cols();
-
-  InverseDynamics(model, q, qdot, qddot, tau, f_ext);
-
-  // temporary quantities
-  VectorNd tau_ph(tau);
-  VectorNd tau_mh(tau);
+  const unsigned int ndirs   = q_dirs.cols();
 
   // handling external forces
   vector<SpatialVector> f_exth;
@@ -173,9 +167,10 @@ void InverseDynamics(
       q + EPS*q_dirs.col(idir),
       qdot + EPS*qdot_dirs.col(idir),
       qddot + EPS*qddot_dirs.col(idir),
-      tau_ph,
+      tau,
       f_ext ? &f_exth : NULL
     );
+    fd_tau.col(idir) = tau;
 
     // backward evaluation
     if (f_ext) {
@@ -189,17 +184,22 @@ void InverseDynamics(
       q - EPS*q_dirs.col(idir),
       qdot - EPS*qdot_dirs.col(idir),
       qddot - EPS*qddot_dirs.col(idir),
-      tau_mh,
+      tau,
       f_ext ? &f_exth : NULL
     );
 
-    fd_tau.col(idir) = (tau_ph - tau_mh) / EPSx2;
+    fd_tau.col(idir) = (fd_tau.col(idir) - tau) / EPSx2;
 
     if (fd_model) {
       computeFDEntry(*modelh, model , EPS, idir, *fd_model);
       delete modelh;
     }
   }
+
+  // nominal evaluation
+  InverseDynamics(model, q, qdot, qddot, tau, f_ext);
+
+  return;
 }
 
 RBDL_DLLAPI
