@@ -274,15 +274,23 @@ void ForwardDynamicsAccelerationDeltasTemplate(
   MatrixNd qd_dirs = MatrixNd::Identity(nq, nq);
   MatrixNd tau_dirs = MatrixNd::Identity(nq, nq);
 
-  std::vector<SpatialVector> f_t
-    = std::vector<SpatialVector> (cs.size(), SpatialVector::Random());
-  std::vector<MatrixNd> ad_f_t
-    = std::vector<MatrixNd> (cs.size(), SpatialMatrix::Random(6, ndirs));
-
   for (unsigned trial = 0; trial < trial_count; trial++) {
     VectorNd q = VectorNd::Random(nq);
     VectorNd qd = VectorNd::Random(nq);
     VectorNd tau = VectorNd::Random(nq);
+
+    q_dirs.setRandom();
+    qd_dirs.setRandom();
+    tau_dirs.setRandom();
+
+    std::vector<SpatialVector> f_t
+      = std::vector<SpatialVector> (cs.size(), SpatialVector::Random());
+    std::vector<MatrixNd> ad_f_t
+      = std::vector<MatrixNd> (cs.size(), SpatialMatrix::Random(6, ndirs));
+
+    UpdateKinematics(model, q, qd, qdd);
+    UpdateKinematics(ad_model, q, qd, qdd);
+    UpdateKinematics(fd_model, q, qd, qdd);
 
     AD::ForwardDynamicsAccelerationDeltas (
           ad_model, ad_d_model,
@@ -306,10 +314,6 @@ void ForwardDynamicsAccelerationDeltasTemplate(
     CHECK_ARRAY_CLOSE(ad_qdd.data(), fd_qdd.data(), nq, array_close_prec);
     CHECK_ARRAY_CLOSE(ad_qdd_dirs.data(), fd_qdd_dirs.data(), nq*nq,
                       array_close_prec);
-
-    q_dirs.setRandom();
-    qd_dirs.setRandom();
-    tau_dirs.setRandom();
   }
 }
 

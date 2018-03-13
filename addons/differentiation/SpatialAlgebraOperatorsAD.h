@@ -465,6 +465,7 @@ inline void applyAdjointSTSV (
   MatrixNd & res_dirs
 ) {
   assert(sv_dirs.rows() == 6);
+  assert(res_dirs.rows() == 6);
   assert(ndirs <= st_dirs.size());
   assert(ndirs <= sv_dirs.cols());
   assert(ndirs <= res_dirs.cols());
