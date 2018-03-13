@@ -114,6 +114,10 @@ void checkModelsADvsFD(
   // nominal check
   CHECK_EQUAL(ad_model.IA.size(), fd_model.IA.size());
   for (unsigned i = 0; i < ad_model.IA.size(); i++) {
+//    std::cout << "--- AD --- " << i << std::endl;
+//    std::cout << ad_model.IA[i] << std::endl;
+//    std::cout << "--- FD --- " << i << std::endl;
+//    std::cout << fd_model.IA[i] << std::endl;
     CHECK_ARRAY_CLOSE(ad_model.IA[i].data(), fd_model.IA[i].data(), 36, 1e-7);
   }
   // derivative check

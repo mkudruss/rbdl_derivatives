@@ -10,6 +10,8 @@
 #include "ConstraintsAD.h"
 #include "ConstraintsFD.h"
 
+#include "DynamicsAD.h"
+
 #include "ModelCheckADvsFD.h"
 
 #include "Fixtures.h"
@@ -358,6 +360,38 @@ void ForwardDynamicsApplyConstraintForcesTemplate(
     VectorNd q = VectorNd::Random(nq);
     VectorNd qd = VectorNd::Random(nq);
     VectorNd tau = VectorNd::Random(nq);
+    UpdateKinematics(model, q, qd, qdd);
+    UpdateKinematics(ad_model, q, qd, qdd);
+    UpdateKinematics(fd_model, q, qd, qdd);
+
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+
+    ForwardDynamics(model, q, qd, tau, cs.QDDot_0);
+    ForwardDynamics(fd_model, q, qd, tau, cs.QDDot_0);
+    ForwardDynamics(ad_model, q, qd, tau, cs.QDDot_0);
+
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+
+    for (unsigned ci = 0; ci < cs.size(); ci++) {
+      unsigned int movable_body_id = 0;
+      switch (cs.constraintType[ci]) {
+        case ConstraintSet::ContactConstraint:
+          movable_body_id = GetMovableBodyId(model, cs.body[ci]);
+          cs.f_ext_constraints[movable_body_id] = SpatialVector::Random();
+          ad_cs.f_ext_constraints[movable_body_id] = cs.f_ext_constraints[movable_body_id];
+          fd_cs.f_ext_constraints[movable_body_id] = cs.f_ext_constraints[movable_body_id];
+        break;
+
+        default:
+          std::cerr << "Forward Dynamic Contact Kokkevis: unsupported constraint \
+            type." << std::endl;
+          assert(false);
+          abort();
+        break;
+      }
+    }
+
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
 
     ForwardDynamicsApplyConstraintForces(model, tau, cs, qdd);
 
@@ -395,7 +429,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsApplyConstraintForces) 
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
   ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
-  ForwardDynamicsApplyConstraintForcesTemplate(*this, 1, 1e-4);
+  ForwardDynamicsApplyConstraintForcesTemplate(*this, 1, 1e-6);
 }
 
 // -----------------------------------------------------------------------------
