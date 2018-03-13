@@ -1003,7 +1003,7 @@ void ForwardDynamicsApplyConstraintForces (
   unsigned int i = 0;
 
   for (i = 1; i < model.mBodies.size(); i++) {
-    model.IA[i] = model.I[i].toMatrix();;
+    model.IA[i] = model.I[i].toMatrix();
     model.pA[i] = crossf(model.v[i],model.I[i] * model.v[i]);
 
     if (CS.f_ext_constraints[i] != SpatialVector::Zero()) {

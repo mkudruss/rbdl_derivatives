@@ -39,3 +39,5 @@ examples/luamodel/CMakeCache.txt
 *.db
 *.sln
 *.orig
+
+*install/*

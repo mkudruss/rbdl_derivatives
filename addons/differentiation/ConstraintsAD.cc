@@ -48,7 +48,7 @@ ADConstraintSet::ADConstraintSet(const ConstraintSet & CS_, int _dof_count) :
 
   // Kokkevis values
   f_t.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
-  f_ext_constraints.resize(CS->f_t.size(),  MatrixNd::Zero(6, ndirs));
+  f_ext_constraints.resize(CS->f_ext_constraints.size(),  MatrixNd::Zero(6, ndirs));
   point_accel_0.resize(CS->point_accel_0.size(), MatrixNd::Zero(3, ndirs));
 
   d_pA.resize(CS->d_pA.size(),  MatrixNd::Zero(6, ndirs));
@@ -960,7 +960,7 @@ void ForwardDynamicsApplyConstraintForces (
 
     if (model.mJoints[i].mDoFCount == 3
         && model.mJoints[i].mJointType != JointTypeCustom) {
-      std::cerr << "CUSTOM JOINTS NOT SUPPORTED!" << std::endl;
+      std::cerr << "3DoF JOINTS NOT SUPPORTED!" << std::endl;
       abort();
     } else if (model.mJoints[i].mDoFCount == 1
         && model.mJoints[i].mJointType != JointTypeCustom) {
@@ -974,65 +974,70 @@ void ForwardDynamicsApplyConstraintForces (
       unsigned int lambda = model.lambda[i];
       if (lambda != 0) {
         vector<SpatialMatrix> ad_Ia(ndirs, SpatialMatrix::Zero());
+        // derivative evaluation
+        for(unsigned int j = 0; j < ndirs; j++) {
+          ad_Ia[j] = ad_model.IA[i][j]
+            - ad_model.U[i][j] * (model.U[i] / model.d[i]).transpose()
+            - model.U[i] * (ad_model.U[i][j] / model.d[i]).transpose()
+            - model.U[i] * (model.U[i] * (-ad_model.d(i,j)) / (model.d[i] * model.d[i])).transpose();
+        }
+        // nominal evaluation
+        SpatialMatrix Ia = model.IA[i] - model.U[i] * (model.U[i] / model.d[i]).transpose();
 
-        SpatialMatrix Ia = model.IA[i]
-          - model.U[i] * (model.U[i] / model.d[i]).transpose();
-        SpatialVector pa =  model.pA[i] + Ia * model.c[i]
-          + model.U[i] * model.u[i] / model.d[i];
+        vector<SpatialVector> ad_pa(ndirs, SpatialVector::Zero());
+        // derivative evaluation
+        for(unsigned int j = 0; j < ndirs; j++) {
+          ad_pa[j] = ad_model.pA[i][j]
+            + ad_Ia[j] * model.c[i]
+            + Ia * ad_model.c[i][j]
+            + ad_model.U[i][j] * model.u[i] / model.d[i]
+            + model.U[i] * ad_model.u(i,j) / model.d[i]
+            + model.U[i] * model.u[i] * (-ad_model.d(i,j)) / (model.d[i] * model.d[i]);
+        }
+        // nominal evaluation
+        SpatialVector pa = model.pA[i] + Ia * model.c[i] + model.U[i] * model.u[i] / model.d[i];
+
 #ifdef EIGEN_CORE_H
-        model.IA[lambda].noalias() += (model.X_lambda[i].toMatrixTranspose()
-            * Ia * model.X_lambda[i].toMatrix());
-        model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
+        addSqrFormSTSM_noalias(
+              ndirs,
+              model.X_lambda[i], ad_model.X_lambda[i],
+              Ia, ad_Ia,
+              model.IA[lambda], ad_model.IA[lambda]);
+
+        SpatialVector summand;
+        vector<SpatialVector> ad_summand(ndirs);
+        applyTransposeSTSV(
+              ndirs,
+              model.X_lambda[i], ad_model.X_lambda[i],
+              pa, ad_pa,
+              summand, ad_summand);
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          ad_model.pA[lambda][idir].noalias() += ad_summand[idir];
+        }
+        model.pA[lambda].noalias() += summand;
+        // original nominal code
+        // model.IA[lambda].noalias() += (model.X_lambda[i].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix());
+        // model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
 #else
-        model.IA[lambda] += (model.X_lambda[i].toMatrixTranspose()
-            * Ia * model.X_lambda[i].toMatrix());
-        model.pA[lambda] += model.X_lambda[i].applyTranspose(pa);
+        cerr << "Simple math not yet supported." << endl;
+        abort();
+        // model.IA[lambda] += (model.X_lambda[i].toMatrixTranspose() * Ia * model.X_lambda[i].toMatrix());
+        // model.pA[lambda] += model.X_lambda[i].applyTranspose(pa);
 #endif
         LOG << "pA[" << lambda << "] = "
           << model.pA[lambda].transpose() << std::endl;
       }
     } else if(model.mJoints[i].mJointType == JointTypeCustom) {
-
-      unsigned int kI     = model.mJoints[i].custom_joint_index;
-      unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
-      unsigned int lambda = model.lambda[i];
-      VectorNd tau_temp = VectorNd::Zero(dofI);
-
-      for(unsigned int z=0; z<dofI;++z){
-        tau_temp[z] = Tau[q_index+z];
-      }
-
-      model.mCustomJoints[kI]->u = tau_temp
-        - (model.mCustomJoints[kI]->S.transpose()
-            * model.pA[i]);
-
-      if (lambda != 0) {
-        SpatialMatrix Ia = model.IA[i]
-          - (   model.mCustomJoints[kI]->U
-              * model.mCustomJoints[kI]->Dinv
-              * model.mCustomJoints[kI]->U.transpose());
-
-        SpatialVector pa = model.pA[i] + Ia * model.c[i]
-          + (   model.mCustomJoints[kI]->U
-              * model.mCustomJoints[kI]->Dinv
-              * model.mCustomJoints[kI]->u);
-#ifdef EIGEN_CORE_H
-        model.IA[lambda].noalias() += model.X_lambda[i].toMatrixTranspose()
-          * Ia * model.X_lambda[i].toMatrix();
-
-        model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
-#else
-        model.IA[lambda] += model.X_lambda[i].toMatrixTranspose()
-          * Ia * model.X_lambda[i].toMatrix();
-
-        model.pA[lambda] += model.X_lambda[i].applyTranspose(pa);
-#endif
-        LOG << "pA[" << lambda << "] = " << model.pA[lambda].transpose()
-          << std::endl;
-      }
+      std::cerr << "Custom joints not supported!" << std::endl;
+      abort();
     }
   }
 
+  // derivative code
+  for (unsigned int idir = 0; idir < ndirs; idir++) {
+    ad_model.a[0][idir].setZero();
+  }
+  // nominal code
   model.a[0] = SpatialVector (0., 0., 0., -model.gravity[0], -model.gravity[1], -model.gravity[2]);
 
   for (i = 1; i < model.mBodies.size(); i++) {
@@ -1040,38 +1045,44 @@ void ForwardDynamicsApplyConstraintForces (
     unsigned int lambda = model.lambda[i];
     SpatialTransform X_lambda = model.X_lambda[i];
 
-    model.a[i] = X_lambda.apply(model.a[lambda]) + model.c[i];
+    applySTSV(ndirs,
+              model.X_lambda[i], ad_model.X_lambda[i],
+              model.a[lambda], ad_model.a[lambda],
+              model.a[i], ad_model.a[i]);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      ad_model.a[i][idir] += ad_model.c[i][idir];
+    }
+    model.a[i] += model.c[i];
+
+//    model.a[i] = X_lambda.apply(model.a[lambda]) + model.c[i];
     LOG << "a'[" << i << "] = " << model.a[i].transpose() << std::endl;
 
-    if (model.mJoints[i].mDoFCount == 3
-        && model.mJoints[i].mJointType != JointTypeCustom) {
-      Vector3d qdd_temp = model.multdof3_Dinv[i] *
-        (model.multdof3_u[i]
-         - model.multdof3_U[i].transpose() * model.a[i]);
-
-      QDDot[q_index] = qdd_temp[0];
-      QDDot[q_index + 1] = qdd_temp[1];
-      QDDot[q_index + 2] = qdd_temp[2];
-      model.a[i] = model.a[i] + model.multdof3_S[i] * qdd_temp;
-    } else if (model.mJoints[i].mDoFCount == 1
-        && model.mJoints[i].mJointType != JointTypeCustom) {
-      QDDot[q_index] = (1./model.d[i]) * (model.u[i] - model.U[i].dot(model.a[i]));
-      model.a[i] = model.a[i] + model.S[i] * QDDot[q_index];
-    } else if (model.mJoints[i].mJointType == JointTypeCustom){
-      unsigned int kI     = model.mJoints[i].custom_joint_index;
-      unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
-      VectorNd qdd_temp = VectorNd::Zero(dofI);
-
-      qdd_temp = model.mCustomJoints[kI]->Dinv
-        * (model.mCustomJoints[kI]->u
-            - model.mCustomJoints[kI]->U.transpose()
-            * model.a[i]);
-
-      for(unsigned int z=0; z<dofI;++z){
-        QDDot[q_index+z] = qdd_temp[z];
+    if (model.mJoints[i].mDoFCount == 3 && model.mJoints[i].mJointType != JointTypeCustom) {
+      std::cerr << "3DoF joints not supported!" << std::endl;
+      abort();
+    } else if (model.mJoints[i].mDoFCount == 1 && model.mJoints[i].mJointType != JointTypeCustom) {
+      // derivative evaluation
+      for(unsigned idir = 0; idir < ndirs; idir++) {
+        ad_QDDot(q_index, idir) =
+            -(ad_model.d(i, idir) / (model.d[i] * model.d[i]))
+            * (model.u[i] - model.U[i].dot(model.a[i]))
+            + (1. / model.d[i])
+            * (ad_model.u(i, idir)
+               - ad_model.U[i][idir].dot(model.a[i])
+               - model.U[i].dot(ad_model.a[i][idir]));
       }
+      // nominal evaluation
+      QDDot[q_index] = (1./model.d[i]) * (model.u[i] - model.U[i].dot(model.a[i]));
 
-      model.a[i] = model.a[i] + (model.mCustomJoints[kI]->S * qdd_temp);
+      // derivative evaluation
+      for(unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.a[i][idir] = ad_model.a[i][idir] + model.S[i] * ad_QDDot(q_index, idir);
+      }
+      // nominal evaluation
+      model.a[i] = model.a[i] + model.S[i] * QDDot[q_index];
+    } else if (model.mJoints[i].mJointType == JointTypeCustom) {
+      std::cerr << "Custom joints not supported!" << std::endl;
+      abort();
     }
   }
 
