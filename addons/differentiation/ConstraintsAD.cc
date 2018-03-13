@@ -1298,7 +1298,7 @@ void ForwardDynamicsContactsKokkevis (
 
     unsigned int movable_body_id = 0;
     Vector3d point_global;
-    std::vec<SpatialTransform> ad_X_tmp = std::vec<SpatialTransform> (ndirs, SpatialTransform());
+    std::vector<SpatialTransform> ad_X_tmp(ndirs, SpatialTransform());
     SpatialTransform X_tmp;
     SpatialVector v_tmp;
 
@@ -1326,7 +1326,7 @@ void ForwardDynamicsContactsKokkevis (
         LOG << "point_global = " << point_global.transpose() << std::endl;
 
         // derivative evaluation
-        for (int idir = 0; idir < ndirs; ++idir)
+        for (unsigned idir = 0; idir < ndirs; ++idir)
         {
           ad_X_tmp[idir].E = Matrix3d::Zero();
           ad_X_tmp[idir].r = -ad_CS.point_global.col(idir);
@@ -1510,10 +1510,11 @@ void ForwardDynamicsContactsKokkevis (
       movable_body_id = model.mFixedBodies[fbody_id].mMovableParent;
     }
 
-    for (int idir = 0; idir < ndirs; ++idir)
+    for (unsigned idir = 0; idir < ndirs; ++idir)
     {
       ad_CS.f_ext_constraints[movable_body_id].col(idir) -=
-        ad_CS.f_t[ci].col(idir) * CS.force[ci] + CS.f_t[ci] * ad_CS.force[ci].col(idir);
+        ad_CS.f_t[ci].col(idir) * CS.force[ci]
+          + CS.f_t[ci] * ad_CS.force(ci, idir);
     }
 
     CS.f_ext_constraints[movable_body_id] -= CS.f_t[ci] * CS.force[ci];

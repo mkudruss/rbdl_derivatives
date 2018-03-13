@@ -513,16 +513,9 @@ inline void applyAdjointSTSV (
   for (unsigned idir = 0; idir < ndirs; idir++) {
     Vector3d En_rxf_dir = // if &res == &sv
         st_dirs[idir].E * n_rxf
-        + st.E * (
-          sv_dirs.col(idir).segment<3>(0)
-          - st.r.cross(sv_dirs.col(idir).segment<3>(3))
-          - st_dirs[idir].r.cross(sv.segment<3>(3))
-          );
+        + st.E * (- st_dirs[idir].r.cross(sv.segment<3>(3)));
 
-    res_dirs.col(idir).segment<3>(3) =
-        st_dirs[idir].E * sv.segment<3>(3)
-        + st.E * sv_dirs.col(idir).segment<3>(3);
-
+    res_dirs.col(idir).segment<3>(3) = st_dirs[idir].E * sv.segment<3>(3);
     res_dirs.col(idir).segment<3>(0) = En_rxf_dir;
   }
 

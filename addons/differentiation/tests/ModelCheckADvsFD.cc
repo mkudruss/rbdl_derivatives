@@ -173,7 +173,7 @@ void checkModelsADvsFD(
   // derivative check
   for (unsigned idir = 0; idir < ndirs; idir++) {
     for (unsigned i = 0; i < ad_model.a.size(); i++) {
-      CHECK_ARRAY_CLOSE(ad_d_model.a[i][idir].data(), fd_d_model.a[i][idir].data(), 6, 1e-5);
+      CHECK_ARRAY_CLOSE(ad_d_model.a[i][idir].data(), fd_d_model.a[i][idir].data(), 6, 1e-4);
     }
   }
 
@@ -185,7 +185,7 @@ void checkModelsADvsFD(
   // derivative check
   for (unsigned idir = 0; idir < ndirs; idir++) {
     for (unsigned i = 0; i < ad_model.pA.size(); i++) {
-      CHECK_ARRAY_CLOSE(ad_d_model.pA[i][idir].data(), fd_d_model.pA[i][idir].data(), 6, 1e-6);
+      CHECK_ARRAY_CLOSE(ad_d_model.pA[i][idir].data(), fd_d_model.pA[i][idir].data(), 6, 1e-4);
     }
   }
 
@@ -193,7 +193,7 @@ void checkModelsADvsFD(
   CHECK_EQUAL(ad_model.u.rows(), fd_model.u.rows());
   CHECK_ARRAY_CLOSE(ad_model.u.data(), fd_model.u.data(), ad_model.u.rows(), 1e-7);
   // derivative check
-  CHECK_ARRAY_CLOSE(ad_d_model.u.data(), fd_d_model.u.data(), ad_d_model.u.cols() * ad_model.u.rows(), 1e-6);
+  CHECK_ARRAY_CLOSE(ad_d_model.u.data(), fd_d_model.u.data(), ad_d_model.u.cols() * ad_model.u.rows(), 1e-4);
 
   // nominal check
   CHECK_EQUAL(ad_model.f.size(), fd_model.f.size());
