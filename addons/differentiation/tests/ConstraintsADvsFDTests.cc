@@ -334,7 +334,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsAccelerationDeltas) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
   ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
-  ForwardDynamicsAccelerationDeltasTemplate(*this, 1, 1e-4);
+  ForwardDynamicsAccelerationDeltasTemplate(*this, 1, 1e-6);
 }
 
 // -----------------------------------------------------------------------------
@@ -524,7 +524,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsContactsKokkevis) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
   ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
-  ForwardDynamicsContactsKokkevisTemplate(*this, 1, 1e-4);
+  ForwardDynamicsContactsKokkevisTemplate(*this, 1, 5e-5);
 }
 
 // -----------------------------------------------------------------------------

@@ -1443,6 +1443,7 @@ void ForwardDynamicsContactsKokkevis (
 
   }
 
+
   LOG << "K = " << std::endl << CS.K << std::endl;
   LOG << "a = " << std::endl << CS.a << std::endl;
 

@@ -1026,7 +1026,6 @@ void ForwardDynamicsApplyConstraintForces (
     // nominal code
     model.pA[i] = crossf(model.v[i], model.I[i] * model.v[i]);
 
-
     if (CS.f_ext_constraints[i] != SpatialVector::Zero()) {
       LOG << "External force (" << i << ") = " << model.X_base[i].toMatrixAdjoint() * CS.f_ext_constraints[i] << std::endl;
       addApplyAdjointSTSV(ndirs,
@@ -1331,6 +1330,7 @@ void ForwardDynamicsContactsKokkevis (
           ad_X_tmp[idir].E = Matrix3d::Zero();
           ad_X_tmp[idir].r = -ad_CS.point_global.col(idir);
         }
+        X_tmp.E = Matrix3d::Identity();
         X_tmp.r = -point_global;
         v_tmp = SpatialVector (
           0., 0., 0. , -CS.normal[ci][0], -CS.normal[ci][1], -CS.normal[ci][2]
@@ -1533,6 +1533,7 @@ void ForwardDynamicsContactsKokkevis (
 
   LOG << "QDDot after applying f_ext: " << qddot.transpose() << std::endl;
   return;
+
 }
 
 // -----------------------------------------------------------------------------
