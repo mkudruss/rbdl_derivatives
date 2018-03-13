@@ -1342,10 +1342,6 @@ void ForwardDynamicsContactsKokkevis (
           CS.f_t[ci],
           ad_CS.f_t[ci]
         );
-        // for (unsigned int idir = 0; idir < ndirs; ++idir) {
-        //   X_tmp.r = -ad_CS.point_global.col(idir);
-        //   ad_CS.f_t[ci].col(idir) = X_tmp.applyAdjoint(v_tmp);
-        // }
         ad_CS.f_ext_constraints[movable_body_id] = ad_CS.f_t[ci];
         // nominal evaluation
         // CS.f_t[ci] = X_tmp.applyAdjoint(v_tmp);
@@ -1512,6 +1508,12 @@ void ForwardDynamicsContactsKokkevis (
     if (model.IsFixedBodyId(body_id)) {
       unsigned int fbody_id = body_id - model.fixed_body_discriminator;
       movable_body_id = model.mFixedBodies[fbody_id].mMovableParent;
+    }
+
+    for (int idir = 0; idir < ndirs; ++idir)
+    {
+      ad_CS.f_ext_constraints[movable_body_id].col(idir) -=
+        ad_CS.f_t[ci].col(idir) * CS.force[ci] + CS.f_t[ci] * ad_CS.force[ci].col(idir);
     }
 
     CS.f_ext_constraints[movable_body_id] -= CS.f_t[ci] * CS.force[ci];
