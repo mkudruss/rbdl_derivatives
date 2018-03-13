@@ -1009,15 +1009,37 @@ void ForwardDynamicsApplyConstraintForces (
   LOG << "-------- " << __func__ << " --------" << std::endl;
   assert (QDDot.size() == model.dof_count);
 
+  const unsigned int ndirs = Tau_dirs.cols();
+  assert(ndirs == static_cast<unsigned>(Tau_dirs.cols()));
+  assert(ndirs == static_cast<unsigned>(ad_QDDot.cols()));
+
   unsigned int i = 0;
 
   for (i = 1; i < model.mBodies.size(); i++) {
-    model.IA[i] = model.I[i].toMatrix();;
-    model.pA[i] = crossf(model.v[i],model.I[i] * model.v[i]);
+    // derivative code
+    for (unsigned int idir = 0; idir < ndirs; idir++) {
+      ad_model.IA[i][idir].setZero();
+    }
+    // nominal code
+    model.IA[i] = model.I[i].toMatrix();
+
+    // derivative code
+    for (unsigned int idir = 0; idir < ndirs; idir++) {
+      ad_model.pA[i][idir] = crossf(ad_model.v[i][idir], model.I[i] * model.v[i])
+          + crossf(model.v[i], model.I[i] * ad_model.v[i][idir]);
+    }
+    // nominal code
+    model.pA[i] = crossf(model.v[i], model.I[i] * model.v[i]);
+
 
     if (CS.f_ext_constraints[i] != SpatialVector::Zero()) {
       LOG << "External force (" << i << ") = " << model.X_base[i].toMatrixAdjoint() * CS.f_ext_constraints[i] << std::endl;
-      model.pA[i] -= model.X_base[i].toMatrixAdjoint() * CS.f_ext_constraints[i];
+      addApplyAdjointSTSV(ndirs,
+                          -1.0,
+                          model.X_base[i], ad_model.X_base[i],
+                          CS.f_ext_constraints[i], ad_CS.f_ext_constraints[i],
+                          model.pA[i], ad_model.pA[i]);
+      //  model.pA[i] -= model.X_base[i].toMatrixAdjoint() * CS.f_ext_constraints[i];
     }
   }
 
@@ -1030,38 +1052,21 @@ void ForwardDynamicsApplyConstraintForces (
 
     if (model.mJoints[i].mDoFCount == 3
         && model.mJoints[i].mJointType != JointTypeCustom) {
-      unsigned int lambda = model.lambda[i];
-      model.multdof3_u[i] = Vector3d (Tau[q_index],
-          Tau[q_index + 1],
-          Tau[q_index + 2])
-        - model.multdof3_S[i].transpose() * model.pA[i];
-
-      if (lambda != 0) {
-        SpatialMatrix Ia = model.IA[i] - (model.multdof3_U[i]
-            * model.multdof3_Dinv[i]
-            * model.multdof3_U[i].transpose());
-
-        SpatialVector pa = model.pA[i] + Ia * model.c[i]
-          + model.multdof3_U[i] * model.multdof3_Dinv[i] * model.multdof3_u[i];
-
-#ifdef EIGEN_CORE_H
-        model.IA[lambda].noalias() += (model.X_lambda[i].toMatrixTranspose()
-            * Ia * model.X_lambda[i].toMatrix());
-        model.pA[lambda].noalias() += model.X_lambda[i].applyTranspose(pa);
-#else
-        model.IA[lambda] += (model.X_lambda[i].toMatrixTranspose()
-            * Ia * model.X_lambda[i].toMatrix());
-        model.pA[lambda] += model.X_lambda[i].applyTranspose(pa);
-#endif
-        LOG << "pA[" << lambda << "] = " << model.pA[lambda].transpose()
-          << std::endl;
-      }
+      std::cerr << "CUSTOM JOINTS NOT SUPPORTED!" << std::endl;
+      abort();
     } else if (model.mJoints[i].mDoFCount == 1
         && model.mJoints[i].mJointType != JointTypeCustom) {
+      // derivative code
+      for (unsigned int idir = 0; idir < ndirs; idir++) {
+        ad_model.u(i, idir) = Tau_dirs(q_index, idir) - model.S[i].dot(ad_model.pA[i][idir]);
+      }
+      // nominal code
       model.u[i] = Tau[q_index] - model.S[i].dot(model.pA[i]);
 
       unsigned int lambda = model.lambda[i];
       if (lambda != 0) {
+        vector<SpatialMatrix> ad_Ia(ndirs, SpatialMatrix::Zero());
+
         SpatialMatrix Ia = model.IA[i]
           - model.U[i] * (model.U[i] / model.d[i]).transpose();
         SpatialVector pa =  model.pA[i] + Ia * model.c[i]
