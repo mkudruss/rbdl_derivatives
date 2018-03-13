@@ -855,7 +855,7 @@ void ForwardDynamicsAccelerationDeltas (
             = ad_CS.d_pA[i].col(idir)
             + ad_model.U[i][idir] * CS.d_u[i] / model.d[i]
             + model.U[i] * ad_CS.d_u(i, idir) / model.d[i]
-            - model.U[i] * CS.d_u[i] / (ad_model.d(i, idir) * ad_model.d(i, idir))
+            - model.U[i] * CS.d_u[i] * ad_model.d(i, idir) / (model.d[i] * model.d[i]);
           ;
         }
         addApplyTransposeSTSV(
@@ -957,7 +957,7 @@ void ForwardDynamicsAccelerationDeltas (
           = (
             ad_CS.d_u(i, idir) - ad_model.U[i][idir].dot(Xa) - model.U[i].dot(ad_Xa[idir])
             ) / model.d[i]
-          - (CS.d_u[i] - model.U[i].dot(Xa) ) / (ad_model.d(i,idir) * ad_model.d(i,idir));
+          - (CS.d_u[i] - model.U[i].dot(Xa) ) * ad_model.d(i,idir) / (model.d[i] * model.d[i]);
         ad_CS.d_a[i].col(idir) = ad_Xa[idir] + model.S[i] * ad_QDDot_t(q_index, idir);
       }
 
