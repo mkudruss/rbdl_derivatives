@@ -275,9 +275,9 @@ void ForwardDynamicsAccelerationDeltasTemplate(
   MatrixNd tau_dirs = MatrixNd::Identity(nq, nq);
 
   std::vector<SpatialVector> f_t
-    = std::vector<SpatialVector> (cs.size(), SpatialVector::Random());
+    = std::vector<SpatialVector> (model.mBodies.size(), SpatialVector::Random());
   std::vector<MatrixNd> ad_f_t
-    = std::vector<MatrixNd> (cs.size(), SpatialMatrix::Random(6, ndirs));
+    = std::vector<MatrixNd> (model.mBodies.size(), SpatialMatrix::Random(6, ndirs));
 
   for (unsigned trial = 0; trial < trial_count; trial++) {
     VectorNd q = VectorNd::Random(nq);
