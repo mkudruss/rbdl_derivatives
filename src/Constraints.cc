@@ -408,7 +408,7 @@ void CalcConstraintsPositionError (
   Math::VectorNd& err,
   bool update_kinematics
   ) {
-  assert(err.size() == CS.size());
+  assert(static_cast<unsigned int> (err.size()) == CS.size());
 
   if(update_kinematics) {
     UpdateKinematicsCustom (model, &Q, NULL, NULL);
@@ -1076,7 +1076,7 @@ void ForwardDynamicsApplyConstraintForces (
       unsigned int lambda = model.lambda[i];
       VectorNd tau_temp = VectorNd::Zero(dofI);
 
-      for(int z=0; z<dofI;++z){
+      for(unsigned int z=0; z<dofI;++z){
         tau_temp[z] = Tau[q_index+z];
       }
 
@@ -1145,7 +1145,7 @@ void ForwardDynamicsApplyConstraintForces (
             - model.mCustomJoints[kI]->U.transpose()
             * model.a[i]);
 
-      for(int z=0; z<dofI;++z){
+      for(unsigned int z=0; z<dofI;++z){
         QDDot[q_index+z] = qdd_temp[z];
       }
 
@@ -1172,9 +1172,9 @@ void ForwardDynamicsAccelerationDeltas (
     ) {
   LOG << "-------- " << __func__ << " ------" << std::endl;
 
-  assert (CS.d_pA.size() == model.mBodies.size());
-  assert (CS.d_a.size() == model.mBodies.size());
-  assert (CS.d_u.size() == model.mBodies.size());
+  assert (static_cast<unsigned> (CS.d_pA.size()) == model.mBodies.size());
+  assert (static_cast<unsigned> (CS.d_a.size()) == model.mBodies.size());
+  assert (static_cast<unsigned> (CS.d_u.size()) == model.mBodies.size());
 
   // TODO reset all values (debug)
   for (unsigned int i = 0; i < model.mBodies.size(); i++) {
@@ -1217,7 +1217,7 @@ void ForwardDynamicsAccelerationDeltas (
     } else if (model.mJoints[i].mJointType == JointTypeCustom){
 
       unsigned int kI     = model.mJoints[i].custom_joint_index;
-      unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
+      // unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
       //CS.
       model.mCustomJoints[kI]->d_u =
         - model.mCustomJoints[kI]->S.transpose() * (CS.d_pA[i]);
@@ -1278,7 +1278,7 @@ void ForwardDynamicsAccelerationDeltas (
         * (model.mCustomJoints[kI]->d_u
             - model.mCustomJoints[kI]->U.transpose() * Xa);
 
-      for(int z=0; z<dofI;++z){
+      for(unsigned int z=0; z<dofI;++z){
         QDDot_t[q_index+z] = qdd_temp[z];
       }
 
@@ -1312,10 +1312,10 @@ void ForwardDynamicsContactsKokkevis (
   assert (CS.QDDot_t.size() == model.dof_count);
   assert (CS.f_t.size() == CS.size());
   assert (CS.point_accel_0.size() == CS.size());
-  assert (CS.K.rows() == CS.size());
-  assert (CS.K.cols() == CS.size());
-  assert (CS.force.size() == CS.size());
-  assert (CS.a.size() == CS.size());
+  assert (static_cast<unsigned> (CS.K.rows()) == CS.size());
+  assert (static_cast<unsigned> (CS.K.cols()) == CS.size());
+  assert (static_cast<unsigned> (CS.force.size()) == CS.size());
+  assert (static_cast<unsigned> (CS.a.size()) == CS.size());
 
   Vector3d point_accel_t;
 
@@ -1362,7 +1362,7 @@ void ForwardDynamicsContactsKokkevis (
   }
 
   // Now we can compute and apply the test forces and use their net effect
-  // to compute the inverse articlated inertia to fill K.
+  // to compute the inverse articulated inertia to fill K.
   for (ci = 0; ci < CS.size(); ci++) {
 
     LOG << "=== Testforce Loop Start ===" << std::endl;

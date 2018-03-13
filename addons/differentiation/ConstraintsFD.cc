@@ -278,6 +278,95 @@ void SolveConstrainedSystemDirect (
   }
 }
 
+RBDL_DLLAPI
+void ForwardDynamicsAccelerationDeltas (
+  Model &model, ADModel *fd_model,
+  ConstraintSet &cs, ADConstraintSet &ad_cs,
+  VectorNd &QDDot_t, MatrixNd &fd_QDDot_t,
+  const unsigned int body_id,
+  const std::vector<SpatialVector> &f_t,
+  const std::vector<MatrixNd> &f_t_dirs
+) {
+  const unsigned int ndirs = f_t_dirs.size();
+
+  double const h = 1e-8;
+  ConstraintSet const cs_in = cs;
+
+  ForwardDynamicsAccelerationDeltas (model, cs, QDDot_t, body_id, f_t);
+
+  std::vector<SpatialVector> f_t_h (f_t.size(), SpatialVector::Zero());
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    for (unsigned i = 0; i < f_t.size(); ++i)
+    {
+      f_t_h[i] = f_t[i] + h * f_t_dirs[i].col(idir);
+    }
+
+    Model *modelh;
+    if (fd_model) {
+      modelh = new Model(model);
+    } else {
+      modelh = &model;
+    }
+    ConstraintSet csh = cs_in;
+
+    VectorNd QDDot_t_h (QDDot_t);
+    ForwardDynamicsAccelerationDeltas (model, csh, QDDot_t_h, body_id, f_t_h);
+
+    fd_QDDot_t.col(idir) = (QDDot_t_h - QDDot_t) / h;
+    // TODO add pointer arithmetic for fd_cs
+    // computeFDEntry(cs, csh, h, idir, fd_cs);
+
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
+  }
+}
+
+RBDL_DLLAPI
+void ForwardDynamicsApplyConstraintForces (
+    Model &model,
+    ADModel *fd_model,
+    const VectorNd &tau,
+    const MatrixNd &tau_dirs,
+    ConstraintSet &cs,
+    ADConstraintSet &ad_cs,
+    VectorNd &qddot,
+    MatrixNd &fd_qddot
+) {
+  unsigned const ndirs = tau_dirs.cols();
+  assert(ndirs == tau_dirs.cols());
+  assert(ndirs == fd_qddot.cols());
+
+  double const h = 1e-8;
+  ConstraintSet const cs_in = cs;
+
+  ForwardDynamicsApplyConstraintForces (model, tau, cs, qddot);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    VectorNd tauh  = tau + h * tau_dirs.col(idir);
+    VectorNd qddoth (qddot);
+
+    Model *modelh;
+    if (fd_model) {
+      modelh = new Model(model);
+    } else {
+      modelh = &model;
+    }
+    ConstraintSet csh = cs_in;
+
+    ForwardDynamicsApplyConstraintForces (*modelh, tauh, cs, qddoth);
+
+    fd_qddot.col(idir) = (qddoth - qddot) / h;
+    // TODO add pointer arithmetic for fd_cs
+    // computeFDEntry(cs, csh, h, idir, fd_cs);
+
+    if (fd_model) {
+      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      delete modelh;
+    }
+  }
+}
 
 RBDL_DLLAPI
 void ForwardDynamicsContactsKokkevis (

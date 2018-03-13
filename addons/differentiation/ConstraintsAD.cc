@@ -767,12 +767,6 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
   CS.force    = -CS.x.segment(model.dof_count, CS.size());
 }
 
-/** \brief Computes the effect of external forces on the generalized accelerations.
- *
- * This function is essentially similar to ForwardDynamics() except that it
- * tries to only perform computations of variables that change due to
- * external forces defined in f_t.
- */
 RBDL_DLLAPI
 void ForwardDynamicsAccelerationDeltas (
     Model &model,
@@ -906,13 +900,6 @@ void ForwardDynamicsAccelerationDeltas (
   }
 }
 
-/** \brief Compute only the effects of external forces on the generalized accelerations
- *
- * This function is a reduced version of ForwardDynamics() which only
- * computes the effects of the external forces on the generalized
- * accelerations.
- *
- */
 RBDL_DLLAPI
 void ForwardDynamicsApplyConstraintForces (
     Model &model,

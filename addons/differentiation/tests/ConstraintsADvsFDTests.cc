@@ -241,6 +241,166 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsConstraintsDirect) {
 // -----------------------------------------------------------------------------
 
 template <typename T>
+void ForwardDynamicsAccelerationDeltasTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec
+) {
+  Model   model    = obj.model;
+  Model   ad_model = obj.model;
+  Model   fd_model = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
+
+  ConstraintSet cs = obj.constraint_set;
+  ConstraintSet ad_cs = obj.constraint_set;
+  ConstraintSet fd_cs = obj.constraint_set;
+  ADConstraintSet ad_d_cs = obj.ad_constraint_set;
+  ADConstraintSet fd_d_cs = obj.ad_constraint_set;
+
+  // set up input quantities
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
+
+  VectorNd qdd    = VectorNd::Zero(nq);
+  VectorNd ad_qdd = VectorNd::Zero(nq);
+  VectorNd fd_qdd = VectorNd::Zero(nq);
+  MatrixNd ad_qdd_dirs = MatrixNd::Zero(nq, nq);
+  MatrixNd fd_qdd_dirs = MatrixNd::Zero(nq, nq);
+
+  MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+  MatrixNd qd_dirs = MatrixNd::Identity(nq, nq);
+  MatrixNd tau_dirs = MatrixNd::Identity(nq, nq);
+
+  std::vector<SpatialVector> f_t
+    = std::vector<SpatialVector> (cs.size(), SpatialVector::Random());
+  std::vector<MatrixNd> ad_f_t
+    = std::vector<MatrixNd> (cs.size(), SpatialMatrix::Random(6, ndirs));
+
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    VectorNd q = VectorNd::Random(nq);
+    VectorNd qd = VectorNd::Random(nq);
+    VectorNd tau = VectorNd::Random(nq);
+
+    AD::ForwardDynamicsAccelerationDeltas (
+          ad_model, ad_d_model,
+          ad_cs, ad_d_cs,
+          ad_qdd, ad_qdd_dirs,
+          obj.contact_body_id,
+          f_t, ad_f_t
+    );
+
+    FD::ForwardDynamicsAccelerationDeltas (
+          fd_model, &fd_d_model,
+          fd_cs, fd_d_cs,
+          fd_qdd, fd_qdd_dirs,
+          obj.contact_body_id,
+          f_t, ad_f_t
+    );
+
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+    // checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
+
+    CHECK_ARRAY_CLOSE(ad_qdd.data(), fd_qdd.data(), nq, array_close_prec);
+    CHECK_ARRAY_CLOSE(ad_qdd_dirs.data(), fd_qdd_dirs.data(), nq*nq,
+                      array_close_prec);
+
+    q_dirs.setRandom();
+    qd_dirs.setRandom();
+    tau_dirs.setRandom();
+  }
+}
+
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsAccelerationDeltas) {
+  // add contacts and bind them to constraint set
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+  constraint_set.Bind (model);
+  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
+  ForwardDynamicsAccelerationDeltasTemplate(*this, 1, 1e-4);
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename T>
+void ForwardDynamicsApplyConstraintForcesTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec
+) {
+  Model   model    = obj.model;
+  Model   ad_model = obj.model;
+  Model   fd_model = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  ADModel fd_d_model = obj.ad_model;
+
+  ConstraintSet cs = obj.constraint_set;
+  ConstraintSet ad_cs = obj.constraint_set;
+  ConstraintSet fd_cs = obj.constraint_set;
+  ADConstraintSet ad_d_cs = obj.ad_constraint_set;
+  ADConstraintSet fd_d_cs = obj.ad_constraint_set;
+
+  // set up input quantities
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
+
+  VectorNd qdd    = VectorNd::Zero(nq);
+  VectorNd ad_qdd = VectorNd::Zero(nq);
+  VectorNd fd_qdd = VectorNd::Zero(nq);
+  MatrixNd ad_qdd_dirs = MatrixNd::Zero(nq, nq);
+  MatrixNd fd_qdd_dirs = MatrixNd::Zero(nq, nq);
+
+  MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+  MatrixNd qd_dirs = MatrixNd::Identity(nq, nq);
+  MatrixNd tau_dirs = MatrixNd::Identity(nq, nq);
+
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    VectorNd q = VectorNd::Random(nq);
+    VectorNd qd = VectorNd::Random(nq);
+    VectorNd tau = VectorNd::Random(nq);
+
+    ForwardDynamicsApplyConstraintForces(model, tau, cs, qdd);
+
+    AD::ForwardDynamicsApplyConstraintForces(
+      ad_model, ad_d_model,
+      tau, tau_dirs,
+      ad_cs, ad_d_cs,
+      ad_qdd, ad_qdd_dirs
+    );
+
+    FD::ForwardDynamicsApplyConstraintForces(
+      fd_model, &fd_d_model,
+      tau, tau_dirs,
+      fd_cs, fd_d_cs,
+      fd_qdd, fd_qdd_dirs
+    );
+
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+    // checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
+
+    CHECK_ARRAY_CLOSE(qdd.data(), ad_qdd.data(), nq, array_close_prec);
+    CHECK_ARRAY_CLOSE(qdd.data(), fd_qdd.data(), nq, array_close_prec);
+    CHECK_ARRAY_CLOSE(ad_qdd_dirs.data(), fd_qdd_dirs.data(), nq*nq,
+                      array_close_prec);
+
+    q_dirs.setRandom();
+    qd_dirs.setRandom();
+    tau_dirs.setRandom();
+  }
+}
+
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsApplyConstraintForces) {
+  // add contacts and bind them to constraint set
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+  constraint_set.Bind (model);
+  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
+  ForwardDynamicsApplyConstraintForcesTemplate(*this, 1, 1e-4);
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename T>
 void ForwardDynamicsContactsKokkevisTemplate(
     T & obj,
     unsigned trial_count,

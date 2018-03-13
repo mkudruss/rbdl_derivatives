@@ -106,6 +106,44 @@ void SolveConstrainedSystemDirect (
     int ndirs
 );
 
+/** \brief Computes the effect of external forces on the generalized accelerations.
+ *
+ * This function is essentially similar to ForwardDynamics() except that it
+ * tries to only perform computations of variables that change due to
+ * external forces defined in f_t.
+ */
+RBDL_DLLAPI
+void ForwardDynamicsAccelerationDeltas (
+    Model &model,
+    ADModel *fd_model,
+    ConstraintSet &CS,
+    ADConstraintSet &ad_CS,
+    Math::VectorNd &QDDot_t,
+    Math::MatrixNd &ad_QDDot_t,
+    const unsigned int body_id,
+    const std::vector<Math::SpatialVector> &f_t,
+    const std::vector<Math::MatrixNd> &ad_f_t
+);
+
+/** \brief Compute only the effects of external forces on the generalized accelerations
+ *
+ * This function is a reduced version of ForwardDynamics() which only
+ * computes the effects of the external forces on the generalized
+ * accelerations.
+ *
+ */
+RBDL_DLLAPI
+void ForwardDynamicsApplyConstraintForces (
+    Model &model,
+    ADModel *fd_model,
+    const Math::VectorNd &Tau,
+    const Math::MatrixNd &Tau_dirs,
+    ConstraintSet &CS,
+    ADConstraintSet &ad_CS,
+    Math::VectorNd &QDDot,
+    Math::MatrixNd &ad_QDDot
+);
+
 RBDL_DLLAPI
 void ForwardDynamicsContactsKokkevis (
   Model &model,

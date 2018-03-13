@@ -146,22 +146,6 @@ void ForwardDynamicsContactsNullSpace (
 */
 
 RBDL_DLLAPI
-void ForwardDynamicsContactsKokkevis (
-    Model   & model,
-    ADModel & ad_model,
-    const Math::VectorNd & q,
-    const Math::MatrixNd & q_dirs,
-    const Math::VectorNd & qdot,
-    const Math::MatrixNd & qdot_dirs,
-    const Math::VectorNd & tau,
-    const Math::MatrixNd & tau_dirs,
-    ConstraintSet   & CS,
-    ADConstraintSet & ad_CS,
-    Math::VectorNd  & qddot,
-    Math::MatrixNd  & ad_qddot
-				);
-
-RBDL_DLLAPI
 void ComputeConstraintImpulsesDirect(
 		Model & model,
 		ADModel & ad_model,
@@ -245,6 +229,60 @@ void SolveContactSystemNullSpace (
 				Math::LinearSolver &linear_solver
 				);
 */
+
+/** \brief Computes the effect of external forces on the generalized accelerations.
+ *
+ * This function is essentially similar to ForwardDynamics() except that it
+ * tries to only perform computations of variables that change due to
+ * external forces defined in f_t.
+ */
+RBDL_DLLAPI
+void ForwardDynamicsAccelerationDeltas (
+    Model &model,
+    ADModel &ad_model,
+    ConstraintSet &CS,
+    ADConstraintSet &ad_CS,
+    Math::VectorNd &QDDot_t,
+    Math::MatrixNd &ad_QDDot_t,
+    const unsigned int body_id,
+    const std::vector<Math::SpatialVector> &f_t,
+    const std::vector<Math::MatrixNd> &ad_f_t
+);
+
+/** \brief Compute only the effects of external forces on the generalized accelerations
+ *
+ * This function is a reduced version of ForwardDynamics() which only
+ * computes the effects of the external forces on the generalized
+ * accelerations.
+ *
+ */
+RBDL_DLLAPI
+void ForwardDynamicsApplyConstraintForces (
+    Model &model,
+    ADModel &ad_model,
+    const Math::VectorNd &Tau,
+    const Math::MatrixNd &Tau_dirs,
+    ConstraintSet &CS,
+    ADConstraintSet &ad_CS,
+    Math::VectorNd &QDDot,
+    Math::MatrixNd &ad_QDDot
+);
+
+RBDL_DLLAPI
+void ForwardDynamicsContactsKokkevis (
+  Model   & model,
+  ADModel & ad_model,
+  const Math::VectorNd & q,
+  const Math::MatrixNd & q_dirs,
+  const Math::VectorNd & qdot,
+  const Math::MatrixNd & qdot_dirs,
+  const Math::VectorNd & tau,
+  const Math::MatrixNd & tau_dirs,
+  ConstraintSet   & CS,
+  ADConstraintSet & ad_CS,
+  Math::VectorNd  & qddot,
+  Math::MatrixNd  & ad_qddot
+);
 
 // -----------------------------------------------------------------------------
 } // namespace AD
