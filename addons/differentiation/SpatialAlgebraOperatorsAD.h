@@ -201,7 +201,8 @@ inline void applyTransposeSTSV (
     SpatialVector const & sv,
     std::vector<SpatialVector> const & sv_dirs,
     SpatialVector & res,
-    std::vector<SpatialVector> & res_dirs) {
+    std::vector<SpatialVector> & res_dirs
+) {
   assert(ndirs <= st_dirs.size());
   assert(ndirs <= sv_dirs.size());
   assert(ndirs <= res_dirs.size());

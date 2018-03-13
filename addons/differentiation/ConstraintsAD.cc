@@ -788,61 +788,115 @@ void ForwardDynamicsAccelerationDeltas (
   assert (CS.d_a.size() == model.mBodies.size());
   assert (CS.d_u.size() == model.mBodies.size());
 
+  const unsigned ndirs = ad_QDDot_t.cols();
+  ad_model.resize_directions(ndirs);
+  ad_CS.resize_directions(ndirs);
+
   // TODO reset all values (debug)
   for (unsigned int i = 0; i < model.mBodies.size(); i++) {
+    for (unsigned int idir = 0; idir < ndirs; ++idir)
+    {
+      ad_CS.d_pA[i].setZero();
+      ad_CS.d_a[i].setZero();
+      ad_CS.d_u.setZero();
+      ad_CS.d_multdof3_u[i].setZero();
+    }
     CS.d_pA[i].setZero();
     CS.d_a[i].setZero();
     CS.d_u[i] = 0.;
     CS.d_multdof3_u[i].setZero();
   }
   for(unsigned int i=0; i<model.mCustomJoints.size();i++){
+    // TODO expose in ADModel
     model.mCustomJoints[i]->d_u.setZero();
   }
 
   for (unsigned int i = body_id; i > 0; i--) {
     if (i == body_id) {
+      // derivative evaluation
+      for (unsigned int idir = 0; idir < ndirs; ++idir)
+      {
+        ad_CS.d_pA[i].col(idir) = -model.X_base[i].applyAdjoint(f_t_dirs[i].col(idir));
+      }
+      // nominal evaluation
       CS.d_pA[i] = -model.X_base[i].applyAdjoint(f_t[i]);
     }
 
     if (model.mJoints[i].mDoFCount == 3
         && model.mJoints[i].mJointType != JointTypeCustom) {
-      CS.d_multdof3_u[i] = - model.multdof3_S[i].transpose() * (CS.d_pA[i]);
+      cerr << __FILE__ << " " << __LINE__
+           << ": multi-dof joints not supported." << endl;
+      abort();
 
-      unsigned int lambda = model.lambda[i];
-      if (lambda != 0) {
-        CS.d_pA[lambda] =   CS.d_pA[lambda]
-          + model.X_lambda[i].applyTranspose (
-              CS.d_pA[i] + (model.multdof3_U[i]
-                * model.multdof3_Dinv[i]
-                * CS.d_multdof3_u[i]));
-      }
+      // CS.d_multdof3_u[i] = - model.multdof3_S[i].transpose() * (CS.d_pA[i]);
+
+      // unsigned int lambda = model.lambda[i];
+      // if (lambda != 0) {
+      //   CS.d_pA[lambda] =   CS.d_pA[lambda]
+      //     + model.X_lambda[i].applyTranspose (
+      //         CS.d_pA[i] + (model.multdof3_U[i]
+      //           * model.multdof3_Dinv[i]
+      //           * CS.d_multdof3_u[i]));
+      // }
     } else if(model.mJoints[i].mDoFCount == 1
         && model.mJoints[i].mJointType != JointTypeCustom) {
+
+      // derivative evaluation
+      for (unsigned int idir = 0; idir < ndirs; ++idir)
+      {
+        ad_CS.d_u[i].col(idir) = - model.S[i].dot(ad_CS.d_pA[i].col(idir));
+      }
+      // nominal evaluation
       CS.d_u[i] = - model.S[i].dot(CS.d_pA[i]);
       unsigned int lambda = model.lambda[i];
 
       if (lambda != 0) {
-        CS.d_pA[lambda] = CS.d_pA[lambda]
-          + model.X_lambda[i].applyTranspose (
-              CS.d_pA[i] + model.U[i] * CS.d_u[i] / model.d[i]);
+        // derivative evaluation
+        MatrixNd temp_dirs = MatrixNd::Zero(6, ndirs);
+        for (unsigned int idir = 0; idir < ndirs; ++idir)
+        {
+          temp_dirs.col(idir)
+            = ad_CS.d_pA[i].col(idir)
+            + ad_model.U[i][idir] * CS.d_u[i] / model.d[i]
+            + model.U[i] * ad_CS.d_u[i].col(idir) / model.d[i]
+            - model.U[i] * CS.d_u[i] / (ad_model.d(i, idir) * ad_model.d(i, idir))
+          ;
+        }
+        addApplyTransposeSTSV(
+          ndirs,
+          1.0,
+          // SpatialTransform X, X_dirs
+          model.X_lambda[i], ad_model.X_lambda[i],
+          // SpatialVector v, v_dirs
+          CS.d_pA[i] + model.U[i] * CS.d_u[i] / model.d[i], temp_dirs,
+          // res, res_dirs
+          CS.d_pA[lambda], ad_CS.d_pA[lambda]
+        );
+        // nominal evaluation
+        CS.d_pA[lambda] += model.X_lambda[i].applyTranspose (
+              CS.d_pA[i] + model.U[i] * CS.d_u[i] / model.d[i]
+        );
       }
     } else if (model.mJoints[i].mJointType == JointTypeCustom){
+      cerr << __FILE__ << " " << __LINE__
+           << ": Custom joints not supported." << endl;
+      abort();
 
-      unsigned int kI     = model.mJoints[i].custom_joint_index;
-      // unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
-      //CS.
-      model.mCustomJoints[kI]->d_u =
-        - model.mCustomJoints[kI]->S.transpose() * (CS.d_pA[i]);
-      unsigned int lambda = model.lambda[i];
-      if (lambda != 0) {
-        CS.d_pA[lambda] =
-          CS.d_pA[lambda]
-          + model.X_lambda[i].applyTranspose (
-              CS.d_pA[i] + (   model.mCustomJoints[kI]->U
-                * model.mCustomJoints[kI]->Dinv
-                * model.mCustomJoints[kI]->d_u)
-              );
-      }
+      // unsigned int kI     = model.mJoints[i].custom_joint_index;
+      // // unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
+      // //CS.
+      // model.mCustomJoints[kI]->d_u =
+      //   - model.mCustomJoints[kI]->S.transpose() * (CS.d_pA[i]);
+      // unsigned int lambda = model.lambda[i];
+      // if (lambda != 0) {
+      //   CS.d_pA[lambda] =
+      //     CS.d_pA[lambda]
+      //     + model.X_lambda[i].applyTranspose (
+      //         CS.d_pA[i] + (   model.mCustomJoints[kI]->U
+      //           * model.mCustomJoints[kI]->Dinv
+      //           * model.mCustomJoints[kI]->d_u)
+      //         );
+      // }
     }
   }
 
@@ -857,45 +911,83 @@ void ForwardDynamicsAccelerationDeltas (
     LOG << "i = " << i << ": d_u[i] = " << CS.d_u[i] << std::endl;
   }
 
+  // derivative evaluation
+  ad_QDDot_t.row(0).setZero();
+  for (unsigned int idir = 0; idir < ndirs; ++idir)
+  {
+    ad_CS.d_a[0].col(idir) = model.a[0][idir];
+  }
+  std::vector<SpatialVector> ad_Xa
+    = std::vector<SpatialVector> (ndirs, SpatialVector::Zero ());
+  // nominal evaluation
   QDDot_t[0] = 0.;
   CS.d_a[0] = model.a[0];
+  SpatialVector Xa;
 
   for (unsigned int i = 1; i < model.mBodies.size(); i++) {
     unsigned int q_index = model.mJoints[i].q_index;
     unsigned int lambda = model.lambda[i];
 
-    SpatialVector Xa = model.X_lambda[i].apply(CS.d_a[lambda]);
+    // derivative evaluation
+    applySTSV(
+      ndirs,
+      model.X_lambda[i], ad_model.X_lambda[i],
+      CS.d_a[lambda], ad_CS.d_a[lambda],
+      Xa, ad_Xa
+    );
+    // nominal evaluation
+    // SpatialVector Xa = model.X_lambda[i].apply(CS.d_a[lambda]);
 
     if (model.mJoints[i].mDoFCount == 3
         && model.mJoints[i].mJointType != JointTypeCustom) {
-      Vector3d qdd_temp = model.multdof3_Dinv[i]
-        * (CS.d_multdof3_u[i] - model.multdof3_U[i].transpose() * Xa);
+      cerr << __FILE__ << " " << __LINE__
+           << ": multi-dof joints not supported." << endl;
+      abort();
 
-      QDDot_t[q_index] = qdd_temp[0];
-      QDDot_t[q_index + 1] = qdd_temp[1];
-      QDDot_t[q_index + 2] = qdd_temp[2];
-      model.a[i] = model.a[i] + model.multdof3_S[i] * qdd_temp;
-      CS.d_a[i] = Xa + model.multdof3_S[i] * qdd_temp;
+      // Vector3d qdd_temp = model.multdof3_Dinv[i]
+      //   * (CS.d_multdof3_u[i] - model.multdof3_U[i].transpose() * Xa);
+
+      // QDDot_t[q_index] = qdd_temp[0];
+      // QDDot_t[q_index + 1] = qdd_temp[1];
+      // QDDot_t[q_index + 2] = qdd_temp[2];
+      // model.a[i] = model.a[i] + model.multdof3_S[i] * qdd_temp;
+      // CS.d_a[i] = Xa + model.multdof3_S[i] * qdd_temp;
     } else if (model.mJoints[i].mDoFCount == 1
         && model.mJoints[i].mJointType != JointTypeCustom){
+      // derivative evaluation
+      for (unsigned int idir = 0; idir < ndirs; ++idir)
+      {
+        ad_QDDot_t(q_index, idir)
+          = (
+              ad_CS.d_u(i, idir) - ad_model.U[i][idir].dot(Xa)
+              - model.U[i].dot(ad_Xa[idir])
+          ) / model.d[i];
+          - (CS.d_u[i] - model.U[i].dot(Xa) ) / (ad_model.d[i] * ad_model.d[i]);
+        ad_CS.d_a[i].col(idir) = ad_Xa[idir] + model.S[i] * ad_QDDot_t(q_index, idir);
+      }
 
+      // nominal evaluation
       QDDot_t[q_index] = (CS.d_u[i] - model.U[i].dot(Xa) ) / model.d[i];
       CS.d_a[i] = Xa + model.S[i] * QDDot_t[q_index];
     } else if (model.mJoints[i].mJointType == JointTypeCustom){
-      unsigned int kI     = model.mJoints[i].custom_joint_index;
-      unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
-      VectorNd qdd_temp = VectorNd::Zero(dofI);
+      cerr << __FILE__ << " " << __LINE__
+           << ": Custom joints not supported." << endl;
+      abort();
 
-      qdd_temp = model.mCustomJoints[kI]->Dinv
-        * (model.mCustomJoints[kI]->d_u
-            - model.mCustomJoints[kI]->U.transpose() * Xa);
+      // unsigned int kI     = model.mJoints[i].custom_joint_index;
+      // unsigned int dofI   = model.mCustomJoints[kI]->mDoFCount;
+      // VectorNd qdd_temp = VectorNd::Zero(dofI);
 
-      for(unsigned int z=0; z<dofI;++z){
-        QDDot_t[q_index+z] = qdd_temp[z];
-      }
+      // qdd_temp = model.mCustomJoints[kI]->Dinv
+      //   * (model.mCustomJoints[kI]->d_u
+      //       - model.mCustomJoints[kI]->U.transpose() * Xa);
 
-      model.a[i] = model.a[i] + model.mCustomJoints[kI]->S * qdd_temp;
-      CS.d_a[i] = Xa + model.mCustomJoints[kI]->S * qdd_temp;
+      // for(unsigned int z=0; z<dofI;++z){
+      //   QDDot_t[q_index+z] = qdd_temp[z];
+      // }
+
+      // model.a[i] = model.a[i] + model.mCustomJoints[kI]->S * qdd_temp;
+      // CS.d_a[i] = Xa + model.mCustomJoints[kI]->S * qdd_temp;
     }
 
     LOG << "QDDot_t[" << i - 1 << "] = " << QDDot_t[i - 1] << std::endl;
