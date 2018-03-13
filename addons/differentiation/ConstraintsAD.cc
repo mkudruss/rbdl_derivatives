@@ -857,7 +857,7 @@ void ForwardDynamicsAccelerationDeltas (
             = ad_CS.d_pA[i].col(idir)
             + ad_model.U[i][idir] * CS.d_u[i] / model.d[i]
             + model.U[i] * ad_CS.d_u(i, idir) / model.d[i]
-            - model.U[i] * CS.d_u[i] / (ad_model.d(i, idir) * ad_model.d(i, idir))
+            - model.U[i] * CS.d_u[i] * ad_model.d(i, idir) / (model.d[i] * model.d[i]);
           ;
         }
         addApplyTransposeSTSV(
@@ -898,8 +898,6 @@ void ForwardDynamicsAccelerationDeltas (
     }
   }
 
-//  std::cout << "DER " << CS.d_u.transpose() << std::endl;
-
   for (unsigned int i = 0; i < f_t.size(); i++) {
     LOG << "f_t[" << i << "] = " << f_t[i].transpose() << std::endl;
   }
@@ -928,8 +926,6 @@ void ForwardDynamicsAccelerationDeltas (
     unsigned int q_index = model.mJoints[i].q_index;
     unsigned int lambda = model.lambda[i];
 
-//    std::cout << i << " " << lambda << " CS d_a DER " << CS.d_a[lambda].transpose() << std::endl;
-//    std::cout << i << " Xa DER A " << model.X_lambda[i].apply(CS.d_a[lambda]).transpose() << std::endl;
     // derivative evaluation
     applySTSV(
       ndirs,
@@ -937,8 +933,6 @@ void ForwardDynamicsAccelerationDeltas (
       CS.d_a[lambda], ad_CS.d_a[lambda],
       Xa, ad_Xa
     );
-//    std::cout << i << " Xa DER B " << Xa.transpose() << std::endl;
-
     // nominal evaluation
     // SpatialVector Xa = model.X_lambda[i].apply(CS.d_a[lambda]);
 
@@ -965,16 +959,12 @@ void ForwardDynamicsAccelerationDeltas (
           = (
             ad_CS.d_u(i, idir) - ad_model.U[i][idir].dot(Xa) - model.U[i].dot(ad_Xa[idir])
             ) / model.d[i]
-          - (CS.d_u[i] - model.U[i].dot(Xa) ) / (ad_model.d(i,idir) * ad_model.d(i,idir));
+          - (CS.d_u[i] - model.U[i].dot(Xa) ) * ad_model.d(i,idir) / (model.d[i] * model.d[i]);
         ad_CS.d_a[i].col(idir) = ad_Xa[idir] + model.S[i] * ad_QDDot_t(q_index, idir);
       }
 
       // nominal evaluation
       QDDot_t[q_index] = (CS.d_u[i] - model.U[i].dot(Xa) ) / model.d[i];
-
-//      std::cout << i << "DER : Xa " << Xa.transpose() << std::endl;
-//      std::cout << i << "DER : model.S[i] " << model.S[i].transpose() << std::endl;
-//      std::cout << i << "DER : QDDot_t[q_index] " << QDDot_t[q_index] << std::endl;
       CS.d_a[i] = Xa + model.S[i] * QDDot_t[q_index];
     } else if (model.mJoints[i].mJointType == JointTypeCustom){
       cerr << __FILE__ << " " << __LINE__
