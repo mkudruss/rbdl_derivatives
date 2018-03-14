@@ -887,7 +887,7 @@ bool InverseKinematics (
 
     double Ek = 0.;
 
-    for (size_t ei = 0; ei < CS.e.size(); ei ++) {
+    for (int ei = 0; ei < CS.e.size(); ei ++) {
       Ek += CS.e[ei] * CS.e[ei] * 0.5;
     }
 
@@ -896,7 +896,7 @@ bool InverseKinematics (
 
     assert (ek.size() == Qres.size());
 
-    for (size_t wi = 0; wi < Qres.size(); wi++) {
+    for (int wi = 0; wi < Qres.size(); wi++) {
       Wn(wi, wi) = ek[wi] * ek[wi] * 0.5 + CS.damper;
       // Wn(wi, wi) = Ek + 1.0e-3;
     }
