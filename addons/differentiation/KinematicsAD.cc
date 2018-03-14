@@ -609,7 +609,7 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
   LOG << "-------- " << __func__ << " --------" << std::endl;
 
   int const ndirs = q_dirs.cols();
-  assert(ndirs == ad_derivative.cols());
+//  assert(ndirs == ad_derivative.cols());
   assert(3     == ad_derivative.rows());
 
   ad_model.resize_directions(ndirs);

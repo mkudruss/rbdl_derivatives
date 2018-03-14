@@ -1257,7 +1257,7 @@ void ForwardDynamicsContactsKokkevis (
       {
         SUPPRESS_LOGGING;
         // derivative and nominal code
-        ad_CS.point_accel_0[ci] = ad_CS.point_accel_0[ci].leftCols(ndirs).eval();
+//        ad_CS.point_accel_0[ci] = ad_CS.point_accel_0[ci].leftCols(ndirs).eval();
         CS.point_accel_0[ci] = AD::CalcPointAcceleration (
           model, ad_model,
           q, q_dirs,
@@ -1397,7 +1397,7 @@ void ForwardDynamicsContactsKokkevis (
         }
 
         // resize matrix once
-        ad_CS.point_accel_t = ad_CS.point_accel_t.leftCols(ndirs).eval();
+//        ad_CS.point_accel_t = ad_CS.point_accel_t.leftCols(ndirs).eval();
         for(unsigned int cj = 0; cj < CS.size(); cj++)
         {
           { SUPPRESS_LOGGING;
