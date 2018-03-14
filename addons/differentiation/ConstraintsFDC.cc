@@ -131,6 +131,73 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
   }
 }
 
+RBDL_DLLAPI void ForwardDynamicsContactsKokkevis (
+  Model &model,
+  ADModel *fd_model,
+  const VectorNd &q,
+  const MatrixNd &q_dirs,
+  const VectorNd &qdot,
+  const MatrixNd &qdot_dirs,
+  const VectorNd &tau,
+  const MatrixNd &tau_dirs,
+  ConstraintSet   &cs,
+  ADConstraintSet &fd_cs,
+  VectorNd  &qddot,
+  MatrixNd  &fd_qddot
+) {
+  unsigned const ndirs = q_dirs.cols();
+  assert(ndirs == qdot_dirs.cols());
+  assert(ndirs == tau_dirs.cols());
+  assert(ndirs == fd_qddot.cols());
+
+  ConstraintSet const cs_in = cs;
+
+  ForwardDynamicsContactsKokkevis(model, q, qdot, tau, cs, qddot);
+
+  // temporary variables
+  VectorNd qddotph (qddot);
+  VectorNd qddotmh (qddot);
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Model * modelh;
+    if (fd_model) {
+      modelh = new Model(model);
+    } else {
+      modelh = &model;
+    }
+
+    ConstraintSet csh = cs_in;
+
+    ForwardDynamicsContactsKokkevis(
+      *modelh,
+      q + EPS * q_dirs.col(idir),
+      qdot + EPS * qdot_dirs.col(idir),
+      tau + EPS * tau_dirs.col(idir),
+      csh,
+      qddotph
+    );
+
+    ForwardDynamicsContactsKokkevis(
+      *modelh,
+      q - EPS * q_dirs.col(idir),
+      qdot - EPS * qdot_dirs.col(idir),
+      tau - EPS * tau_dirs.col(idir),
+      csh,
+      qddotmh
+    );
+
+    fd_qddot.col(idir) = (qddotph - qddotmh) / EPSx2;
+
+    // TODO add pointer arithmetic for fd_cs
+    // computeFDEntry(cs, csh, EPS, idir, fd_cs);
+
+    if (fd_model) {
+      computeFDEntry(model, *modelh, EPS, idir, *fd_model);
+      delete modelh;
+    }
+  }
+}
+
 RBDL_DLLAPI void CalcConstraintsJacobian(
     Model & model,
     ADModel * fd_model,
