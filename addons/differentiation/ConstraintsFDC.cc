@@ -131,7 +131,7 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
   }
 }
 
-RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
+RBDL_DLLAPI void ForwardDynamicsContactsKokkevis (
   Model &model,
   ADModel *fd_model,
   const VectorNd &q,
