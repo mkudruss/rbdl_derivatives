@@ -106,6 +106,21 @@ void SolveConstrainedSystemDirect (
     int ndirs
 );
 
+RBDL_DLLAPI
+void ForwardDynamicsContactsKokkevis (
+  Model &model,
+  ADModel *fd_model,
+  const Math::VectorNd &q,
+  const Math::MatrixNd &q_dirs,
+  const Math::VectorNd &qdot,
+  const Math::MatrixNd &qdot_dirs,
+  const Math::VectorNd &tau,
+  const Math::MatrixNd &tau_dirs,
+  ConstraintSet &CS,
+  ADConstraintSet &fd_cs,
+  Math::VectorNd &qddot,
+  Math::MatrixNd  &fd_qddot
+);
 
 // -----------------------------------------------------------------------------
 } // namespace FD
