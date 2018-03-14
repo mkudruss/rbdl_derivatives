@@ -11,7 +11,6 @@ macro(use_cxx11)
   endif ()
 endmacro(use_cxx11)
 
-
 use_cxx11()
 
 SET ( RBDL_VERSION_MAJOR 2 )

@@ -453,6 +453,42 @@ inline SpatialVector crossm (
       );
 }
 
+//inline SpatialMatrix crossf (const SpatialVector &v) {
+//  return SpatialMatrix (
+//      0,  -v[2],  v[1],         0,  -v[5],  v[4],
+//      v[2],          0, -v[0],  v[5],          0, -v[3],
+//      -v[1],   v[0],         0, -v[4],   v[3],         0,
+//      0,          0,         0,         0,  -v[2],  v[1],
+//      0,          0,         0,  v[2],          0, -v[0],
+//      0,          0,         0, -v[1],   v[0],         0
+//      );
+//}
+
+RBDL_DLLAPI
+inline SpatialVector crossf (
+    const SpatialVector &v1, const SpatialVector &v1_dirs,
+    const SpatialVector &v2, const SpatialVector &v2_dirs) {
+  return SpatialVector (
+      // nominal   -v1[2] * v2[1] + v1[1] * v2[2] - v1[5] * v2[4] + v1[4] * v2[5],
+      -v1_dirs[2] * v2[1] - v1[2] * v2_dirs[1] + v1_dirs[1] * v2[2] + v1[1] * v2_dirs[2]
+      - v1_dirs[5] * v2[4] - v1[5] * v2_dirs[4] + v1_dirs[4] * v2[5] + v1[4] * v2_dirs[5],
+      // nominal    v1[2] * v2[0] - v1[0] * v2[2] + v1[5] * v2[3] - v1[3] * v2[5],
+      v1_dirs[2] * v2[0] + v1[2] * v2_dirs[0] - v1_dirs[0] * v2[2] - v1[0] * v2_dirs[2]
+      + v1_dirs[5] * v2[3] + v1[5] * v2_dirs[3] - v1_dirs[3] * v2[5] - v1[3] * v2_dirs[5],
+      // nominal   -v1[1] * v2[0] + v1[0] * v2[1] - v1[4] * v2[3] + v1[3] * v2[4],
+      -v1_dirs[1] * v2[0] - v1[1] * v2_dirs[0] + v1_dirs[0] * v2[1] + v1[0] * v2_dirs[1]
+      - v1_dirs[4] * v2[3] - v1[4] * v2_dirs[3] + v1_dirs[3] * v2[4] + v1[3] * v2_dirs[4],
+      // nominal   - v1[2] * v2[4] + v1[1] * v2[5],
+      - v1_dirs[2] * v2[4] - v1[2] * v2_dirs[4] + v1_dirs[1] * v2[5] + v1[1] * v2_dirs[5],
+      // nominal   + v1[2] * v2[3] - v1[0] * v2[5]
+      + v1_dirs[2] * v2[3] + v1[2] * v2_dirs[3] - v1_dirs[0] * v2[5] - v1[0] * v2_dirs[5],
+      // nominal   - v1[1] * v2[3] + v1[0] * v2[4]
+      - v1_dirs[1] * v2[3] - v1[1] * v2_dirs[3] + v1_dirs[0] * v2[4] + v1[0] * v2_dirs[4]
+      );
+}
+
+
+
 // -----------------------------------------------------------------------------
 } /* AD */
 // -----------------------------------------------------------------------------

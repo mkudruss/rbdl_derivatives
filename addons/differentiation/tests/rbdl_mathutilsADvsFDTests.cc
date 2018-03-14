@@ -7,6 +7,8 @@
 #include "rbdl_mathutilsAD.h"
 #include "rbdl_mathutilsFD.h"
 
+#include "SpatialAlgebraOperatorsAD.h"
+
 #include "rbdl/Logging.h"
 
 using namespace std;
@@ -93,6 +95,92 @@ TEST (crossm_v_ADvsFDTest) {
     CHECK_ARRAY_CLOSE (fd_res[idir].data(), ad_res[idir].data(), 6, TEST_PREC);
   }
 }
+
+
+TEST (crossf_v1v2_ADvsFDTest) {
+  double TEST_PREC = 1e-07;
+  unsigned int ndirs = 20;
+
+  SpatialVector v1 = SpatialVector::Random();
+  SpatialVector v2 = SpatialVector::Random();
+  MatrixNd v1_dirs = MatrixNd::Random(6, ndirs);
+  MatrixNd v2_dirs = MatrixNd::Random(6, ndirs);
+
+  vector<SpatialVector> ad_res (ndirs, SpatialVector::Zero());
+  vector<SpatialVector> fd_res (ndirs, SpatialVector::Zero());
+
+  for (unsigned int idir = 0; idir < ndirs; idir++) {
+    SpatialVector v1_dir = v1_dirs.block(0, idir, 6, 1);
+    SpatialVector v2_dir = v2_dirs.block(0, idir, 6, 1);
+
+    ad_res[idir] = AD::crossf (v1, v1_dir, v2, v2_dir);
+    fd_res[idir] = FD::crossf (v1, v1_dir, v2, v2_dir);
+    CHECK_ARRAY_CLOSE (
+          fd_res[idir].data(), ad_res[idir].data(), 6, TEST_PREC);
+  }
+}
+
+
+TEST (addApplyAdjointSTSV_vecvec_ADvsFDTest) {
+  double TEST_PREC = 1e-6;
+  unsigned int ndirs = 20;
+
+  SpatialTransform st(Matrix3d::Random(), Vector3d::Random());
+  vector<SpatialTransform> st_dirs(ndirs);
+  SpatialVector sv = SpatialVector::Random();
+  vector<SpatialVector> sv_dirs(ndirs);
+  SpatialVector res_ad = SpatialVector::Random();
+  vector<SpatialVector> res_ad_dirs(ndirs);
+  SpatialVector res_fd = res_ad;
+  vector<SpatialVector> res_fd_dirs(ndirs);
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    st_dirs[idir] = SpatialTransform(Matrix3d::Random(), Vector3d::Random());
+    sv_dirs[idir] = SpatialVector::Random();
+    res_ad_dirs[idir] = SpatialVector::Random();
+    res_fd_dirs[idir] = res_ad_dirs[idir];
+  }
+
+  double dscal = -3.1415;
+  AD::addApplyAdjointSTSV(ndirs, dscal, st, st_dirs, sv, sv_dirs, res_ad, res_ad_dirs);
+  FD::addApplyAdjointSTSV(ndirs, dscal, st, st_dirs, sv, sv_dirs, res_fd, res_fd_dirs);
+
+  CHECK_ARRAY_CLOSE (res_ad, res_fd, 6, TEST_PREC);
+  for (unsigned int idir = 0; idir < ndirs; idir++) {
+    CHECK_ARRAY_CLOSE (
+          res_ad_dirs[idir].data(), res_fd_dirs[idir].data(), 6, TEST_PREC);
+  }
+}
+
+
+TEST (addApplyAdjointSTSV_mat_ADvsFDTest) {
+  double TEST_PREC = 1e-6;
+  unsigned int ndirs = 20;
+
+  SpatialTransform st(Matrix3d::Random(), Vector3d::Random());
+  vector<SpatialTransform> st_dirs(ndirs);
+  SpatialVector sv = SpatialVector::Random();
+  MatrixNd sv_dirs = MatrixNd::Random(6, ndirs);
+  SpatialVector res_ad = SpatialVector::Random();
+  vector<SpatialVector> res_ad_dirs(ndirs);
+  SpatialVector res_fd = res_ad;
+  vector<SpatialVector> res_fd_dirs(ndirs);
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    st_dirs[idir] = SpatialTransform(Matrix3d::Random(), Vector3d::Random());
+    res_ad_dirs[idir] = SpatialVector::Random();
+    res_fd_dirs[idir] = res_ad_dirs[idir];
+  }
+
+  double dscal = -3.1415;
+  AD::addApplyAdjointSTSV(ndirs, dscal, st, st_dirs, sv, sv_dirs, res_ad, res_ad_dirs);
+  FD::addApplyAdjointSTSV(ndirs, dscal, st, st_dirs, sv, sv_dirs, res_fd, res_fd_dirs);
+
+  CHECK_ARRAY_CLOSE (res_ad, res_fd, 6, TEST_PREC);
+  for (unsigned int idir = 0; idir < ndirs; idir++) {
+    CHECK_ARRAY_CLOSE (
+          res_ad_dirs[idir].data(), res_fd_dirs[idir].data(), 6, TEST_PREC);
+  }
+}
+
 
 // -----------------------------------------------------------------------------
 

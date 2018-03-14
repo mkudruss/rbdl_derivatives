@@ -1,6 +1,7 @@
 #include "rbdl/Constraints.h"
 #include "ConstraintsAD.h"
 #include "DynamicsAD.h"
+#include "rbdl/SpatialAlgebraOperators.h"
 #include "SpatialAlgebraOperatorsAD.h"
 #include "rbdl_mathutilsAD.h"
 
@@ -1020,11 +1021,12 @@ void ForwardDynamicsApplyConstraintForces (
 
     // derivative code
     for (unsigned int idir = 0; idir < ndirs; idir++) {
-      ad_model.pA[i][idir] = crossf(ad_model.v[i][idir], model.I[i] * model.v[i])
-          + crossf(model.v[i], model.I[i] * ad_model.v[i][idir]);
+      ad_model.pA[i][idir] = AD::crossf(
+            model.v[i], ad_model.v[i][idir],
+            model.I[i] * model.v[i], model.I[i] * ad_model.v[i][idir]);
     }
     // nominal code
-    model.pA[i] = crossf(model.v[i], model.I[i] * model.v[i]);
+    model.pA[i] = Math::crossf(model.v[i], model.I[i] * model.v[i]);
 
     if (CS.f_ext_constraints[i] != SpatialVector::Zero()) {
       LOG << "External force (" << i << ") = " << model.X_base[i].toMatrixAdjoint() * CS.f_ext_constraints[i] << std::endl;
