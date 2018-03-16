@@ -1035,7 +1035,8 @@ void ForwardDynamicsApplyConstraintForces (
                           model.X_base[i], ad_model.X_base[i],
                           CS.f_ext_constraints[i], ad_CS.f_ext_constraints[i],
                           model.pA[i], ad_model.pA[i]);
-      //  model.pA[i] -= model.X_base[i].toMatrixAdjoint() * CS.f_ext_constraints[i];
+
+//      model.pA[i] -= model.X_base[i].toMatrixAdjoint() * CS.f_ext_constraints[i];
     }
   }
 
@@ -1453,8 +1454,8 @@ void ForwardDynamicsContactsKokkevis (
 
 #ifndef RBDL_USE_SIMPLE_MATH
   Eigen::HouseholderQR<MatrixNd> householderQR;
-  Eigen::HouseholderQR<MatrixNd> colPivHouseholderQR;
-  Eigen::HouseholderQR<MatrixNd> partialPivLU;
+  Eigen::ColPivHouseholderQR<MatrixNd> colPivHouseholderQR;
+  Eigen::PartialPivLU<MatrixNd> partialPivLU;
   switch (CS.linear_solver) {
     case (LinearSolverPartialPivLU) :
       // nominal evaluation
@@ -1500,6 +1501,8 @@ void ForwardDynamicsContactsKokkevis (
   bool solve_successful = LinSolveGaussElimPivot (CS.K, CS.a, CS.force);
   assert (solve_successful);
 #endif
+
+
 
   LOG << "f = " << CS.force.transpose() << std::endl;
 
