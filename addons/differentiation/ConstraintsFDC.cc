@@ -151,7 +151,6 @@ RBDL_DLLAPI void ForwardDynamicsContactsKokkevis (
   assert(ndirs == fd_qddot.cols());
 
   ConstraintSet const cs_in = cs;
-
   ForwardDynamicsContactsKokkevis(model, q, qdot, tau, cs, qddot);
 
   // temporary variables
@@ -164,25 +163,25 @@ RBDL_DLLAPI void ForwardDynamicsContactsKokkevis (
     ConstraintSet * cshp;
     ConstraintSet * cshm;
     if (fd_model) {
-      modelhp = new Model(model);
-      modelhm = new Model(model);
-      cshp = new ConstraintSet(cs);
-      cshm = new ConstraintSet(cs);
+
     } else {
       modelhp = &model;
       modelhm = &model;
       cshp = &cs;
       cshm = &cs;
     }
+    cshp = new ConstraintSet(cs_in);
+    cshm = new ConstraintSet(cs_in);
+    modelhp = new Model(model);
+    modelhm = new Model(model);
 
-    ConstraintSet csh = cs_in;
 
     ForwardDynamicsContactsKokkevis(
       *modelhp,
       q + EPS * q_dirs.col(idir),
       qdot + EPS * qdot_dirs.col(idir),
       tau + EPS * tau_dirs.col(idir),
-      csh,
+      *cshp,
       qddotph
     );
 
@@ -191,7 +190,7 @@ RBDL_DLLAPI void ForwardDynamicsContactsKokkevis (
       q - EPS * q_dirs.col(idir),
       qdot - EPS * qdot_dirs.col(idir),
       tau - EPS * tau_dirs.col(idir),
-      csh,
+      *cshm,
       qddotmh
     );
 
@@ -203,11 +202,12 @@ RBDL_DLLAPI void ForwardDynamicsContactsKokkevis (
     if (fd_model) {
       computeFDEntry(*modelhp, *modelhm, EPS, idir, *fd_model);
       computeFDEntry(*cshp, *cshm, EPS, idir, fd_cs);
-      delete modelhp;
-      delete modelhm;
-      delete cshp;
-      delete cshm;
     }
+    delete cshp;
+    delete cshm;
+
+    delete modelhp;
+    delete modelhm;
   }
 }
 
