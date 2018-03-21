@@ -40,7 +40,8 @@ RBDL_DLLAPI void jcalc (
     const VectorNd &q,
     const MatrixNd &q_dirs,
     const VectorNd &qdot,
-    const MatrixNd &qdot_dirs) {
+    const MatrixNd &qdot_dirs
+) {
   unsigned const ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   ad_model.resize_directions(ndirs);

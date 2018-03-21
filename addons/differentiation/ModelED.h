@@ -28,42 +28,45 @@ namespace RigidBodyDynamics {
 // namespace ED {
 // -----------------------------------------------------------------------------
 
+typedef Eigen::Matrix<double, 6, Eigen::Dynamic> SpatialDirection;
+
 struct EDModel {
 
     unsigned int ndirs;
 
-    // derivative values
+    // inertias
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialRigidBodyInertia> > Ic;
+
+    // spatial matrices
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > IA;
+
+    // spatial transforms
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_lambda;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_base;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_J;
 
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v_J;
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > v;
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > c_J;
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > a;
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > c;
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > f;
+    // spatial vectors
+    std::vector<SpatialDirection> v_J;
+    std::vector<SpatialDirection> v;
+    std::vector<SpatialDirection> c_J;
+    std::vector<SpatialDirection> a;
+    std::vector<SpatialDirection> c;
+    std::vector<SpatialDirection> f;
 
-//    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > Ic;
+    std::vector<SpatialDirection> hc;
+    std::vector<SpatialDirection> F;
 
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialRigidBodyInertia> > Ic;
+    std::vector<SpatialDirection> pA;
+    std::vector<SpatialDirection> U;
 
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > hc;
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > F;
-
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > pA;
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > U;
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > IA;
-
-    //std::vector<std::vector<double> > u;
-    //std::vector<std::vector<double> > d;
+    // other quantities
     RigidBodyDynamics::Math::MatrixNd u;
     RigidBodyDynamics::Math::MatrixNd d;
 
     EDModel ();
     EDModel (RigidBodyDynamics::Model& model);
 
-    void resize_directions (unsigned int requested_ndirs);
+    void resize_directions (const unsigned int &requested_ndirs);
 
 };
 

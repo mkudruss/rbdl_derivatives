@@ -3,6 +3,7 @@
 
 #include <rbdl/rbdl.h>
 #include "ModelAD.h"
+#include "ModelED.h"
 #include "ConstraintsAD.h"
 
 // -----------------------------------------------------------------------------
@@ -15,6 +16,13 @@ void checkModelsADvsFD (
     ADModel const & ad_d_model,
     Model const & fd_model,
     ADModel const & fd_d_model);
+
+void checkModelsADvsED (
+    unsigned ndirs,
+    Model const & ad_model,
+    ADModel const & ad_d_model,
+    Model const & ed_model,
+    EDModel const & ed_d_model);
 
 void checkConstraintSetsADvsFD (
     unsigned ndirs,

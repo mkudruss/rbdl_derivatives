@@ -14,7 +14,7 @@ namespace ED {
 
 RBDL_DLLAPI void jcalc (
   RigidBodyDynamics::Model &model,
-  EDModel &ad_model,
+  EDModel &ed_model,
   unsigned int joint_id,
   const Math::VectorNd &q,
   const Math::MatrixNd &q_dirs,
@@ -22,20 +22,15 @@ RBDL_DLLAPI void jcalc (
   const Math::MatrixNd &qdot_dirs
 );
 
-RBDL_DLLAPI Math::SpatialTransform jcalc_XJ (
+RBDL_DLLAPI void jcalc_XJ (
   RigidBodyDynamics::Model &model,
-  ADModel &ad_model,
-  unsigned int joint_id,
-  unsigned int idir,
+  EDModel &ed_model,
+  const unsigned int &joint_id,
+  const unsigned int &ndir,
   const Math::VectorNd &q,
-  const Math::MatrixNd &q_dirs);
-
-RBDL_DLLAPI void jcalc_X_lambda_S (
-  RigidBodyDynamics::Model &model,
-  ADModel &ad_model,
-  unsigned int joint_id,
-  const Math::VectorNd & q,
-  const Math::MatrixNd & q_dirs
+  const Math::MatrixNd &q_dirs,
+  Math::SpatialTransform &X,
+  std::vector<Math::SpatialTransform> &X_dir
 );
 
 // -----------------------------------------------------------------------------

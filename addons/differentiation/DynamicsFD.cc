@@ -105,10 +105,7 @@ void InverseDynamics(
 
   InverseDynamics(model, q, qdot, qddot, tau, f_ext);
 
-  VectorNd hd_tau(tau);
-  VectorNd q_dir(q);
-  VectorNd qdot_dir(qdot);
-  VectorNd qddot_dir(qddot);
+  VectorNd tau_h (tau);
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
     Model * modelh;
@@ -126,17 +123,15 @@ void InverseDynamics(
       }
     }
 
-    vector<SpatialVector> const * f_exth = f_ext ? &f_exth_ : NULL;
-    q_dir = q_dirs.block(0,idir, model.q_size, 1);
-    qdot_dir = qdot_dirs.block(0,idir, model.q_size, 1);
-    qddot_dir = qddot_dirs.block(0,idir, model.q_size, 1);
+    InverseDynamics(
+      *modelh, q + h*q_dirs.col(idir),
+      qdot + h*qdot_dirs.col(idir),
+      qddot + h*qddot_dirs.col(idir),
+      tau_h,
+      f_ext ? &f_exth_ : NULL
+    );
 
-    InverseDynamics(*modelh, q + h*q_dir,
-                    qdot + h*qdot_dir,
-                    qddot + h*qddot_dir,
-                    hd_tau, f_exth);
-
-    fd_tau.block(0,idir,hd_tau.rows(),1) = (hd_tau - tau) / h;
+    fd_tau.col(idir) = (tau_h - tau) / h;
 
     if (fd_model) {
       computeFDEntry(model, *modelh, h, idir, *fd_model);

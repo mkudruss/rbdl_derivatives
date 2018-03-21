@@ -441,6 +441,7 @@ void ForwardDynamicsApplyConstraintForcesTemplate(
 }
 
 TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsApplyConstraintForces) {
+  srand (421337);
   // add contacts and bind them to constraint set
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);

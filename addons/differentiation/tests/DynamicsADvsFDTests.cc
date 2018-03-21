@@ -9,7 +9,9 @@
 #include "Fixtures.h"
 #include "Human36Fixture.h"
 #include "ModelAD.h"
+#include "ModelED.h"
 #include "DynamicsAD.h"
+#include "DynamicsED.h"
 #include "DynamicsFD.h"
 #include "DynamicsFDC.h"
 #include "rbdl_mathutilsAD.h"
@@ -264,6 +266,90 @@ TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZYpInverseDynamicsADTest) {
 // -----------------------------------------------------------------------------
 
 template<typename T>
+void InverseDynamicsEDTestTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec
+) {
+  Model ad_model      = obj.model;
+  Model ed_model      = obj.model;
+  ADModel ad_d_model = obj.ad_model;
+  EDModel ed_d_model = EDModel(ed_model);
+
+  VectorNd & q     = obj.q;
+  VectorNd & qdot  = obj.qdot;
+  VectorNd & qddot = obj.qddot;
+  VectorNd & tau   = obj.tau;
+
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    q.setRandom();
+    qdot.setRandom();
+    qddot.setRandom();
+
+    MatrixNd q_dirs   = MatrixNd::Random (ad_model.qdot_size, ad_model.qdot_size);
+    MatrixNd qdot_dirs  = MatrixNd::Random (ad_model.qdot_size, ad_model.qdot_size);
+    MatrixNd qddot_dirs = MatrixNd::Random (ad_model.qdot_size, ad_model.qdot_size);
+
+    VectorNd tau_ref (tau);
+
+    MatrixNd ad_tau  = MatrixNd::Random(ad_model.qdot_size, ad_model.qdot_size);
+    MatrixNd ed_tau  = MatrixNd::Random(ad_model.qdot_size, ad_model.qdot_size);
+
+    RigidBodyDynamics::AD::InverseDynamics(
+          ad_model, ad_d_model,
+          q, q_dirs,
+          qdot, qdot_dirs,
+          qddot, qddot_dirs,
+          tau, ad_tau,
+          NULL, NULL
+    );
+
+    RigidBodyDynamics::ED::InverseDynamics(
+          ed_model, ed_d_model,
+          q, q_dirs,
+          qdot, qdot_dirs,
+          qddot, qddot_dirs,
+          tau_ref, ed_tau,
+          NULL, NULL
+    );
+
+    const unsigned ndirs = ad_model.qdot_size;
+    checkModelsADvsED(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
+
+    CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), array_close_prec);
+    CHECK_ARRAY_CLOSE (ed_tau.data(), ad_tau.data(), ed_tau.cols()*ed_tau.rows(), array_close_prec);
+  }
+}
+
+TEST_FIXTURE(CartPendulum, CartPendulumInverseDynamicsEDTest){
+  srand (421337);
+  InverseDynamicsEDTestTemplate(*this, 1, 1e-10);
+}
+
+TEST_FIXTURE(Arm2DofX, Arm2DofXInverseDynamicsEDTest) {
+  srand (421337);
+  InverseDynamicsEDTestTemplate(*this, 1, 1e-10);
+}
+
+TEST_FIXTURE(Arm2DofZ, Arm2DofZInverseDynamicsEDTest) {
+  srand (421337);
+  InverseDynamicsEDTestTemplate(*this, 1, 1e-10);
+}
+
+TEST_FIXTURE(Arm3DofXZYp, Arm3DofXZYpInverseDynamicsEDTest) {
+  srand (421337);
+  InverseDynamicsEDTestTemplate(*this, 1, 1e-10);
+}
+
+TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpInverseDynamicsEDTest) {
+  srand (421337);
+  InverseDynamicsEDTestTemplate(*this, 1, 1e-10);
+}
+
+
+// -----------------------------------------------------------------------------
+
+template<typename T>
 void NonlinearEffectsADTestTemplate(
     T & obj,
     unsigned trial_count,
@@ -409,7 +495,7 @@ TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmADTest) {
 }
 
 TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-7);
+  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-6);
 }
 
 TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmADTest) {

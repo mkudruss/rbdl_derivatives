@@ -30,107 +30,120 @@ EDModel::EDModel (RigidBodyDynamics::Model& model) {
 
     // NOTE: old initialization values
     std::vector<SpatialRigidBodyInertia> SRBI(ndirs);
-    std::vector<SpatialTransform> T(ndirs, SpatialTransform::Zero());
-    std::vector<SpatialTransform> Tdot(ndirs, SpatialTransform::Zero());
     std::vector<SpatialMatrix> X(ndirs, SpatialMatrix::Zero());
+    std::vector<SpatialTransform> T(ndirs, SpatialTransform::Zero());
+    // std::vector<SpatialTransform> Tdot(ndirs, SpatialTransform::Zero());
     std::vector<SpatialVector> vec(ndirs, SpatialVector::Zero());
+    SpatialDirection vec_dir = MatrixNd::Zero(6, ndirs);
     //std::vector<double> double(ndirs, 0.0);
 
+    // inertias
+    Ic.resize(model.mBodies.size(), SRBI);
+
+    // spatial matrices
+    IA.resize(model.mBodies.size(), X);
+
+    // spatial transforms
     X_lambda.resize(model.mBodies.size(), T);
     X_base.resize(model.mBodies.size(), T);
     X_J.resize(model.mBodies.size(), T);
 
-    v_J.resize(model.mBodies.size(), vec);
-    v.resize(model.mBodies.size(), vec);
-    c_J.resize(model.mBodies.size(), vec);
-    a.resize(model.mBodies.size(), vec);
+    // spatial vectors
+    v_J.resize(model.mBodies.size(), vec_dir);
+    v.resize(model.mBodies.size(), vec_dir);
+    c_J.resize(model.mBodies.size(), vec_dir);
+    a.resize(model.mBodies.size(), vec_dir);
 
-    Ic.resize(model.mBodies.size(), SRBI);
-    hc.resize(model.mBodies.size(), vec);
-    F.resize(model.mBodies.size(), vec);
-    c.resize(model.mBodies.size(), vec);
-    f.resize(model.mBodies.size(), vec);
+    hc.resize(model.mBodies.size(), vec_dir);
+    F.resize(model.mBodies.size(), vec_dir);
+    c.resize(model.mBodies.size(), vec_dir);
+    f.resize(model.mBodies.size(), vec_dir);
 
-    pA.resize(model.mBodies.size(), vec);
-    U.resize(model.mBodies.size(), vec);
-    IA.resize(model.mBodies.size(), X);
-    //u.resize(model.mBodies.size(), double);
-    //d.resize(model.mBodies.size(), double);
+    pA.resize(model.mBodies.size(), vec_dir);
+    U.resize(model.mBodies.size(), vec_dir);
+
+    // spatial vectors
     u.resize(model.u.rows(), ndirs);
     u.setZero();
     d.resize(model.d.rows(), ndirs);
     d.setZero();
 }
 
-void EDModel::resize_directions (unsigned int requested_ndirs){
-    if (ndirs < requested_ndirs) {
-        ndirs = requested_ndirs;
+void EDModel::resize_directions (const unsigned int &requested_ndirs)
+{
+  if (ndirs < requested_ndirs) {
+      ndirs = requested_ndirs;
 
-        for (unsigned int i = 0; i < X_lambda.size(); ++i) {
-            X_lambda[i].resize(ndirs, SpatialTransform::Zero());
-        }
-
-        for (unsigned int i = 0; i < X_base.size(); ++i) {
-            X_base[i].resize(ndirs, SpatialTransform::Zero());
-        }
-
-        for (unsigned int i = 0; i < X_J.size(); ++i) {
-            X_J[i].resize(ndirs, SpatialTransform::Zero());
-        }
-
-        for (unsigned int i = 0; i < v_J.size(); ++i) {
-            v_J[i].resize(ndirs, SpatialVector::Zero());
-        }
-
-        for (unsigned int i = 0; i < v_J.size(); ++i) {
-            v[i].resize(ndirs, SpatialVector::Zero());
-        }
-
-        for (unsigned int i = 0; i < c_J.size(); ++i) {
-            c_J[i].resize(ndirs, SpatialVector::Zero());
-        }
-
-        for (unsigned int i = 0; i < c_J.size(); ++i) {
-            a[i].resize(ndirs, SpatialVector::Zero());
-        }
-
-        for (unsigned int i = 0; i < c_J.size(); ++i) {
-            c[i].resize(ndirs, SpatialVector::Zero());
-        }
-
-        for (unsigned int i = 0; i < c_J.size(); ++i) {
-            f[i].resize(ndirs, SpatialVector::Zero());
-        }
-
-        for (unsigned int i = 0; i < Ic.size(); ++i) {
-            Ic[i].resize(ndirs);
-        }
-
-        for (unsigned int i = 0; i < F.size(); ++i) {
-            F[i].resize(ndirs, SpatialVector::Zero());
-        }
-
-        for(unsigned int i = 0; i < pA.size(); ++i) {
-            pA[i].resize(ndirs, SpatialVector::Zero());
-        }
-
-        for(unsigned int i = 0; i < U.size(); ++i) {
-            U[i].resize(ndirs, SpatialVector::Zero());
-        }
-
-        for (unsigned int i = 0; i < IA.size(); ++i) {
-            IA[i].resize(ndirs, SpatialMatrix::Zero());
-        }
-
-        for (unsigned int i = 0; i < hc.size(); ++i) {
-            hc[i].resize(ndirs, SpatialVector::Zero());
-        }
-
-        u.resize(u.rows(), ndirs);
-        u.setZero();
-        d.resize(d.rows(), ndirs);
-        d.setZero();
+    // inertias
+    for (unsigned int i = 0; i < Ic.size(); ++i) {
+        Ic[i].resize(ndirs);
     }
+
+    // spatial matrices
+    for (unsigned int i = 0; i < IA.size(); ++i) {
+        IA[i].resize(ndirs, SpatialMatrix::Zero());
+    }
+
+    // spatial transforms
+    for (unsigned int i = 0; i < X_lambda.size(); ++i) {
+        X_lambda[i].resize(ndirs, SpatialTransform::Zero());
+    }
+
+    for (unsigned int i = 0; i < X_base.size(); ++i) {
+        X_base[i].resize(ndirs, SpatialTransform::Zero());
+    }
+
+    for (unsigned int i = 0; i < X_J.size(); ++i) {
+        X_J[i].resize(ndirs, SpatialTransform::Zero());
+    }
+
+    // spatial vectors
+    for (unsigned int i = 0; i < v_J.size(); ++i) {
+        v_J[i].resize(6, ndirs);
+    }
+
+    for (unsigned int i = 0; i < v_J.size(); ++i) {
+        v[i].resize(6, ndirs);
+    }
+
+    for (unsigned int i = 0; i < c_J.size(); ++i) {
+        c_J[i].resize(6, ndirs);
+    }
+
+    for (unsigned int i = 0; i < c_J.size(); ++i) {
+        a[i].resize(6, ndirs);
+    }
+
+    for (unsigned int i = 0; i < c_J.size(); ++i) {
+        c[i].resize(6, ndirs);
+    }
+
+    for (unsigned int i = 0; i < c_J.size(); ++i) {
+        f[i].resize(6, ndirs);
+    }
+
+    for (unsigned int i = 0; i < F.size(); ++i) {
+        F[i].resize(6, ndirs);
+    }
+
+    for(unsigned int i = 0; i < pA.size(); ++i) {
+        pA[i].resize(6, ndirs);
+    }
+
+    for(unsigned int i = 0; i < U.size(); ++i) {
+        U[i].resize(6, ndirs);
+    }
+
+    for (unsigned int i = 0; i < hc.size(); ++i) {
+        hc[i].resize(6, ndirs);
+    }
+
+    // other quantities
+    u.resize(u.rows(), ndirs);
+    u.setZero();
+    d.resize(d.rows(), ndirs);
+    d.setZero();
+  }
 }
 
 // -----------------------------------------------------------------------------
