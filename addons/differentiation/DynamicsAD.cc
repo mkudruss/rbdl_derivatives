@@ -331,7 +331,7 @@ void InverseDynamics(
 		// NOTE joints are already calculated in ad_jcalc
     // jcalc (model, i, Q, QDot);
 
-		if (lambda != 0 && f_ext != NULL) {
+		if (lambda != 0) {
 			// derivative evaluation
 //			for(unsigned int j = 0; j < ndirs; j++) {
 //				ad_model.X_base[i][j] = ad_model.X_lambda[i][j] * model.X_base[lambda].toMatrix()
