@@ -62,6 +62,7 @@ struct EDModel {
     // other quantities
     RigidBodyDynamics::Math::MatrixNd u;
     RigidBodyDynamics::Math::MatrixNd d;
+    SpatialDirection Iv;
 
     EDModel ();
     EDModel (RigidBodyDynamics::Model& model);

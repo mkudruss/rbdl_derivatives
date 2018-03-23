@@ -67,6 +67,8 @@ EDModel::EDModel (RigidBodyDynamics::Model& model) {
     u.setZero();
     d.resize(model.d.rows(), ndirs);
     d.setZero();
+
+    Iv = vec_dir;
 }
 
 void EDModel::resize_directions (const unsigned int &requested_ndirs)
@@ -138,11 +140,13 @@ void EDModel::resize_directions (const unsigned int &requested_ndirs)
         hc[i].resize(6, ndirs);
     }
 
+
     // other quantities
     u.resize(u.rows(), ndirs);
     u.setZero();
     d.resize(d.rows(), ndirs);
     d.setZero();
+    Iv.resize(6, ndirs);
   }
 }
 

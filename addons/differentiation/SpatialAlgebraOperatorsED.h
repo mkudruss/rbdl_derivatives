@@ -15,6 +15,13 @@ namespace ED {
 using namespace RigidBodyDynamics::Math;
 
 typedef Eigen::Matrix<double, 6, Eigen::Dynamic> SpatialDirection;
+typedef Eigen::Matrix<double, 3, Eigen::Dynamic> Direction3d;
+
+typedef Eigen::Ref<Eigen::Vector3d> Vector3d_ref;
+typedef Eigen::Ref<const Eigen::Vector3d> Vector3d_cref;
+
+typedef Eigen::Ref<Direction3d> Direction3d_ref;
+typedef Eigen::Ref<const Direction3d> Direction3d_cref;
 
 /*
 inline void X_apply_v_plus_w (
@@ -71,6 +78,49 @@ inline void X_apply_v_plus_w (
  *
  * \returns (E * w, - E * rxw + E * v)
  */
+inline void X_apply_v_add_u (
+  SpatialVector &res,
+  SpatialDirection &res_dir,
+  const SpatialTransform &X, const std::vector<SpatialTransform> &X_dir,
+  const SpatialVector &v, const SpatialDirection &v_dir,
+  const SpatialVector &u, const SpatialDirection &u_dir,
+  const unsigned int &ndirs
+) {
+
+  Vector3d v_rxw (
+      v[3] - X.r[1] * v[2] + X.r[2] * v[1],
+      v[4] - X.r[2] * v[0] + X.r[0] * v[2],
+      v[5] - X.r[0] * v[1] + X.r[1] * v[0]
+      );
+
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    Vector3d w_dir = v_dir.col(idir).segment<3>(0);
+    res_dir.col(idir).segment<3>(0) =
+        X.E * w_dir
+        + X_dir[idir].E * v.segment<3>(0)
+        + u_dir.col(idir).head(3);
+    res_dir.col(idir).segment<3>(3) =
+        X.E * (v_dir.col(idir).segment<3>(3)
+                - X.r.cross(w_dir)
+                - X_dir[idir].r.cross(v.segment<3>(0)))
+        + X_dir[idir].E * v_rxw
+        + u_dir.col(idir).tail(3);
+  }
+
+  res = SpatialVector(
+      X.E(0,0) * v[0] + X.E(0,1) * v[1] + X.E(0,2) * v[2] + u[0],
+      X.E(1,0) * v[0] + X.E(1,1) * v[1] + X.E(1,2) * v[2] + u[1],
+      X.E(2,0) * v[0] + X.E(2,1) * v[1] + X.E(2,2) * v[2] + u[2],
+      X.E(0,0) * v_rxw[0] + X.E(0,1) * v_rxw[1] + X.E(0,2) * v_rxw[2] + u[3],
+      X.E(1,0) * v_rxw[0] + X.E(1,1) * v_rxw[1] + X.E(1,2) * v_rxw[2] + u[4],
+      X.E(2,0) * v_rxw[0] + X.E(2,1) * v_rxw[1] + X.E(2,2) * v_rxw[2] + u[5]
+      );
+}
+
+/** Same as res = X_d * v + X * v_d.
+ *
+ * \returns (E * w, - E * rxw + E * v)
+ */
 inline void X_apply_v (
   SpatialVector &res,
   SpatialDirection &res_dir,
@@ -109,7 +159,7 @@ inline void X_apply_v (
 
 /** Same as f += X^T * f.
  */
-inline void inplace_X_applyT_f(
+inline void inplace_X_applyTranspose_f(
   SpatialVector &res,
   SpatialDirection &res_dir,
   const SpatialTransform &X, const std::vector<SpatialTransform> &X_dir,
@@ -223,121 +273,6 @@ inline void X_applyT_f(
 //   //     );
 // }
 
-/** Same as X^T I X
-*/
-
-inline void applyTranspose (
-  SpatialRigidBodyInertia & res,
-  std::vector<SpatialRigidBodyInertia> &res_dirs,
-  const SpatialTransform &X,
-  const std::vector<SpatialTransform> &X_dirs,
-  const SpatialRigidBodyInertia &rbi,
-  const std::vector<SpatialRigidBodyInertia> &rbi_dirs,
-  const unsigned int &ndirs
-) {
-
-  // intermediate value
-  Matrix3d I = rbi.getInertia();
-
-  // nominal evaluation
-  Vector3d E_T_mr = X.E.transpose() * rbi.h + rbi.m * X.r;
-
-  // nominal evaluation
-  Matrix3d Z
-    = X.E.transpose() * I * X.E
-    - VectorCrossMatrix(X.r) * VectorCrossMatrix (X.E.transpose() * rbi.h)
-    - VectorCrossMatrix (E_T_mr) * VectorCrossMatrix (X.r);
-
-  // derivative evaluation
-  for (unsigned idir = 0; idir < ndirs; idir++) {
-    // intermediate value
-    Vector3d E_T_mr_dirs
-      = X_dirs[idir].E.transpose() * rbi.h
-      + X.E.transpose() * rbi_dirs[idir].h
-      + rbi_dirs[idir].m * X.r
-      + rbi.m * X_dirs[idir].r;
-
-    // intermediate value
-    Matrix3d Z_dirs
-      = X_dirs[idir].E.transpose() * I * X.E
-      + X.E.transpose() * rbi_dirs[idir].getInertia() * X.E
-      + X.E.transpose() * I * X_dirs[idir].E
-
-      - VectorCrossMatrix(X_dirs[idir].r) * VectorCrossMatrix (X.E.transpose() * rbi.h)
-      - VectorCrossMatrix(X.r) * (
-        VectorCrossMatrix (X_dirs[idir].E.transpose() * rbi.h)
-        + VectorCrossMatrix (X.E.transpose() * rbi_dirs[idir].h)
-      )
-
-      - VectorCrossMatrix (E_T_mr_dirs) * VectorCrossMatrix (X.r)
-      - VectorCrossMatrix (E_T_mr) * VectorCrossMatrix (X_dirs[idir].r)
-    ;
-    res_dirs[idir]
-      = SpatialRigidBodyInertia (rbi_dirs[idir].m, E_T_mr_dirs, Z_dirs);
-  }
-
-  // nominal evaluation
-  res = SpatialRigidBodyInertia (rbi.m, E_T_mr, Z);
-
-  return;
-}
-
-inline void plusApplyTranspose (
-  SpatialRigidBodyInertia & res,
-  std::vector<SpatialRigidBodyInertia> &res_dirs,
-  const SpatialTransform &X,
-  const std::vector<SpatialTransform> &X_dirs,
-  const SpatialRigidBodyInertia &rbi,
-  const std::vector<SpatialRigidBodyInertia> &rbi_dirs,
-  const unsigned int &ndirs
-) {
-
-  // intermediate value
-  Matrix3d I = rbi.getInertia();
-
-  // nominal evaluation
-  Vector3d E_T_mr = X.E.transpose() * rbi.h + rbi.m * X.r;
-
-  // nominal evaluation
-  Matrix3d Z
-    = X.E.transpose() * I * X.E
-    - VectorCrossMatrix(X.r) * VectorCrossMatrix (X.E.transpose() * rbi.h)
-    - VectorCrossMatrix (E_T_mr) * VectorCrossMatrix (X.r);
-
-  // derivative evaluation
-  for (unsigned idir = 0; idir < ndirs; idir++) {
-    // intermediate value
-    Vector3d E_T_mr_dirs
-      = X_dirs[idir].E.transpose() * rbi.h
-      + X.E.transpose() * rbi_dirs[idir].h
-      + rbi_dirs[idir].m * X.r
-      + rbi.m * X_dirs[idir].r;
-
-    // intermediate value
-    Matrix3d Z_dirs
-      = X_dirs[idir].E.transpose() * I * X.E
-      + X.E.transpose() * rbi_dirs[idir].getInertia() * X.E
-      + X.E.transpose() * I * X_dirs[idir].E
-
-      - VectorCrossMatrix(X_dirs[idir].r) * VectorCrossMatrix (X.E.transpose() * rbi.h)
-      - VectorCrossMatrix(X.r) * (
-        VectorCrossMatrix (X_dirs[idir].E.transpose() * rbi.h)
-        + VectorCrossMatrix (X.E.transpose() * rbi_dirs[idir].h)
-      )
-
-      - VectorCrossMatrix (E_T_mr_dirs) * VectorCrossMatrix (X.r)
-      - VectorCrossMatrix (E_T_mr) * VectorCrossMatrix (X_dirs[idir].r)
-    ;
-    res_dirs[idir] = res_dirs[idir]
-      + SpatialRigidBodyInertia (rbi_dirs[idir].m, E_T_mr_dirs, Z_dirs);
-  }
-
-  // nominal evaluation
-  res = res + SpatialRigidBodyInertia (rbi.m, E_T_mr, Z);
-
-  return;
-}
-
 
 inline void Xrotx (
   SpatialTransform &res,
@@ -357,7 +292,7 @@ inline void Xrotx (
     0., c, s,
     0., -s, c
   );
-  res.r = X.r; // + X.E.transpose() * Vector3d (0., 0., 0.);
+  res.r = X.r;
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
     s_t = s*rot_dirs[idir];
@@ -367,7 +302,7 @@ inline void Xrotx (
         0., -s_t,  c_t,
         0., -c_t, -s_t
     ) * X.E;
-    res_dirs[idir].r = X.E * Vector3d (0., 0., 0.);
+    res_dirs[idir].r.setZero();
   }
 
   return;
@@ -467,7 +402,7 @@ inline void Xroty (
        0., 0.,   0.,
       c_t, 0., -s_t
     ) * X.E;
-    res_dirs[idir].r = X.E * Vector3d (0., 0., 0.);
+    res_dirs[idir].r.setZero();
   }
 
   return;
@@ -535,111 +470,150 @@ inline void Xrotz (
       -c_t, -s_t, 0.,
         0.,   0., 0.
     ) * X.E;
-    res_dirs[idir].r = X.E * Vector3d (0., 0., 0.);
+    res_dirs[idir].r.setZero();
   }
 
   return;
 }
 
-inline SpatialVector crossm (
-    const SpatialVector &v1, const SpatialVector &v1_dirs,
-    const SpatialVector &v2, const SpatialVector &v2_dirs
-    ) {
-  return SpatialVector (
-      // nominal -v1[2] * v2[1] + v1[1] * v2[2],
-      - v1_dirs[2] * v2[1] - v1[2] * v2_dirs[1]
-      + v1_dirs[1] * v2[2] + v1[1] * v2_dirs[2],
-      // nominal v1[2] * v2[0] - v1[0] * v2[2],
-      + v1_dirs[2] * v2[0] + v1[2] * v2_dirs[0]
-      - v1_dirs[0] * v2[2] - v1[0] * v2_dirs[2],
-      // nominal -v1[1] * v2[0] + v1[0] * v2[1],
-      - v1_dirs[1] * v2[0] - v1[1] * v2_dirs[0]
-      + v1_dirs[0] * v2[1] + v1[0] * v2_dirs[1],
-      // nominal -v1[5] * v2[1] + v1[4] * v2[2] - v1[2] * v2[4] + v1[1] * v2[5],
-      - v1_dirs[5] * v2[1] - v1[5] * v2_dirs[1]
-      + v1_dirs[4] * v2[2] + v1[4] * v2_dirs[2]
-      - v1_dirs[2] * v2[4] - v1[2] * v2_dirs[4]
-      + v1_dirs[1] * v2[5] + v1[1] * v2_dirs[5],
-      // nominal v1[5] * v2[0] - v1[3] * v2[2] + v1[2] * v2[3] - v1[0] * v2[5],
-      + v1_dirs[5] * v2[0] + v1[5] * v2_dirs[0]
-      - v1_dirs[3] * v2[2] - v1[3] * v2_dirs[2]
-      + v1_dirs[2] * v2[3] + v1[2] * v2_dirs[3]
-      - v1_dirs[0] * v2[5] - v1[0] * v2_dirs[5],
-      // nominal -v1[4] * v2[0] + v1[3] * v2[1] - v1[1] * v2[3] + v1[0] * v2[4]
-      - v1_dirs[4] * v2[0] - v1[4] * v2_dirs[0]
-      + v1_dirs[3] * v2[1] + v1[3] * v2_dirs[1]
-      - v1_dirs[1] * v2[3] - v1[1] * v2_dirs[3]
-      + v1_dirs[0] * v2[4] + v1[0] * v2_dirs[4]
-      );
-}
-
-inline SpatialVector crossf (
-  const SpatialVector &v1, const SpatialVector &v1_dirs,
-  const SpatialVector &v2, const SpatialVector &v2_dirs
+inline void crossm (
+  SpatialVector &res, SpatialDirection &res_dir,
+  const SpatialVector &v1, const SpatialDirection &v1_dir,
+  const SpatialVector &v2, const SpatialDirection &v2_dir,
+  const unsigned int &ndirs
 ) {
-  return SpatialVector (
-      // nominal -v1[2] * v2[1] + v1[1] * v2[2] - v1[5] * v2[4] + v1[4] * v2[5],
-      - v1_dirs[2] * v2[1] - v1[2] * v2_dirs[1]
-      + v1_dirs[1] * v2[2] + v1[1] * v2_dirs[2]
-      - v1_dirs[5] * v2[4] - v1[5] * v2_dirs[4]
-      + v1_dirs[4] * v2[5] + v1[4] * v2_dirs[5],
-      // nominal v1[2] * v2[0] - v1[0] * v2[2] + v1[5] * v2[3] - v1[3] * v2[5],
-      + v1_dirs[2] * v2[0] + v1[2] * v2_dirs[0]
-      - v1_dirs[0] * v2[2] - v1[0] * v2_dirs[2]
-      + v1_dirs[5] * v2[3] + v1[5] * v2_dirs[3]
-      - v1_dirs[3] * v2[5] - v1[3] * v2_dirs[5],
-      // nominal -v1[1] * v2[0] + v1[0] * v2[1] - v1[4] * v2[3] + v1[3] * v2[4],
-      - v1_dirs[1] * v2[0] - v1[1] * v2_dirs[0]
-      + v1_dirs[0] * v2[1] + v1[0] * v2_dirs[1]
-      - v1_dirs[4] * v2[3] - v1[4] * v2_dirs[3]
-      + v1_dirs[3] * v2[4] + v1[3] * v2_dirs[4],
-      // nominal - v1[2] * v2[4] + v1[1] * v2[5],
-      - v1_dirs[2] * v2[4] - v1[2] * v2_dirs[4]
-      + v1_dirs[1] * v2[5] + v1[1] * v2_dirs[5],
-      // nominal + v1[2] * v2[3] - v1[0] * v2[5],
-      + v1_dirs[2] * v2[3] + v1[2] * v2_dirs[3]
-      - v1_dirs[0] * v2[5] - v1[0] * v2_dirs[5],
-      // nominal - v1[1] * v2[3] + v1[0] * v2[4]
-      - v1_dirs[1] * v2[3] - v1[1] * v2_dirs[3]
-      + v1_dirs[0] * v2[4] + v1[0] * v2_dirs[4]
-      );
+  // NOTE we require row dimension to be 3 at compile time, we use Eigen::Ref
+  //      to achieve this
+  // NOTE we use identity a x b = - b x a and use colwise partial reduction
+  //      to efficiently perform vectorized cross product evaluations
+  const Vector3d_cref v1_head = v1.head(3);
+  const Vector3d_cref v2_head = v2.head(3);
+  const Vector3d_cref v1_tail = v1.tail(3);
+  const Vector3d_cref v2_tail = v2.tail(3);
+
+  const Direction3d_cref res_dir_head = res_dir.leftCols(ndirs).topRows(3);
+  const Direction3d_cref v1_dir_head  = v1_dir.leftCols(ndirs).topRows(3);
+  const Direction3d_cref v2_dir_head  = v2_dir.leftCols(ndirs).topRows(3);
+
+  const Direction3d_cref res_dir_tail = res_dir.leftCols(ndirs).bottomRows(3);
+  const Direction3d_cref v1_dir_tail  = v1_dir.leftCols(ndirs).bottomRows(3);
+  const Direction3d_cref v2_dir_tail  = v2_dir.leftCols(ndirs).bottomRows(3);
+
+  res_dir.leftCols(ndirs).topRows(3)
+    = v1_dir_head.colwise().cross(v2_head)
+    - v2_dir_head.colwise().cross(v1_head);
+
+  res_dir.leftCols(ndirs).bottomRows(3)
+    = v1_dir_tail.colwise().cross(v2_head)
+    - v2_dir_head.colwise().cross(v1_tail)
+    + v1_dir_head.colwise().cross(v2_tail)
+    - v2_dir_tail.colwise().cross(v1_head);
+
+  res.head(3) = v1_head.cross(v2_head);
+  res.tail(3) = v1_tail.cross(v2_head) + v1_head.cross(v2_tail);
+
+  return;
+}
+
+inline void crossf (
+  SpatialVector &res, SpatialDirection &res_dir,
+  const SpatialVector &v1, const SpatialDirection &v1_dir,
+  const SpatialVector &v2, const SpatialDirection &v2_dir,
+  const unsigned int &ndirs
+) {
+  // NOTE we require row dimension to be 3 at compile time, we use Eigen::Ref
+  //      to achieve this
+  // NOTE we use identity a x b = - b x a and use colwise partial reduction
+  //      to efficiently perform vectorized cross product evaluations
+  const Vector3d_cref v1_head = v1.head(3);
+  const Vector3d_cref v2_head = v2.head(3);
+  const Vector3d_cref v1_tail = v1.tail(3);
+  const Vector3d_cref v2_tail = v2.tail(3);
+
+  const Direction3d_cref v1_dir_head = v1_dir.leftCols(ndirs).topRows(3);
+  const Direction3d_cref v2_dir_head = v2_dir.leftCols(ndirs).topRows(3);
+
+  const Direction3d_cref v1_dir_tail = v1_dir.leftCols(ndirs).bottomRows(3);
+  const Direction3d_cref v2_dir_tail = v2_dir.leftCols(ndirs).bottomRows(3);
+
+  res_dir.leftCols(ndirs).topRows(3)
+    = v1_dir_head.colwise().cross(v2_head)
+    - v2_dir_head.colwise().cross(v1_head)
+    + v1_dir_tail.colwise().cross(v2_tail)
+    - v2_dir_tail.colwise().cross(v1_tail);
+
+  res_dir.leftCols(ndirs).bottomRows(3)
+    = v1_dir_head.colwise().cross(v2_tail)
+    - v2_dir_tail.colwise().cross(v1_head);
+
+  res.head(3) = v1_head.cross(v2_head) + v1_tail.cross(v2_tail);
+  res.tail(3) = v1_head.cross(v2_tail);
+
+  return;
 }
 
 
-/*
-inline SpatialMatrix crossm (const SpatialVector &v) {
-  return SpatialMatrix (
-      0,  -v[2],  v[1],         0,          0,         0,
-      v[2],          0, -v[0],         0,          0,         0,
-      -v[1],   v[0],         0,         0,          0,         0,
-      0,  -v[5],  v[4],         0,  -v[2],  v[1],
-      v[5],          0, -v[3],  v[2],          0, -v[0],
-      -v[4],   v[3],         0, -v[1],   v[0],         0
-      );
+inline void SRBI_apply_v (
+  SpatialVector &res, SpatialDirection &res_dir,
+  const SpatialRigidBodyInertia &I,
+  const SpatialVector &v, const SpatialDirection &v_dir,
+  const unsigned int &ndirs
+) {
+  const Vector3d_cref v_head = v.head(3);
+  const Vector3d_cref v_tail = v.tail(3);
+  const Direction3d_cref v_dir_head = v_dir.leftCols(ndirs).topRows(3);
+  const Direction3d_cref v_dir_tail = v_dir.leftCols(ndirs).bottomRows(3);
+
+  Matrix3d I_m = Matrix3d (
+      I.Ixx, I.Iyx, I.Izx,
+      I.Iyx, I.Iyy, I.Izy,
+      I.Izx, I.Izy, I.Izz
+  );
+
+  // derivative evaluation
+  res_dir.leftCols(ndirs).topRows(3)
+    = I_m * v_dir_head - v_dir_tail.colwise().cross(I.h);
+
+  res_dir.leftCols(ndirs).bottomRows(3)
+    = I.m * v_dir_tail - v_dir_head.colwise().cross(I.h);
+
+  // nominal evaluation
+  res.head(3) = I_m * v_head + I.h.cross(v_tail);
+  res.tail(3) = I.m * v_tail - I.h.cross(v_head);
+
+  return;
 }
 
-inline SpatialVector crossm (const SpatialVector &v1, const SpatialVector &v2) {
-  return SpatialVector (
-      -v1[2] * v2[1] + v1[1] * v2[2],
-      v1[2] * v2[0] - v1[0] * v2[2],
-      -v1[1] * v2[0] + v1[0] * v2[1],
-      -v1[5] * v2[1] + v1[4] * v2[2] - v1[2] * v2[4] + v1[1] * v2[5],
-      v1[5] * v2[0] - v1[3] * v2[2] + v1[2] * v2[3] - v1[0] * v2[5],
-      -v1[4] * v2[0] + v1[3] * v2[1] - v1[1] * v2[3] + v1[0] * v2[4]
-      );
-}
+inline void add_SRBI_apply_v  (
+  SpatialVector &res, SpatialDirection &res_dir,
+  const SpatialRigidBodyInertia &I,
+  const SpatialVector &v, const SpatialDirection &v_dir,
+  const unsigned int &ndirs
+) {
+  const Vector3d_cref v_head = v.head(3);
+  const Vector3d_cref v_tail = v.tail(3);
+  const Direction3d_cref v_dir_head = v_dir.leftCols(ndirs).topRows(3);
+  const Direction3d_cref v_dir_tail = v_dir.leftCols(ndirs).bottomRows(3);
 
-inline SpatialMatrix crossf (const SpatialVector &v) {
-  return SpatialMatrix (
-      0,  -v[2],  v[1],         0,  -v[5],  v[4],
-      v[2],          0, -v[0],  v[5],          0, -v[3],
-      -v[1],   v[0],         0, -v[4],   v[3],         0,
-      0,          0,         0,         0,  -v[2],  v[1],
-      0,          0,         0,  v[2],          0, -v[0],
-      0,          0,         0, -v[1],   v[0],         0
-      );
+  Matrix3d I_m = Matrix3d (
+      I.Ixx, I.Iyx, I.Izx,
+      I.Iyx, I.Iyy, I.Izy,
+      I.Izx, I.Izy, I.Izz
+  );
+
+  // derivative evaluation
+  res_dir.leftCols(ndirs).topRows(3)
+    += I_m * v_dir_head - v_dir_tail.colwise().cross(I.h);
+
+  res_dir.leftCols(ndirs).bottomRows(3)
+    += I.m * v_dir_tail - v_dir_head.colwise().cross(I.h);
+
+  // nominal evaluation
+  res.head(3) += I_m * v_head + I.h.cross(v_tail);
+  res.tail(3) += I.m * v_tail - I.h.cross(v_head);
+
+  return;
 }
-*/
 
 // -----------------------------------------------------------------------------
 } // namespace ED
