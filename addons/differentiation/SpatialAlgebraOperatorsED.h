@@ -97,15 +97,14 @@ inline void X_apply_v_add_u (
     Vector3d w_dir = v_dir.col(idir).segment<3>(0);
     res_dir.col(idir).segment<3>(0) =
         X.E * w_dir
-        + X_dir[idir].E * v.segment<3>(0)
-        + u_dir.col(idir).head(3);
+        + X_dir[idir].E * v.segment<3>(0);
     res_dir.col(idir).segment<3>(3) =
         X.E * (v_dir.col(idir).segment<3>(3)
                 - X.r.cross(w_dir)
                 - X_dir[idir].r.cross(v.segment<3>(0)))
-        + X_dir[idir].E * v_rxw
-        + u_dir.col(idir).tail(3);
+        + X_dir[idir].E * v_rxw;
   }
+  res_dir += u_dir;
 
   res = SpatialVector(
       X.E(0,0) * v[0] + X.E(0,1) * v[1] + X.E(0,2) * v[2] + u[0],
@@ -546,8 +545,8 @@ inline void crossf (
     = v1_dir_head.colwise().cross(v2_tail)
     - v2_dir_tail.colwise().cross(v1_head);
 
-  res.head(3) = v1_head.cross(v2_head) + v1_tail.cross(v2_tail);
-  res.tail(3) = v1_head.cross(v2_tail);
+  res.segment<3>(0) = v1_head.cross(v2_head) + v1_tail.cross(v2_tail);
+  res.segment<3>(3) = v1_head.cross(v2_tail);
 
   return;
 }
