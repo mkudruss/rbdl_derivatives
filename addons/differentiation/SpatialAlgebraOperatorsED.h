@@ -97,15 +97,14 @@ inline void X_apply_v_add_u (
     Vector3d w_dir = v_dir.col(idir).segment<3>(0);
     res_dir.col(idir).segment<3>(0) =
         X.E * w_dir
-        + X_dir[idir].E * v.segment<3>(0)
-        + u_dir.col(idir).head(3);
+        + X_dir[idir].E * v.segment<3>(0);
     res_dir.col(idir).segment<3>(3) =
         X.E * (v_dir.col(idir).segment<3>(3)
                 - X.r.cross(w_dir)
                 - X_dir[idir].r.cross(v.segment<3>(0)))
-        + X_dir[idir].E * v_rxw
-        + u_dir.col(idir).tail(3);
+        + X_dir[idir].E * v_rxw;
   }
+  res_dir.leftCols(ndirs) += u_dir.leftCols(ndirs);
 
   res = SpatialVector(
       X.E(0,0) * v[0] + X.E(0,1) * v[1] + X.E(0,2) * v[2] + u[0],
@@ -163,7 +162,8 @@ inline void inplace_X_applyTranspose_f(
   SpatialVector &res,
   SpatialDirection &res_dir,
   const SpatialTransform &X, const std::vector<SpatialTransform> &X_dir,
-  const SpatialVector &f_sp, const SpatialDirection &f_sp_dir
+  const SpatialVector &f_sp, const SpatialDirection &f_sp_dir,
+  const unsigned int &ndirs
 ) {
   Vector3d E_T_f (
     X.E(0,0) * f_sp[3] + X.E(1,0) * f_sp[4] + X.E(2,0) * f_sp[5],
@@ -171,7 +171,6 @@ inline void inplace_X_applyTranspose_f(
     X.E(0,2) * f_sp[3] + X.E(1,2) * f_sp[4] + X.E(2,2) * f_sp[5]
   );
 
-  const unsigned int ndirs = res_dir.cols();
   for (unsigned idir = 0; idir < ndirs; idir++) {
     Vector3d E_T_f_dir (
       X_dir[idir].E(0,0) * f_sp[3] + X_dir[idir].E(1,0) * f_sp[4] + X_dir[idir].E(2,0) * f_sp[5] + X.E(0,0) * f_sp_dir(3, idir) + X.E(1,0) * f_sp_dir(4, idir) + X.E(2,0) * f_sp_dir(5, idir),

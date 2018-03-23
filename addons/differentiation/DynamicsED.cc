@@ -176,7 +176,7 @@ void InverseDynamics(
 
     } else {
       // derivative evaluation
-      ed_model.f[i].setZero();
+      ed_model.f[i].leftCols(ndirs).setZero();
       // nominal evaluation
       model.f[i].setZero();
     }
@@ -215,7 +215,8 @@ void InverseDynamics(
       Math::ED::inplace_X_applyTranspose_f (
         model.f[model.lambda[i]], ed_model.f[model.lambda[i]],
         model.X_lambda[i], ed_model.X_lambda[i],
-        model.f[i], ed_model.f[i]
+        model.f[i], ed_model.f[i],
+        ndirs
       );
       // for (unsigned idir = 0; idir < ndirs; idir++) {
       //   ed_model.f[model.lambda[i]][idir] =

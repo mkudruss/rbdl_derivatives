@@ -26,7 +26,9 @@ EDModel::EDModel () {
 }
 
 EDModel::EDModel (RigidBodyDynamics::Model& model) {
-    ndirs = 4 * model.dof_count;
+    ndirs = 20 * model.dof_count;
+
+    std::cout << "constructor resize" << std::endl;
 
     // NOTE: old initialization values
     std::vector<SpatialRigidBodyInertia> SRBI(ndirs);
@@ -74,6 +76,7 @@ EDModel::EDModel (RigidBodyDynamics::Model& model) {
 void EDModel::resize_directions (const unsigned int &requested_ndirs)
 {
   if (ndirs < requested_ndirs) {
+    std::cout << "resize" << std::endl;
       ndirs = requested_ndirs;
 
     // inertias
