@@ -132,7 +132,7 @@ inline void X_apply_v (
   SpatialVector &res,
   SpatialDirection &res_dir,
   const SpatialTransform &X, const std::vector<SpatialTransform> &X_dir,
-  const SpatialVector &v, const SpatialDirection &v_dir
+  const SpatialVector &v, const SpatialDirection &v_dir,
   const unsigned int &ndirs
 ) {
 
@@ -213,7 +213,7 @@ inline void X_applyT_f(
   SpatialVector &res,
   SpatialDirection &res_dir,
   const SpatialTransform &X, const std::vector<SpatialTransform> &X_dir,
-  const SpatialVector &f_sp, const SpatialDirection &f_sp_dir
+  const SpatialVector &f_sp, const SpatialDirection &f_sp_dir,
   const unsigned int &ndirs
 ) {
   Vector3d E_T_f (
