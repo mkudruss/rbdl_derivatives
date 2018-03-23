@@ -545,8 +545,8 @@ inline void crossf (
     = v1_dir_head.colwise().cross(v2_tail)
     - v2_dir_tail.colwise().cross(v1_head);
 
-  res.head(3) = v1_head.cross(v2_head) + v1_tail.cross(v2_tail);
-  res.tail(3) = v1_head.cross(v2_tail);
+  res.segment<3>(0) = v1_head.cross(v2_head) + v1_tail.cross(v2_tail);
+  res.segment<3>(3) = v1_head.cross(v2_tail);
 
   return;
 }
