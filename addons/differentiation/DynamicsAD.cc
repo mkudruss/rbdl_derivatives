@@ -622,7 +622,8 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
 	const MatrixNd &q_dirs,
 	MatrixNd &H,
 	std::vector<MatrixNd> &H_ad,
-	bool update_kinematics) {
+	bool update_kinematics
+) {
 
   for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
     assert( model.mJoints[i].mJointType != JointTypeCustom);

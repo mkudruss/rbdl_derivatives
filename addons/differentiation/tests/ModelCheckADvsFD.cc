@@ -210,6 +210,7 @@ void checkModelsADvsFD(
 }
 
 
+/*
 void checkModelsADvsED(
     unsigned ndirs,
     Model const & ad_model,
@@ -411,6 +412,7 @@ void checkModelsADvsED(
     }
   }
 }
+*/
 
 
 void checkConstraintSetsADvsFD (

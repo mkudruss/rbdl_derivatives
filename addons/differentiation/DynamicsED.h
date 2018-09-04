@@ -33,31 +33,31 @@ RBDL_DLLAPI void InverseDynamics(
   std::vector<std::vector<Math::SpatialVector> > const *f_ext_dirs = nullptr
 );
 
-/*
+
 RBDL_DLLAPI
 void NonlinearEffects (
     Model & model,
-    ADModel & ad_model,
+    EDModel & ed_model,
     const Math::VectorNd & q,
     const Math::MatrixNd & q_dirs,
     const Math::VectorNd & qdot,
     const Math::MatrixNd & qdot_dirs,
     Math::VectorNd & tau,
-    Math::MatrixNd & ad_tau
+    Math::MatrixNd & ed_tau
     );
 
 
 RBDL_DLLAPI
 void CompositeRigidBodyAlgorithm (
   Model &model,
-  ADModel &ad_model,
+  EDModel &ed_model,
   Math::VectorNd const & q,
   Math::MatrixNd const & q_dirs,
   Math::MatrixNd & H,
   std::vector<Math::MatrixNd> & H_dirs,
   bool update_kinematics = true
 );
-*/
+
 
 
 // -----------------------------------------------------------------------------

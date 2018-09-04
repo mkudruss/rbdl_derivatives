@@ -11,6 +11,7 @@ INCLUDE_DIRECTORIES (${UNITTEST++_INCLUDE_DIR})
 
 SET ( TESTS_SRCS
     runtests.cc
+    SpatialAlgebraTest.cc
     rbdl_mathutilsADvsFDTests.cc
     rbdl_utilsADvsFDTests.cc
     DynamicsADvsFDTests.cc

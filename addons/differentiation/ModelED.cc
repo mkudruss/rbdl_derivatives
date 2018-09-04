@@ -29,6 +29,7 @@ EDModel::EDModel (RigidBodyDynamics::Model& model) {
     ndirs = 10 * model.dof_count;
 
     // NOTE: old initialization values
+    // std::vector<SpatialRigidBodyInertia> SRBI(ndirs);
     std::vector<SpatialRigidBodyInertia> SRBI(ndirs);
     std::vector<SpatialMatrix> X(ndirs, SpatialMatrix::Zero());
     std::vector<SpatialTransform> T(ndirs, SpatialTransform::Zero());
@@ -38,7 +39,7 @@ EDModel::EDModel (RigidBodyDynamics::Model& model) {
     //std::vector<double> double(ndirs, 0.0);
 
     // inertias
-    Ic.resize(model.mBodies.size(), SRBI);
+    Ic.resize(model.mBodies.size(), X);
 
     // spatial matrices
     IA.resize(model.mBodies.size(), X);
@@ -51,13 +52,31 @@ EDModel::EDModel (RigidBodyDynamics::Model& model) {
     // spatial vectors
     v_J.resize(model.mBodies.size(), vec_dir);
     v.resize(model.mBodies.size(), vec_dir);
+    v_q.resize(model.mBodies.size(), vec_dir);
+    v_qdot.resize(model.mBodies.size(), vec_dir);
+    v_qddot.resize(model.mBodies.size(), vec_dir);
     c_J.resize(model.mBodies.size(), vec_dir);
     a.resize(model.mBodies.size(), vec_dir);
+    a_q.resize(model.mBodies.size(), vec_dir);
+    a_qdot.resize(model.mBodies.size(), vec_dir);
+    a_qddot.resize(model.mBodies.size(), vec_dir);
+
+    SpatialVector temp = SpatialVector::Zero();
+    h.resize(model.mBodies.size(), temp);
+    h_q.resize(model.mBodies.size(), vec_dir);
+    h_qdot.resize(model.mBodies.size(), vec_dir);
+    h_qddot.resize(model.mBodies.size(), vec_dir);
 
     hc.resize(model.mBodies.size(), vec_dir);
     F.resize(model.mBodies.size(), vec_dir);
     c.resize(model.mBodies.size(), vec_dir);
+    c_q.resize(model.mBodies.size(), vec_dir);
+    c_qdot.resize(model.mBodies.size(), vec_dir);
+    c_qddot.resize(model.mBodies.size(), vec_dir);
     f.resize(model.mBodies.size(), vec_dir);
+    f_q.resize(model.mBodies.size(), vec_dir);
+    f_qdot.resize(model.mBodies.size(), vec_dir);
+    f_qddot.resize(model.mBodies.size(), vec_dir);
 
     pA.resize(model.mBodies.size(), vec_dir);
     U.resize(model.mBodies.size(), vec_dir);

@@ -35,7 +35,7 @@ struct EDModel {
     unsigned int ndirs;
 
     // inertias
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialRigidBodyInertia> > Ic;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > Ic;
 
     // spatial matrices
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > IA;
@@ -48,10 +48,27 @@ struct EDModel {
     // spatial vectors
     std::vector<SpatialDirection> v_J;
     std::vector<SpatialDirection> v;
+    std::vector<SpatialDirection> v_q;
+    std::vector<SpatialDirection> v_qdot;
+    std::vector<SpatialDirection> v_qddot;
     std::vector<SpatialDirection> c_J;
     std::vector<SpatialDirection> a;
+    std::vector<SpatialDirection> a_q;
+    std::vector<SpatialDirection> a_qdot;
+    std::vector<SpatialDirection> a_qddot;
     std::vector<SpatialDirection> c;
+    std::vector<SpatialDirection> c_q;
+    std::vector<SpatialDirection> c_qdot;
+    std::vector<SpatialDirection> c_qddot;
     std::vector<SpatialDirection> f;
+    std::vector<SpatialDirection> f_q;
+    std::vector<SpatialDirection> f_qdot;
+    std::vector<SpatialDirection> f_qddot;
+
+    std::vector<RigidBodyDynamics::Math::SpatialVector> h;
+    std::vector<SpatialDirection> h_q;
+    std::vector<SpatialDirection> h_qdot;
+    std::vector<SpatialDirection> h_qddot;
 
     std::vector<SpatialDirection> hc;
     std::vector<SpatialDirection> F;

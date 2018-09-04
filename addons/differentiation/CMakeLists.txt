@@ -30,6 +30,7 @@ SET ( DIFFERENTIATION_SOURCES
 	ConstraintsAD.cc
 	ConstraintsFD.cc
 	ConstraintsFDC.cc
+	ConstraintsED.cc
 	KinematicsAD.cc
 	KinematicsFD.cc
 	DynamicsAD.cc

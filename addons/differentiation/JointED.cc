@@ -35,6 +35,74 @@ RBDL_DLLAPI void jcalc (
     const VectorNd &qdot,
     const MatrixNd &qdot_dirs
 ) {
+  // exception if we calculate it for the root body
+  assert (joint_id > 0);
+
+  // receive number of directions
+  const unsigned ndirs = q_dirs.cols();
+  if(ndirs != qdot_dirs.cols()){abort();};
+  // if(ndirs != qddot_dirs.cols()){abort()};
+
+  // resize container if necessary
+  ed_model.resize_directions(ndirs);
+
+  if (model.mJoints[joint_id].mJointType == JointTypeRevoluteX) {
+    model.X_J[joint_id] = Xrotx (q[model.mJoints[joint_id].q_index]);
+    model.v_J[joint_id][0] = qdot[model.mJoints[joint_id].q_index];
+  } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteY) {
+    model.X_J[joint_id] = Xroty (q[model.mJoints[joint_id].q_index]);
+    model.v_J[joint_id][1] = qdot[model.mJoints[joint_id].q_index];
+  } else if (model.mJoints[joint_id].mJointType == JointTypeRevoluteZ) {
+    model.X_J[joint_id] = Xrotz (q[model.mJoints[joint_id].q_index]);
+    model.v_J[joint_id][2] = qdot[model.mJoints[joint_id].q_index];
+  } else if (model.mJoints[joint_id].mDoFCount == 1 &&
+      model.mJoints[joint_id].mJointType != JointTypeCustom) {
+    model.X_J[joint_id] = jcalc_XJ (model, joint_id, q);
+    model.v_J[joint_id]
+      = model.S[joint_id] * qdot[model.mJoints[joint_id].q_index];
+  } else if (model.mJoints[joint_id].mJointType == JointTypeSpherical) {
+    cerr << __FILE__ << " " << __LINE__ << ":"
+         << " Multi-DoF joint not supported." << endl;
+    abort();
+  } else if (model.mJoints[joint_id].mJointType == JointTypeEulerZYX) {
+    cerr << __FILE__ << " " << __LINE__ << ":"
+         << " Multi-DoF joint not supported." << endl;
+    abort();
+  } else if (model.mJoints[joint_id].mJointType == JointTypeEulerXYZ) {
+    cerr << __FILE__ << " " << __LINE__ << ":"
+         << " Multi-DoF joint not supported." << endl;
+    abort();
+  } else if (model.mJoints[joint_id].mJointType == JointTypeEulerYXZ) {
+    cerr << __FILE__ << " " << __LINE__ << ":"
+         << " Multi-DoF joint not supported." << endl;
+    abort();
+  } else if(model.mJoints[joint_id].mJointType == JointTypeTranslationXYZ){
+    cerr << __FILE__ << " " << __LINE__ << ":"
+         << " Multi-DoF joint not supported." << endl;
+    abort();
+  } else if (model.mJoints[joint_id].mJointType == JointTypeCustom) {
+    cerr << __FILE__ << " " << __LINE__ << ":"
+         << " Custom joint not supported." << endl;
+    abort();
+  } else {
+    std::cerr << "Error: invalid joint type " << model.mJoints[joint_id].mJointType << " at id " << joint_id << std::endl;
+    abort();
+  }
+
+  model.X_lambda[joint_id] = model.X_J[joint_id] * model.X_T[joint_id];
+  return;
+}
+
+/*
+RBDL_DLLAPI void jcalc (
+    RigidBodyDynamics::Model &model,
+    RigidBodyDynamics::EDModel &ed_model,
+    unsigned int joint_id,
+    const VectorNd &q,
+    const MatrixNd &q_dirs,
+    const VectorNd &qdot,
+    const MatrixNd &qdot_dirs
+) {
 
   // exception if we calculate it for the root body
   assert (joint_id > 0);
@@ -164,7 +232,47 @@ RBDL_DLLAPI void jcalc (
 
   return;
 }
+*/
 
+// RBDL_DLLAPI
+// void jcalc_XJ (
+//   RigidBodyDynamics::Model &model,
+//   RigidBodyDynamics::EDModel &ed_model,
+//   const unsigned int &joint_id,
+//   const unsigned int &ndir,
+//   const Math::VectorNd &q,
+//   const Math::MatrixNd &q_dirs,
+//   SpatialTransform &X,
+//   std::vector<SpatialTransform> &X_dir
+// ) {
+//   assert (joint_id > 0);
+
+//   if (model.mJoints[joint_id].mDoFCount == 1
+//       && model.mJoints[joint_id].mJointType != JointTypeCustom) {
+//     if (model.mJoints[joint_id].mJointType == JointTypeRevolute) {
+//       return Xrot (q[model.mJoints[joint_id].q_index], Vector3d (
+//             model.mJoints[joint_id].mJointAxes[0][0],
+//             model.mJoints[joint_id].mJointAxes[0][1],
+//             model.mJoints[joint_id].mJointAxes[0][2]
+//             ));
+//     } else if (model.mJoints[joint_id].mJointType == JointTypePrismatic) {
+//       return Xtrans ( Vector3d (
+//             model.mJoints[joint_id].mJointAxes[0][3]
+//             * q[model.mJoints[joint_id].q_index],
+//             model.mJoints[joint_id].mJointAxes[0][4]
+//             * q[model.mJoints[joint_id].q_index],
+//             model.mJoints[joint_id].mJointAxes[0][5]
+//             * q[model.mJoints[joint_id].q_index]
+//             )
+//           );
+//     }
+//   }
+//   std::cerr << "Error: invalid joint type!" << std::endl;
+//   abort();
+//   return SpatialTransform();
+// }
+
+/*
 RBDL_DLLAPI
 void jcalc_XJ (
   RigidBodyDynamics::Model &model,
@@ -211,6 +319,7 @@ void jcalc_XJ (
     }
   }
 }
+*/
 
 // -----------------------------------------------------------------------------
 } /* ED */
