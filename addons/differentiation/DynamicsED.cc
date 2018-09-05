@@ -67,20 +67,24 @@ void InverseDynamics(
     jcalc (model, i, q, qdot);
 
     // nominal evaluation
-    SpatialVector temp = model.X_lambda[i].apply(model.v[lambda]);
+    SpatialVector temp = model.X_lambda[i].apply(model.v[model.lambda[i]]);
     model.v[i] = temp + model.v_J[i];
     // derivative evaluation
     // d v[i] / d q
     ed_model.v_q[i].leftCols(ndirs)
+        = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+        + model.X_lambda[i].toMatrix()*ed_model.v_q[model.lambda[i]].leftCols(ndirs);
       // TODO exploit structure from S
-      = crossm(temp)*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
-      + model.X_lambda[i].toMatrix()*ed_model.v_q[lambda].leftCols(ndirs);
+//      = crossm(temp)*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
+//      + model.X_lambda[i].toMatrix()*ed_model.v_q[lambda].leftCols(ndirs);
     // d v[i] / d qdot
     ed_model.v_qdot[i].leftCols(ndirs)
-      = model.X_lambda[i].toMatrix()*ed_model.v_qdot[lambda].leftCols(ndirs)
-      // + model.X_lambda[i].apply(model.v[lambda])
-      // d v_J(q, qdot) / d qdot * qdot_dir = S_i(q) * qdot_dir = ed_model
-      + model.S[i]*qdot_dirs.row(model.mJoints[i].q_index);
+        = model.X_lambda[i].toMatrix()*ed_model.v_qdot[model.lambda[i]].leftCols(ndirs)
+                + model.S[i]*qdot_dirs.row(model.mJoints[i].q_index);
+//      = model.X_lambda[i].toMatrix()*ed_model.v_qdot[lambda].leftCols(ndirs)
+//      // + model.X_lambda[i].apply(model.v[lambda])
+//      // d v_J(q, qdot) / d qdot * qdot_dir = S_i(q) * qdot_dir = ed_model
+//      + model.S[i]*qdot_dirs.row(model.mJoints[i].q_index);
       // model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
     // d v[i] / d qddot = 0
     ed_model.v_qddot[i].leftCols(ndirs).setZero();
@@ -93,14 +97,15 @@ void InverseDynamics(
       = -crossm(model.v_J[i]) * ed_model.v_q[i].leftCols(ndirs);
     // d c[i] / d qdot
     ed_model.c_qdot[i].leftCols(ndirs)
-      = -crossm(model.v_J[i]) * ed_model.v_qdot[i].leftCols(ndirs);
+      = crossm(model.v[i])*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
+        -crossm(model.v_J[i]) * ed_model.v_qdot[i].leftCols(ndirs);
     // d c[i] / d qddot = 0
     ed_model.c_qddot[i].leftCols(ndirs).setZero();
 
     if(model.mJoints[i].mJointType != JointTypeCustom){
       if (model.mJoints[i].mDoFCount == 1) {
         // nominal evaluation
-        temp = model.X_lambda[i].apply(model.a[lambda]);
+        temp = model.X_lambda[i].apply(model.a[model.lambda[i]]);
         model.a[i] = temp + model.c[i] + model.S[i] * qddot[q_index];
         // derivative evaluation
         // d a[i] / d q
@@ -116,6 +121,7 @@ void InverseDynamics(
         // d a[i] / d qddot
         ed_model.a_qddot[i].leftCols(ndirs)
           = model.X_lambda[i].toMatrix()* ed_model.a_qddot[lambda].leftCols(ndirs)
+          + ed_model.c_qddot[i].leftCols(ndirs)
           + model.S[i] * qddot_dirs.row(model.mJoints[i].q_index).leftCols(ndirs);
 
       } else if (model.mJoints[i].mDoFCount == 3) {
@@ -134,32 +140,33 @@ void InverseDynamics(
       // derivative evaluation
       // d a[i] / d q
       ed_model.h_q[i].leftCols(ndirs)
-        = model.I[i] * ed_model.v_q[i].leftCols(ndirs);
+        = model.I[i].toMatrix()*ed_model.v_q[i].leftCols(ndirs);
       // d a[i] / d qdot
       ed_model.h_qdot[i].leftCols(ndirs)
-        = model.I[i] * ed_model.v_qdot[i].leftCols(ndirs);
+        = model.I[i].toMatrix()*ed_model.v_qdot[i].leftCols(ndirs);
       // d a[i] / d qddot
       ed_model.h_qddot[i].leftCols(ndirs)
-        = model.I[i] * ed_model.v_qddot[i].leftCols(ndirs);
+        = model.I[i].toMatrix()*ed_model.v_qddot[i].leftCols(ndirs);
 
       // nominal evaluation
       model.f[i] = model.I[i] * model.a[i] + crossf(model.v[i], ed_model.h[i]);
       // derivative evaluation
+
       // d a[i] / d q
       ed_model.f_q[i].leftCols(ndirs)
-        = model.I[i] * ed_model.a_q[i].leftCols(ndirs)
-        - crossf(ed_model.h[i]) * ed_model.v_q[i].leftCols(ndirs)
-        + crossf(model.v[i]) * ed_model.h_q[i];
+        = model.I[i].toMatrix() * ed_model.a_q[i].leftCols(ndirs)
+           + crossf_rhs(ed_model.h[i]).transpose() * ed_model.v_q[i].leftCols(ndirs)
+           + crossf(model.v[i]) * ed_model.h_q[i].leftCols(ndirs);
       // d a[i] / d qdot
       ed_model.f_qdot[i].leftCols(ndirs)
-        = model.I[i] * ed_model.a_qdot[i].leftCols(ndirs)
-        - crossf(ed_model.h[i]) * ed_model.v_qdot[i].leftCols(ndirs)
-        + crossf(model.v[i]) * ed_model.h_qdot[i];
+        = model.I[i].toMatrix() * ed_model.a_qdot[i].leftCols(ndirs)
+          + crossf_rhs(ed_model.h[i]).transpose() * ed_model.v_qdot[i].leftCols(ndirs)
+          + crossf(model.v[i]) * ed_model.h_qdot[i].leftCols(ndirs);
       // d a[i] / d qddot
       ed_model.f_qddot[i].leftCols(ndirs)
-        = model.I[i] * ed_model.a_qddot[i].leftCols(ndirs)
-        - crossf(ed_model.h[i]) * ed_model.v_qddot[i].leftCols(ndirs)
-        + crossf(model.v[i]) * ed_model.h_qddot[i];
+        = model.I[i].toMatrix() * ed_model.a_qddot[i].leftCols(ndirs)
+          + crossf_rhs(ed_model.h[i]).transpose() * ed_model.v_qddot[i].leftCols(ndirs)
+          + crossf(model.v[i]) * ed_model.h_qddot[i].leftCols(ndirs);
 
     } else {
       // nominal evaluation
@@ -211,16 +218,16 @@ void InverseDynamics(
       // d a[i] / d q
       ed_model.f_q[model.lambda[i]].leftCols(ndirs)
         = ed_model.f_q[model.lambda[i]].leftCols(ndirs)
-        + crossf(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
-        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_q[model.lambda[i]].leftCols(ndirs);
+        + crossf_rhs(temp).transpose()*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_q[i].leftCols(ndirs);
       // d a[i] / d qdot
       ed_model.f_qdot[model.lambda[i]].leftCols(ndirs)
         = ed_model.f_qdot[model.lambda[i]].leftCols(ndirs)
-        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_qdot[model.lambda[i]].leftCols(ndirs);
+        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_qdot[i].leftCols(ndirs);
       // d a[i] / d qddot
       ed_model.f_qddot[model.lambda[i]].leftCols(ndirs)
         = ed_model.f_qddot[model.lambda[i]].leftCols(ndirs)
-        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_qddot[model.lambda[i]].leftCols(ndirs);
+        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_qddot[i].leftCols(ndirs);
     }
   }
 

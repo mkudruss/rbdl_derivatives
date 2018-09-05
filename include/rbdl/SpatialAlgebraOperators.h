@@ -484,15 +484,25 @@ inline SpatialMatrix crossf (const SpatialVector &v) {
       );
 }
 
-inline SpatialVector crossf (const SpatialVector &v1, const SpatialVector &v2) {
+inline SpatialVector crossf (const SpatialVector &v, const SpatialVector &w) {
   return SpatialVector (
-      -v1[2] * v2[1] + v1[1] * v2[2] - v1[5] * v2[4] + v1[4] * v2[5],
-      v1[2] * v2[0] - v1[0] * v2[2] + v1[5] * v2[3] - v1[3] * v2[5],
-      -v1[1] * v2[0] + v1[0] * v2[1] - v1[4] * v2[3] + v1[3] * v2[4],
-      - v1[2] * v2[4] + v1[1] * v2[5],
-      + v1[2] * v2[3] - v1[0] * v2[5],
-      - v1[1] * v2[3] + v1[0] * v2[4]
+      -v[2] * w[1] + v[1] * w[2] - v[5] * w[4] + v[4] * w[5],
+      v[2] * w[0] - v[0] * w[2] + v[5] * w[3] - v[3] * w[5],
+      -v[1] * w[0] + v[0] * w[1] - v[4] * w[3] + v[3] * w[4],
+      - v[2] * w[4] + v[1] * w[5],
+      + v[2] * w[3] - v[0] * w[5],
+      - v[1] * w[3] + v[0] * w[4]
       );
+}
+
+inline SpatialMatrix crossf_rhs(const SpatialVector & w)   {
+  return SpatialMatrix (
+       0.,   -w[2],    w[1],      0.,   -w[5],    w[4],
+     w[2],      0.,   -w[0],    w[5],      0.,   -w[3],
+    -w[1],    w[0],      0.,   -w[4],    w[3],      0.,
+       0.,   -w[5],    w[4],      0.,      0.,      0.,
+     w[5],      0.,   -w[3],      0.,      0.,      0.,
+    -w[4],    w[3],      0.,      0.,      0.,      0.);
 }
 
 } /* Math */
