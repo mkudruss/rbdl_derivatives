@@ -1132,7 +1132,6 @@ void ForwardDynamicsApplyConstraintForces (
   for (i = 1; i < model.mBodies.size(); i++) {
     unsigned int q_index = model.mJoints[i].q_index;
     unsigned int lambda = model.lambda[i];
-    SpatialTransform X_lambda = model.X_lambda[i];
 
     applySTSV(ndirs,
               model.X_lambda[i], ad_model.X_lambda[i],

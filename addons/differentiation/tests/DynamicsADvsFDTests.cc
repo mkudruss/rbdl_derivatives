@@ -362,22 +362,20 @@ void InverseDynamicsEDTestTemplate(
         CHECK_ARRAY_CLOSE (f1.col(idir).data(), f2.data(), 6, 1e-6);
       }
     }
-
-
-    const unsigned ndirs = ad_model.qdot_size;
+    // const unsigned ndirs = ad_model.qdot_size;
     // checkModelsADvsED(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
 
-    std::cout << "tau_nom =    " << tau.transpose() << std::endl;
-    std::cout << "tau_ref =    " << tau_ref.transpose() << std::endl;
-    std::cout << "error, ad (max):  " << (tau - tau_ref).cwiseAbs().transpose()
-      << " (" << (tau - tau_ref).cwiseAbs().maxCoeff() << ")" << endl;
-    std::cout << endl;
+    // std::cout << "tau_nom =    " << tau.transpose() << std::endl;
+    // std::cout << "tau_ref =    " << tau_ref.transpose() << std::endl;
+    // std::cout << "error, ad (max):  " << (tau - tau_ref).cwiseAbs().transpose()
+    //   << " (" << (tau - tau_ref).cwiseAbs().maxCoeff() << ")" << endl;
+    // std::cout << endl;
 
-    std::cout << "ad_tau = \n" << ad_tau << std::endl;
-    std::cout << "ed_tau = \n" << ed_tau << std::endl;
-    std::cout << "error (max): \n" << (ad_tau - ed_tau).cwiseAbs()
-      << " (" << (ad_tau - ed_tau).cwiseAbs().maxCoeff() << ")" << endl;
-    std::cout << endl;
+    // std::cout << "ad_tau = \n" << ad_tau << std::endl;
+    // std::cout << "ed_tau = \n" << ed_tau << std::endl;
+    // std::cout << "error (max): \n" << (ad_tau - ed_tau).cwiseAbs()
+    //   << " (" << (ad_tau - ed_tau).cwiseAbs().maxCoeff() << ")" << endl;
+    // std::cout << endl;
 
 
     CHECK_ARRAY_CLOSE (tau_ref.data(), tau.data(), tau_ref.rows(), array_close_prec);
@@ -537,7 +535,6 @@ void NonlinearEffectsEDTestTemplate(
     );
 
     // checkModelsADvsFD(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
-
     for (unsigned int i = 0; i < model.mBodies.size(); i++) {
       SpatialDirection v1 = ed_d_model.v_q[i] + ed_d_model.v_qdot[i];
       for (unsigned int idir = 0; idir < ad_model.qdot_size; idir++) {
@@ -598,21 +595,20 @@ void NonlinearEffectsEDTestTemplate(
       }
     }
 
+    // std::cout << "tau_nom =    " << tau_nom.transpose() << std::endl;
+    // std::cout << "ad_tau_nom = " << ad_d_tau_nom.transpose() << std::endl;
+    // std::cout << "ed_tau_nom = " << ed_d_tau_nom.transpose() << std::endl;
+    // std::cout << "error, ad (max):  " << (ad_d_tau_nom - tau_nom).cwiseAbs().transpose()
+    //   << " (" << (ad_d_tau_nom - tau_nom).cwiseAbs().maxCoeff() << ")" << endl;
+    // std::cout << "error, ed (max):  " << (ed_d_tau_nom - tau_nom).cwiseAbs().transpose()
+    //   << " (" << (ed_d_tau_nom - tau_nom).cwiseAbs().maxCoeff() << ")" << endl;
+    // std::cout << endl;
 
-    std::cout << "tau_nom =    " << tau_nom.transpose() << std::endl;
-    std::cout << "ad_tau_nom = " << ad_d_tau_nom.transpose() << std::endl;
-    std::cout << "ed_tau_nom = " << ed_d_tau_nom.transpose() << std::endl;
-    std::cout << "error, ad (max):  " << (ad_d_tau_nom - tau_nom).cwiseAbs().transpose()
-      << " (" << (ad_d_tau_nom - tau_nom).cwiseAbs().maxCoeff() << ")" << endl;
-    std::cout << "error, ed (max):  " << (ed_d_tau_nom - tau_nom).cwiseAbs().transpose()
-      << " (" << (ed_d_tau_nom - tau_nom).cwiseAbs().maxCoeff() << ")" << endl;
-    std::cout << endl;
-
-    std::cout << "ad_tau_der = \n" << ad_tau_der << std::endl;
-    std::cout << "ed_tau_der = \n" << ed_tau_der << std::endl;
-    std::cout << "error (max): \n" << (ad_tau_der - ed_tau_der).cwiseAbs()
-      << " (" << (ad_tau_der - ed_tau_der).cwiseAbs().maxCoeff() << ")" << endl;
-    std::cout << endl;
+    // std::cout << "ad_tau_der = \n" << ad_tau_der << std::endl;
+    // std::cout << "ed_tau_der = \n" << ed_tau_der << std::endl;
+    // std::cout << "error (max): \n" << (ad_tau_der - ed_tau_der).cwiseAbs()
+    //   << " (" << (ad_tau_der - ed_tau_der).cwiseAbs().maxCoeff() << ")" << endl;
+    // std::cout << endl;
 
     CHECK_ARRAY_CLOSE (tau_nom.data(), ad_d_tau_nom.data(), tau_nom.rows(), array_close_prec);
     CHECK_ARRAY_CLOSE (tau_nom.data(), ed_d_tau_nom.data(), tau_nom.rows(), array_close_prec);
@@ -656,6 +652,7 @@ TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsEDTest) {
 
 // -----------------------------------------------------------------------------
 
+/*
 template<typename T>
 void CompositeRigidBodyAlgorithmADTestTemplate(
     T & obj,
@@ -711,7 +708,9 @@ void CompositeRigidBodyAlgorithmADTestTemplate(
     }
   }
 }
+*/
 
+/*
 TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmADTest) {
   CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-8);
 }
@@ -735,10 +734,11 @@ TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmADTest) {
 TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmADTest) {
   CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-6);
 }
+*/
 
- TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
-   CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-5);
- }
+ // TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
+ //   CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-5);
+ // }
 
 // -----------------------------------------------------------------------------
 template<typename T>
@@ -761,8 +761,8 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
     // initialize outputs and derivatives
     MatrixNd H = MatrixNd::Zero(q.size(),q.size());
     MatrixNd ad_H = MatrixNd::Zero(model.q_size, ndirs);
-    MatrixNd fd_H = MatrixNd::Zero(model.q_size, ndirs);
-    vector<MatrixNd> fd_H_dirs(ndirs, MatrixNd::Zero(model.q_size,model.q_size));
+    MatrixNd ed_H = MatrixNd::Zero(model.q_size, ndirs);
+    vector<MatrixNd> ed_H_dirs(ndirs, MatrixNd::Zero(model.q_size,model.q_size));
     vector<MatrixNd> ad_H_dirs(ndirs, MatrixNd::Zero(model.q_size,model.q_size));
 
     // compute nominal value
@@ -771,7 +771,7 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
     // evaluate derivatives
     // -> using finite differences
     RigidBodyDynamics::ED::CompositeRigidBodyAlgorithm(
-      ed_model, ed_d_model, q, q_dirs, fd_H, fd_H_dirs
+      ed_model, ed_d_model, q, q_dirs, ed_H, ed_H_dirs
     );
 
     // -> using algorithmic differences
@@ -780,34 +780,78 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
     );
 
     // check derivatives of model quantities
-    // checkModelsADvsFD(ndirs,
-    //                   ad_model, ad_d_model,
-    //                   ed_model, ed_d_model);
+    checkModelsADvsED(
+      ndirs,
+      ad_model, ad_d_model,
+      ed_model, ed_d_model
+    );
 
     // check nominal values for consistency
     CHECK_ARRAY_CLOSE (H.data(), ad_H.data(),
                        model.q_size * model.q_size,
-                       1e-16);
-    CHECK_ARRAY_CLOSE (H.data(), fd_H.data(),
+                       1e-10);
+    CHECK_ARRAY_CLOSE (H.data(), ed_H.data(),
                        model.q_size * model.q_size,
-                       1e-16);
+                       1e-10);
+    CHECK_ARRAY_CLOSE (ad_H.data(), ed_H.data(),
+                       model.q_size * model.q_size,
+                       1e-10);
+
+    MatrixNd error = (H - ad_H).cwiseAbs();
+    double max = error.maxCoeff();
+    if (max > 1e-12) {
+      std::cout << "error = \n" << error << std::endl;
+      std::cout << "max   = " << max << std::endl;
+      std::cout << "H = \n"<< H << std::endl;
+      std::cout << "ad_H = \n"<< ad_H << std::endl;
+      std::cout << endl;
+    }
+    error = (H - ed_H).cwiseAbs();
+    max = error.maxCoeff();
+    if (max > 1e-12) {
+      std::cout << "error = \n" << error << std::endl;
+      std::cout << "max   = " << max << std::endl;
+      std::cout << "H = \n"<< H << std::endl;
+      std::cout << "ed_H = \n"<< ed_H << std::endl;
+      std::cout << endl;
+    }
+    error = (ad_H - ed_H).cwiseAbs();
+    max = error.maxCoeff();
+    if (max > 1e-12) {
+      std::cout << "error = \n" << error << std::endl;
+      std::cout << "max   = " << max << std::endl;
+      std::cout << "ad_H = \n"<< ad_H << std::endl;
+      std::cout << "ed_H = \n"<< ed_H << std::endl;
+      std::cout << endl;
+    }
+
 
     // check AD vs FD derivatives for consistency
     for (size_t idir = 0; idir < model.qdot_size; idir++) {
-      std::cout << "fd_H_dirs[" << idir << "]=\n" << fd_H_dirs[idir] << std::endl;
-      std::cout << "ad_H_dirs[" << idir << "]=\n" << ad_H_dirs[idir] << std::endl;
-      CHECK_ARRAY_CLOSE (fd_H_dirs[idir].data(), ad_H_dirs[idir].data(),
+      error = (ed_H_dirs[idir] - ad_H_dirs[idir]).cwiseAbs();
+      max = error.maxCoeff();
+      if (max > 1e-12) {
+        std::cout << "error [" << idir << "]= \n" << error << std::endl;
+        std::cout << "max   [" << idir << "]= " << max << std::endl;
+        std::cout << "ed_H_dirs[" << idir << "]=\n"
+          << ed_H_dirs[idir] << std::endl;
+        std::cout << "ad_H_dirs[" << idir << "]=\n"
+          << ad_H_dirs[idir] << std::endl;
+        std::cout << endl;
+      }
+      CHECK_ARRAY_CLOSE (
+        ed_H_dirs[idir].data(), ad_H_dirs[idir].data(),
                          model.q_size * model.q_size,
-                         array_close_prec);
+        array_close_prec
+      );
     }
   }
 }
 
-//TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmEDTest) {
-//  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
-//}
+TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmEDTest) {
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
+}
 
-/*
 TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmEDTest) {
   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
 }
@@ -827,10 +871,9 @@ TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmEDTest) {
 TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmEDTest) {
   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-6);
 }
-*/
 
 // TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmEDTest) {
-//   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-5);
+//   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
 // }
 
 // -----------------------------------------------------------------------------

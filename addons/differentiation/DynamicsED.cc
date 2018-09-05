@@ -283,7 +283,8 @@ RBDL_DLLAPI void NonlinearEffects (
       model.a[i] = model.X_lambda[i].apply(spatial_gravity);
       // derivative evaluation
       // d a[i] / d q
-      ed_model.a_q[i].leftCols(ndirs) = crossm(model.a[i])*model.S[i]*q_dirs.row(model.mJoints[i].q_index);
+      ed_model.a_q[i].leftCols(ndirs)
+        = crossm(model.a[i])*model.S[i]*q_dirs.row(model.mJoints[i].q_index);
       // d a[i] / d qdot
       ed_model.a_qdot[i].leftCols(ndirs).setZero();
     } else {
@@ -647,7 +648,7 @@ void CompositeRigidBodyAlgorithm (
   assert (H.rows() == model.dof_count && H.cols() == model.dof_count);
 
   // get number if directions
-  size_t ndirs = q_dirs.cols();
+  const size_t ndirs = q_dirs.cols();
   ed_model.resize_directions(ndirs);
 
   for (unsigned int i = 1; i < model.mBodies.size(); i++) {
@@ -664,22 +665,23 @@ void CompositeRigidBodyAlgorithm (
 
   for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
     if (model.lambda[i] != 0) {
-      // nominal evaluation
       SpatialRigidBodyInertia temp
         = model.X_lambda[i].applyTranspose(model.Ic[i]);
-      model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + temp;
       // derivative evaluation
       for (unsigned idir = 0; idir < ndirs; idir++) {
-        // TODO make this fast
+      //   // TODO make this fast
         SpatialRigidBodyInertia rbi;
-        rbi.createFromMatrix(ed_model.Ic[model.lambda[i]][idir]);
+        rbi.createFromMatrix(ed_model.Ic[i][idir]);
+
         ed_model.Ic[model.lambda[i]][idir]
           = ed_model.Ic[model.lambda[i]][idir]
-          + crossf(model.S[i]*q_dirs.row(model.mJoints[i].q_index)[idir])*temp.toMatrix()
+          + crossf(model.S[i]*q_dirs(model.mJoints[i].q_index, idir))*temp.toMatrix()
+          - temp.toMatrix()*crossm(model.S[i]*q_dirs(model.mJoints[i].q_index,idir))
           + model.X_lambda[i].applyTranspose(rbi).toMatrix()
-          - temp.toMatrix()*crossm(model.S[i]*q_dirs.row(model.mJoints[i].q_index)[idir])
         ;
       }
+      // nominal evaluation
+      model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + temp;
     }
 
     unsigned int dof_index_i = model.mJoints[i].q_index;
@@ -706,7 +708,7 @@ void CompositeRigidBodyAlgorithm (
         F = model.X_lambda[j].applyTranspose(F);
         // derivative evaluation
         ed_model.F[i].leftCols(ndirs)
-          = crossf(F)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+          = crossf_rhs(F).transpose()*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
           + model.X_lambda[j].toMatrixTranspose()*ed_model.F[i].leftCols(ndirs);
 
         j = model.lambda[j];
@@ -722,23 +724,40 @@ void CompositeRigidBodyAlgorithm (
             // derivative evaluation
             for (unsigned idir = 0; idir < ndirs; idir++) {
               H_dirs[idir](dof_index_i, dof_index_j)
-                = model.S[i].dot(ed_model.F[i].col(idir));
+                = ed_model.F[i].col(idir).dot(model.S[j]);
               H_dirs[idir](dof_index_j, dof_index_i)
                 = H_dirs[idir](dof_index_i, dof_index_j);
             }
           }
-          else if (model.mJoints[j].mDoFCount == 3) {
+          else if (model.mJoints[j].mDoFCount == 3
+          ) {
+            cerr << __FILE__ << " " << __LINE__ << ":"
+                 << "Multi-DoF joint not supported." << endl;
+            abort();
           }
         }
-        else if (model.mJoints[j].mJointType == JointTypeCustom){
+        else if (model.mJoints[j].mJointType == JointTypeCustom
+        ){
+          cerr << __FILE__ << " " << __LINE__ << ":"
+               << " Custom joint not supported." << endl;
+          abort();
         }
       }
     }
     else if (model.mJoints[i].mDoFCount == 3
-        && model.mJoints[i].mJointType != JointTypeCustom) {
+        && model.mJoints[i].mJointType != JointTypeCustom
+    ) {
+      cerr << __FILE__ << " " << __LINE__ << ":"
+           << "Multi-DoF joint not supported." << endl;
+      abort();
     }
-    else if (model.mJoints[i].mJointType == JointTypeCustom) {
+    else if (model.mJoints[i].mJointType == JointTypeCustom
+    ) {
+      cerr << __FILE__ << " " << __LINE__ << ":"
+           << " Custom joint not supported." << endl;
+      abort();
     }
+
   }
 }
 

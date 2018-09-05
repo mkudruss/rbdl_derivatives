@@ -627,13 +627,13 @@ void NonlinearEffects (
 }
 
 RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
-	Model &model,
-	ADModel &ad_model,
-	const VectorNd &q,
-	const MatrixNd &q_dirs,
-	MatrixNd &H,
-	std::vector<MatrixNd> &H_ad,
-	bool update_kinematics
+  Model &model,
+  ADModel &ad_model,
+  const VectorNd &q,
+  const MatrixNd &q_dirs,
+  MatrixNd &H,
+  std::vector<MatrixNd> &H_ad,
+  bool update_kinematics
 ) {
 
   for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
@@ -704,7 +704,7 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
     unsigned int dof_index_j = dof_index_i;
 
     while (model.lambda[j] != 0) {
-      // derivative evaluation
+      // // derivative evaluation
       applyTransposeSTSV(ndirs,
                          model.X_lambda[j], ad_model.X_lambda[j],
                          F, ad_model.F[i],

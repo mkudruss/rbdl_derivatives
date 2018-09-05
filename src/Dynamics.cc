@@ -178,7 +178,8 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
 
   for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
     if (model.lambda[i] != 0) {
-      model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + model.X_lambda[i].applyTranspose(model.Ic[i]);
+      model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]]
+        + model.X_lambda[i].applyTranspose(model.Ic[i]);
     }
 
     unsigned int dof_index_i = model.mJoints[i].q_index;
