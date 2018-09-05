@@ -289,7 +289,7 @@ RBDL_DLLAPI void NonlinearEffects (
         = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
         + model.X_lambda[i].toMatrix()*ed_model.v_q[model.lambda[i]].leftCols(ndirs);
       // d v[i] / d qdot
-      ed_model.v_q[i].leftCols(ndirs)
+      ed_model.v_qdot[i].leftCols(ndirs)
         = model.X_lambda[i].toMatrix()*ed_model.v_qdot[model.lambda[i]].leftCols(ndirs)
         + model.S[i]*qdot_dirs.row(model.mJoints[i].q_index);
 
@@ -308,12 +308,12 @@ RBDL_DLLAPI void NonlinearEffects (
       model.a[i] = temp + model.c[i];
       // derivative evaluation
       // d a[i] / d q
-      ed_model.a[i].leftCols(ndirs)
+      ed_model.a_q[i].leftCols(ndirs)
         = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
         + model.X_lambda[i].toMatrix()*ed_model.a_q[model.lambda[i]].leftCols(ndirs)
         + ed_model.c_q[i].leftCols(ndirs);
       // d a[i] / d qdot
-      ed_model.a[i].leftCols(ndirs)
+      ed_model.a_qdot[i].leftCols(ndirs)
         = model.X_lambda[i].toMatrix()*ed_model.a_qdot[model.lambda[i]].leftCols(ndirs)
         + ed_model.c_qdot[i].leftCols(ndirs);
     }
