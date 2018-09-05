@@ -43,6 +43,7 @@ ADModel::ADModel (RigidBodyDynamics::Model& model) {
     F.resize(model.mBodies.size(), vec);
     c.resize(model.mBodies.size(), vec);
     f.resize(model.mBodies.size(), vec);
+    h.resize(model.mBodies.size(), vec);
 
     pA.resize(model.mBodies.size(), vec);
     U.resize(model.mBodies.size(), vec);

@@ -486,6 +486,67 @@ void NonlinearEffectsEDTestTemplate(
 
     // checkModelsADvsFD(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
 
+    for (unsigned int i = 0; i < model.mBodies.size(); i++) {
+      SpatialDirection v1 = ed_d_model.v_q[i] + ed_d_model.v_qdot[i];
+      for (unsigned int idir = 0; idir < ad_model.qdot_size; idir++) {
+        SpatialVector v2 = ad_d_model.v[i][idir];
+        if( (v1.col(idir) - v2).norm() > 1e-6) {
+          std::cout << v1.col(idir).transpose() << std::endl;
+          std::cout << v2.transpose() << std::endl;
+        }
+        CHECK_ARRAY_CLOSE (v1.col(idir).data(), v2.data(), 6, 1e-6);
+      }
+    }
+
+    for (unsigned int i = 0; i < model.mBodies.size(); i++) {
+      SpatialDirection c1 = ed_d_model.c_q[i] + ed_d_model.c_qdot[i];
+      for (unsigned int idir = 0; idir < ad_model.qdot_size; idir++) {
+        SpatialVector c2 = ad_d_model.c[i][idir];
+        if( (c1.col(idir) - c2).norm() > 1e-6) {
+          std::cout << c1.col(idir).transpose() << std::endl;
+          std::cout << c2.transpose() << std::endl;
+        }
+        CHECK_ARRAY_CLOSE (c1.col(idir).data(), c2.data(), 6, 1e-6);
+      }
+    }
+
+    for (unsigned int i = 0; i < model.mBodies.size(); i++) {
+      SpatialDirection a1 = ed_d_model.a_q[i] + ed_d_model.a_qdot[i];
+      for (unsigned int idir = 0; idir < ad_model.qdot_size; idir++) {
+        SpatialVector a2 = ad_d_model.a[i][idir];
+        if( (a1.col(idir) - a2).norm() > 1e-6) {
+          std::cout << a1.col(idir).transpose() << std::endl;
+          std::cout << a2.transpose() << std::endl;
+        }
+        CHECK_ARRAY_CLOSE (a1.col(idir).data(), a2.data(), 6, 1e-6);
+      }
+    }
+
+    for (unsigned int i = 0; i < model.mBodies.size(); i++) {
+      SpatialDirection h1 = ed_d_model.h_q[i] + ed_d_model.h_qdot[i];
+      for (unsigned int idir = 0; idir < ad_model.qdot_size; idir++) {
+        SpatialVector h2 = ad_d_model.h[i][idir];
+        if( (h1.col(idir) - h2).norm() > 1e-6) {
+          std::cout << h1.col(idir).transpose() << std::endl;
+          std::cout << h2.transpose() << std::endl;
+        }
+        CHECK_ARRAY_CLOSE (h1.col(idir).data(), h2.data(), 6, 1e-6);
+      }
+    }
+
+    for (unsigned int i = 0; i < model.mBodies.size(); i++) {
+      SpatialDirection f1 = ed_d_model.f_q[i] + ed_d_model.f_qdot[i];
+      for (unsigned int idir = 0; idir < ad_model.qdot_size; idir++) {
+        SpatialVector f2 = ad_d_model.f[i][idir];
+        if( (f1.col(idir) - f2).norm() > 1e-6) {
+          std::cout << f1.col(idir).transpose() << std::endl;
+          std::cout << f2.transpose() << std::endl;
+        }
+        CHECK_ARRAY_CLOSE (f1.col(idir).data(), f2.data(), 6, 1e-6);
+      }
+    }
+
+
     std::cout << "tau_nom =    " << tau_nom.transpose() << std::endl;
     std::cout << "ad_tau_nom = " << ad_d_tau_nom.transpose() << std::endl;
     std::cout << "ed_tau_nom = " << ed_d_tau_nom.transpose() << std::endl;
@@ -623,9 +684,9 @@ TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmADT
   CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-6);
 }
 
-// TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
-//   CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-5);
-// }
+ TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
+   CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-5);
+ }
 
 // -----------------------------------------------------------------------------
 template<typename T>
@@ -690,9 +751,9 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
   }
 }
 
-TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmEDTest) {
-  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
-}
+//TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmEDTest) {
+//  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
+//}
 
 /*
 TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmEDTest) {

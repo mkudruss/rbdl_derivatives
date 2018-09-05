@@ -523,6 +523,8 @@ void NonlinearEffects (
     jcalc(model, ad_model, model.mJointUpdateOrder[i], q, q_dirs, qdot, qdot_dirs);
   }
 
+  std::vector<SpatialVector> h(model.mBodies.size(), SpatialVector::Zero());
+
   for (unsigned i = 1; i < model.mBodies.size(); i++) {
     unsigned lambda = model.lambda[i];
     if (lambda == 0) {
@@ -568,12 +570,21 @@ void NonlinearEffects (
     if (!model.mBodies[i].mIsVirtual) {
       // derivative code
       for (unsigned idir = 0; idir < ndirs; idir++) {
-        ad_model.f[i][idir] = model.I[i] * ad_model.a[i][idir]
-            + crossf(ad_model.v[i][idir], model.I[i] * model.v[i])
-            + crossf(model.v[i], model.I[i] * ad_model.v[i][idir]);
+        ad_model.h[i][idir] = model.I[i] * ad_model.v[i][idir];
       }
       // nominal code
-      model.f[i] = model.I[i] * model.a[i] + crossf(model.v[i],model.I[i] * model.v[i]);
+      h[i] = model.I[i] * model.v[i];
+
+      // derivative code
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.f[i][idir] = model.I[i] * ad_model.a[i][idir]
+            + crossf(ad_model.v[i][idir], h[i])
+            + crossf(model.v[i], ad_model.h[i][idir]);
+      }
+      // nominal code
+      model.f[i] = model.I[i] * model.a[i]
+            + crossf(model.v[i], h[i]);
+
     } else {
       // derivative code
       for (unsigned idir = 0; idir < ndirs; idir++) {

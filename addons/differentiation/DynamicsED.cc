@@ -334,15 +334,35 @@ RBDL_DLLAPI void NonlinearEffects (
         + crossf(model.v[i], ed_model.h[i]);
       // derivative evaluation
       // d f[i] / d q
+
+
+      Eigen::MatrixXd b(6, ndirs);
+      for (unsigned int jj = 0; jj < ndirs; jj++) {
+        b.col(jj) = crossf(ed_model.v_q[i].col(jj), ed_model.h[i]);
+      }
+
+      Eigen::MatrixXd d(6, ndirs);
+      for (unsigned int jj = 0; jj < ndirs; jj++) {
+        d.col(jj) = crossf(ed_model.v_qdot[i].col(jj), ed_model.h[i]);
+      }
+
       ed_model.f_q[i].leftCols(ndirs)
         = model.I[i].toMatrix()*ed_model.a_q[i].leftCols(ndirs)
-        - crossf(ed_model.h[i])*ed_model.v_q[i].leftCols(ndirs)
-        + crossf(model.v[i])*ed_model.h_q[i].leftCols(ndirs);
+                + b
+                // !!! Note by PM !!!
+                // Replaced
+                //- crossf(ed_model.h[i])*ed_model.v_q[i].leftCols(ndirs)
+                // by d because spatial force cross product is not skew-symmetric
+                + crossf(model.v[i])*ed_model.h_q[i].leftCols(ndirs);
       // d f[i] / d qdot
       ed_model.f_qdot[i].leftCols(ndirs)
         = model.I[i].toMatrix()*ed_model.a_qdot[i].leftCols(ndirs)
-        - crossf(ed_model.h[i])*ed_model.v_qdot[i].leftCols(ndirs)
-        + crossf(model.v[i])*ed_model.h_qdot[i].leftCols(ndirs);
+          + d
+          // !!! Note by PM !!!
+          // Replaced
+          // - crossf(ed_model.h[i])*ed_model.v_qdot[i].leftCols(ndirs)
+          // by d because spatial force cross product is not skew-symmetric
+          + crossf(model.v[i])*ed_model.h_qdot[i].leftCols(ndirs);
     } else {
       // nominal evaluation
       model.f[i].setZero();
@@ -381,15 +401,22 @@ RBDL_DLLAPI void NonlinearEffects (
       SpatialVector temp = model.X_lambda[i].applyTranspose(model.f[i]);
       model.f[model.lambda[i]] = model.f[model.lambda[i]] + temp;
       // derivative evaluation
+
+      Eigen::MatrixXd temp_cross(6, ndirs);
+      for (unsigned int jj = 0; jj < ndirs; jj++) {
+        temp_cross.col(jj) = crossf(model.S[i]*q_dirs(model.mJoints[i].q_index, jj), temp);
+      }
+
       // d f[model.lambda[i]] / d q
       ed_model.f_q[model.lambda[i]].leftCols(ndirs)
         = ed_model.f_q[model.lambda[i]].leftCols(ndirs)
-        + crossf(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
-        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_q[model.lambda[i]].leftCols(ndirs);
+        + temp_cross
+        //- crossf(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_q[i].leftCols(ndirs);
       // d f[model.lambda[i]] / d qdot
       ed_model.f_qdot[model.lambda[i]].leftCols(ndirs)
         = ed_model.f_qdot[model.lambda[i]].leftCols(ndirs)
-        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_qdot[model.lambda[i]].leftCols(ndirs);
+        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_qdot[i].leftCols(ndirs);
     }
   }
 }
