@@ -54,10 +54,10 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     CalcConstrainedSystemVariables(*modelh, qh, qdoth, tauh, csh);
 
     // TODO make it analogue to ADMOdel with pointer arithmetic
-    // computeFDEntry(cs, csh, EPS, idir, fd_cs);
+    // computeFDCentry(cs, csh, EPS, idir, fd_cs);
 
     if (fd_model) {
-      computeFDEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCentry(model, *modelh, EPS, idir, *fd_model);
       delete modelh;
     }
   }
@@ -122,10 +122,10 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
     fd_qddot.col(idir) = (qddotph - qddotmh) / EPSx2;
 
     // TODO add pointer arithmetic for fd_cs
-    // computeFDEntry(cs, csh, EPS, idir, fd_cs);
+    // computeFDCentry(cs, csh, EPS, idir, fd_cs);
 
     if (fd_model) {
-      computeFDEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCentry(model, *modelh, EPS, idir, *fd_model);
       delete modelh;
     }
   }
@@ -197,11 +197,11 @@ RBDL_DLLAPI void ForwardDynamicsContactsKokkevis (
     fd_qddot.col(idir) = (qddotph - qddotmh) / EPSx2;
 
     // TODO add pointer arithmetic for fd_cs
-    // computeFDEntry(cs, csh, EPS, idir, fd_cs);
+    // computeFDCentry(cs, csh, EPS, idir, fd_cs);
 
     if (fd_model) {
-      computeFDEntry(*modelhp, *modelhm, EPS, idir, *fd_model);
-      computeFDEntry(*cshp, *cshm, EPS, idir, fd_cs);
+      computeFDCentry(*modelhp, *modelhm, EPS, idir, *fd_model);
+      computeFDCentry(*cshp, *cshm, EPS, idir, fd_cs);
     }
     delete cshp;
     delete cshm;
@@ -244,7 +244,7 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
     G_dirs[idir] = (Gh - G) / EPS;
 
     if (fd_model) {
-      computeFDEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCentry(model, *modelh, EPS, idir, *fd_model);
       delete modelh;
     }
   }
@@ -284,10 +284,10 @@ RBDL_DLLAPI void ComputeConstraintImpulsesDirect (
     fd_qdot_plus.col(idir) = (qdot_plush - qdot_plus) / EPS;
 
     if (fd_cs) {
-      computeFDEntry(cs, csh, EPS, idir, *fd_cs);
+      computeFDCentry(cs, csh, EPS, idir, *fd_cs);
     }
     if (fd_model) {
-      computeFDEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCentry(model, *modelh, EPS, idir, *fd_model);
       delete modelh;
     }
   }
@@ -334,10 +334,10 @@ void ComputeConstraintImpulsesDirect (
     fd_A[idir] = (cs.A - A_ref) / EPS;
 
     if (fd_cs) {
-      computeFDEntry(cs, csh, EPS, idir, *fd_cs);
+      computeFDCentry(cs, csh, EPS, idir, *fd_cs);
     }
     if (fd_model) {
-      computeFDEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCentry(model, *modelh, EPS, idir, *fd_model);
       delete modelh;
     }
   }

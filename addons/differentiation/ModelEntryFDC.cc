@@ -6,7 +6,7 @@ namespace RigidBodyDynamics {
 namespace FDC {
 // -----------------------------------------------------------------------------
 
-void computeFDEntry(
+void computeFDCentry(
   Model const &modelph,
   Model const &modelmh,
   const double &H,
@@ -79,7 +79,7 @@ void computeFDEntry(
   }
 }
 
-void computeFDEntry(
+void computeFDCentry(
   ConstraintSet const &csph,
   ConstraintSet const &csmh,
   const double &H,
