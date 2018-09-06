@@ -347,7 +347,7 @@ RBDL_DLLAPI void NonlinearEffects (
 
       ed_model.f_q[i].leftCols(ndirs)
         = model.I[i].toMatrix()*ed_model.a_q[i].leftCols(ndirs)
-                + crossf_rhs(ed_model.h[i]).transpose()*ed_model.v_q[i].leftCols(ndirs) //+ b
+                + cross_rhs_hi_T*ed_model.v_q[i].leftCols(ndirs) //+ b
                 // !!! Note by PM !!!
                 // Replaced
                 //- crossf(ed_model.h[i])*ed_model.v_q[i].leftCols(ndirs)

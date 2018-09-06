@@ -805,6 +805,13 @@ void CalcPointJacobian (
           G_dirs[idir].block<3,1>(0, q_index) = ad_ptv[idir].segment<3>(3);
         }
         G.block<3,1>(0, q_index) = point_trans.apply(v).segment<3>(3);
+
+        if( (ptv.segment<3>(3) - G.block<3,1>(0, q_index)).norm() > 1e-5) {
+          std::cout << __FILE__ << " " << __LINE__ << ": \n"
+                    << ptv.transpose() << "\n"
+                    << G.block<3,1>(0, q_index) << std::endl;
+        }
+
       }
     } else {
       cerr << __FILE__ << " " << __LINE__ << ": "

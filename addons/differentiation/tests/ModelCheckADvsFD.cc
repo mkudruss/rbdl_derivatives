@@ -24,6 +24,11 @@ void checkModelsADvsFD(
   // derivative check
   for (unsigned idir = 0; idir < ndirs; idir++) {
     for (unsigned i = 0; i < ad_model.v_J.size(); i++) {
+      if((ad_d_model.v_J[i][idir] - fd_d_model.v_J[i][idir]).norm() > 1e-7) {
+        std::cout << "v_J " << i << "," << idir << std::endl;
+        std::cout << ad_d_model.v_J[i][idir].transpose() << std::endl;
+        std::cout << fd_d_model.v_J[i][idir].transpose() << std::endl;
+      }
       CHECK_ARRAY_CLOSE(ad_d_model.v_J[i][idir].data(), fd_d_model.v_J[i][idir].data(), 6, 1e-7 );
     }
   }
@@ -137,8 +142,8 @@ void checkModelsADvsFD(
   // derivative check
   for (unsigned idir = 0; idir < ndirs; idir++) {
     for (unsigned i = 0; i < ad_model.X_base.size(); i++) {
-      CHECK_ARRAY_CLOSE(ad_d_model.X_base[i][idir].E.data(), fd_d_model.X_base[i][idir].E.data(), 9, 1e-7);
-      CHECK_ARRAY_CLOSE(ad_d_model.X_base[i][idir].r.data(), fd_d_model.X_base[i][idir].r.data(), 3, 1e-7);
+      CHECK_ARRAY_CLOSE(ad_d_model.X_base[i][idir].E.data(), fd_d_model.X_base[i][idir].E.data(), 9, 1e-6);
+      CHECK_ARRAY_CLOSE(ad_d_model.X_base[i][idir].r.data(), fd_d_model.X_base[i][idir].r.data(), 3, 1e-6);
     }
   }
 
@@ -162,7 +167,7 @@ void checkModelsADvsFD(
   // derivative check
   for (unsigned idir = 0; idir < ndirs; idir++) {
     for (unsigned i = 0; i < ad_model.c.size(); i++) {
-      CHECK_ARRAY_CLOSE(ad_d_model.c[i][idir].data(), fd_d_model.c[i][idir].data(), 6, 1e-7 );
+      CHECK_ARRAY_CLOSE(ad_d_model.c[i][idir].data(), fd_d_model.c[i][idir].data(), 6, 1e-6 );
     }
   }
 
@@ -171,9 +176,15 @@ void checkModelsADvsFD(
   for (unsigned i = 0; i < ad_model.a.size(); i++) {
     CHECK_ARRAY_CLOSE(ad_model.a[i].data(), fd_model.a[i].data(), 6, 1e-7);
   }
+
   // derivative check
   for (unsigned idir = 0; idir < ndirs; idir++) {
     for (unsigned i = 0; i < ad_model.a.size(); i++) {
+      if ( (ad_d_model.a[i][idir] - fd_d_model.a[i][idir]).norm() > 5e-5) {
+        std::cout << "der a " << i << "," << idir << std::endl;
+        std::cout << ad_d_model.a[i][idir].transpose() << std::endl;
+        std::cout << fd_d_model.a[i][idir].transpose() << std::endl;
+      }
       CHECK_ARRAY_CLOSE(ad_d_model.a[i][idir].data(), fd_d_model.a[i][idir].data(), 6, 5e-5);
     }
   }

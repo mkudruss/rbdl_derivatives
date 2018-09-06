@@ -10,6 +10,7 @@
 #include "KinematicsFD.h"
 
 #include "Fixtures.h"
+#include "Human36Fixture.h"
 
 #include "ModelCheckADvsFD.h"
 
@@ -70,6 +71,10 @@ TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpUpdateKinematicsCustom) {
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpUpdateKinematicsCustom) {
+  UpdateKinematicsCustomTemplate(*this, 10);
+}
+
+TEST_FIXTURE ( Human36, Human36UpdateKinematicsCustom) {
   UpdateKinematicsCustomTemplate(*this, 10);
 }
 
@@ -148,6 +153,11 @@ TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointVelocity) {
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointVelocity) {
   CalcPointVelocityTemplate(*this, 10, 1e-5);
 }
+
+TEST_FIXTURE ( Human36, Human36CalcPointVelocity) {
+  CalcPointVelocityTemplate(*this, 10, 1e-5);
+}
+
 
 // -----------------------------------------------------------------------------
 
@@ -235,6 +245,11 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointVelocity6D) {
   CalcPointVelocity6DTemplate(*this, 10, 1e-5);
 }
 
+TEST_FIXTURE ( Human36, Human36CalcPointVelocity6D) {
+  CalcPointVelocity6DTemplate(*this, 10, 1e-5);
+}
+
+
 // -----------------------------------------------------------------------------
 
 template <typename T>
@@ -312,6 +327,10 @@ TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBaseToBodyCoordinates) {
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBaseToBodyCoordinates) {
+  CalcBaseToBodyCoordinatesTemplate(*this, 10, 1e-5);
+}
+
+TEST_FIXTURE ( Human36, Human36CalcBaseToBodyCoordinates) {
   CalcBaseToBodyCoordinatesTemplate(*this, 10, 1e-5);
 }
 
@@ -406,6 +425,11 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyToBaseCoordinates) {
   CalcBodyToBaseCoordinatesTemplate(*this, 10, 1e-6);
 }
 
+TEST_FIXTURE ( Human36, Human36CalcBodyToBaseCoordinates) {
+  CalcBodyToBaseCoordinatesTemplate(*this, 10, 1e-6);
+}
+
+
 // -----------------------------------------------------------------------------
 
 template <typename T>
@@ -458,6 +482,11 @@ TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcBodyWorldOrientation) {
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcBodyWorldOrientation) {
   CalcBodyWorldOrientationTemplate(*this, 10, 1e-6);
 }
+
+TEST_FIXTURE ( Human36, Human36CalcBodyWorldOrientation) {
+  CalcBodyWorldOrientationTemplate(*this, 10, 1e-6);
+}
+
 
 // -----------------------------------------------------------------------------
 
@@ -532,6 +561,11 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointAcceleration) {
   CalcPointAccelerationTemplate(*this, 10, 1e-6);
 }
 
+TEST_FIXTURE ( Human36, Human36CalcPointAcceleration) {
+  CalcPointAccelerationTemplate(*this, 10, 1e-6);
+}
+
+
 // -----------------------------------------------------------------------------
 
 template <typename T>
@@ -591,6 +625,12 @@ void CalcPointJacobianTemplate(
       CHECK_ARRAY_CLOSE(fd_G.data(), G.data(), G.size(), array_close_prec);
 
       for (unsigned idir = 0; idir < ndirs; idir++) {
+        if ( (ad_G_dirs[idir] - fd_G_dirs[idir]).norm() > array_close_prec) {
+          std::cout << "G_dirs " << i << "," << idir << std::endl;
+          std::cout << ad_G_dirs[idir] << "\n" << std::endl;
+          std::cout << fd_G_dirs[idir] << "\n" << std::endl;
+        }
+
         CHECK_ARRAY_CLOSE(
               ad_G_dirs[idir].data(),
               fd_G_dirs[idir].data(),
@@ -620,6 +660,11 @@ TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointJacobian) {
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian) {
   CalcPointJacobianTemplate(*this, 10, 1e-5);
 }
+
+TEST_FIXTURE ( Human36, Human36CalcPointJacobian) {
+  CalcPointJacobianTemplate(*this, 10, 1e-5);
+}
+
 
 // -----------------------------------------------------------------------------
 
@@ -709,6 +754,11 @@ TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointJacobian6D) {
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian6D) {
   CalcPointJacobian6DTemplate(*this, 10, 1e-5);
 }
+
+TEST_FIXTURE ( Human36, Human36CalcPointJacobian6D) {
+  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+}
+
 
 // -----------------------------------------------------------------------------
 

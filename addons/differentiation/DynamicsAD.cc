@@ -238,14 +238,25 @@ void ForwardDynamics (Model& model,
 		unsigned int lambda = model.lambda[i];
 		// SpatialTransform X_lambda = model.X_lambda[i];
 
-    applySTSV(ndirs,
-              model.X_lambda[i], ad_model.X_lambda[i],
-              model.a[lambda], ad_model.a[lambda],
-              model.a[i], ad_model.a[i]);
+    SpatialVector temp = model.X_lambda[i].apply(model.a[model.lambda[i]]);
+
+    model.a[i] = temp + model.c[i];
+
     for (unsigned idir = 0; idir < ndirs; idir++) {
-      ad_model.a[i][idir] += ad_model.c[i][idir];
+      ad_model.a[i][idir] = crossm(temp)*model.S[i]*q_dirs(q_index, idir)
+          + model.X_lambda[i].toMatrix()*ad_model.a[model.lambda[i]][idir]
+          + ad_model.c[i][idir];
     }
-    model.a[i] += model.c[i];
+
+
+//    applySTSV(ndirs,
+//              model.X_lambda[i], ad_model.X_lambda[i],
+//              model.a[lambda], ad_model.a[lambda],
+//              model.a[i], ad_model.a[i]);
+//    for (unsigned idir = 0; idir < ndirs; idir++) {
+//      ad_model.a[i][idir] += ad_model.c[i][idir];
+//    }
+//    model.a[i] += model.c[i];
 
     if (model.mJoints[i].mDoFCount == 3
         && model.mJoints[i].mJointType != JointTypeCustom) {

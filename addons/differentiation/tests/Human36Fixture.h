@@ -2,9 +2,11 @@
 #define RBDL_HUMAN36_FIXTURE
 
 #include "rbdl/rbdl.h"
+#include "ModelAD.h"
 
 struct Human36 {
   RigidBodyDynamics::Model model;
+  ADModel ad_model;
   RigidBodyDynamics::Model model_emulated;
   RigidBodyDynamics::Model model_3dof;
 
@@ -451,6 +453,7 @@ struct Human36 {
 
     qddot_emulated = VectorNd::Zero (model_emulated.qdot_size);
     qddot_3dof= VectorNd::Zero (model_emulated.qdot_size);
+    ad_model = ADModel(model);
   };
   ~Human36 () {
   }

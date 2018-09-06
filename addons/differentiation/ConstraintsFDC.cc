@@ -57,7 +57,7 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     // computeFDEntry(cs, csh, EPS, idir, fd_cs);
 
     if (fd_model) {
-      computeFDEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCEntry(model, *modelh, EPS, idir, *fd_model);
       delete modelh;
     }
   }
@@ -125,7 +125,7 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
     // computeFDEntry(cs, csh, EPS, idir, fd_cs);
 
     if (fd_model) {
-      computeFDEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCEntry(model, *modelh, EPS, idir, *fd_model);
       delete modelh;
     }
   }
@@ -200,8 +200,8 @@ RBDL_DLLAPI void ForwardDynamicsContactsKokkevis (
     // computeFDEntry(cs, csh, EPS, idir, fd_cs);
 
     if (fd_model) {
-      computeFDEntry(*modelhp, *modelhm, EPS, idir, *fd_model);
-      computeFDEntry(*cshp, *cshm, EPS, idir, fd_cs);
+      computeFDCEntry(*modelhp, *modelhm, EPS, idir, *fd_model);
+      computeFDCEntry(*cshp, *cshm, EPS, idir, fd_cs);
     }
     delete cshp;
     delete cshm;
@@ -244,7 +244,7 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
     G_dirs[idir] = (Gh - G) / EPS;
 
     if (fd_model) {
-      computeFDEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCEntry(model, *modelh, EPS, idir, *fd_model);
       delete modelh;
     }
   }
@@ -284,10 +284,10 @@ RBDL_DLLAPI void ComputeConstraintImpulsesDirect (
     fd_qdot_plus.col(idir) = (qdot_plush - qdot_plus) / EPS;
 
     if (fd_cs) {
-      computeFDEntry(cs, csh, EPS, idir, *fd_cs);
+      computeFDCEntry(cs, csh, EPS, idir, *fd_cs);
     }
     if (fd_model) {
-      computeFDEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCEntry(model, *modelh, EPS, idir, *fd_model);
       delete modelh;
     }
   }
@@ -334,10 +334,10 @@ void ComputeConstraintImpulsesDirect (
     fd_A[idir] = (cs.A - A_ref) / EPS;
 
     if (fd_cs) {
-      computeFDEntry(cs, csh, EPS, idir, *fd_cs);
+      computeFDCEntry(cs, csh, EPS, idir, *fd_cs);
     }
     if (fd_model) {
-      computeFDEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCEntry(model, *modelh, EPS, idir, *fd_model);
       delete modelh;
     }
   }

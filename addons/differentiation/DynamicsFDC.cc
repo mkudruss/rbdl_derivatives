@@ -51,9 +51,6 @@ void ForwardDynamics(
 
   const unsigned int ndirs = q_dirs.cols();
 
-  // nominal evaluation
-  ForwardDynamics(model, q, qdot, tau, qddot,f_ext);
-
   // temporary results
   VectorNd qddot_ph(qddot);
   VectorNd qddot_mh(qddot);
@@ -107,10 +104,13 @@ void ForwardDynamics(
 
     fd_qddot.col(idir) = (qddot_ph - qddot_mh) / EPSx2;
     if (fd_model) {
-      computeFDEntry(*modelh, model, EPS, idir, *fd_model);
+      computeFDCEntry(*modelh, model, EPS, idir, *fd_model);
       delete modelh;
     }
   }
+
+  // nominal evaluation
+  ForwardDynamics(model, q, qdot, tau, qddot,f_ext);
 }
 
 
@@ -191,7 +191,7 @@ void InverseDynamics(
     fd_tau.col(idir) = (fd_tau.col(idir) - tau) / EPSx2;
 
     if (fd_model) {
-      computeFDEntry(*modelh, model , EPS, idir, *fd_model);
+      computeFDCEntry(*modelh, model , EPS, idir, *fd_model);
       delete modelh;
     }
   }
@@ -249,7 +249,7 @@ void NonlinearEffects (
     fd_tau.col(idir) = (tau_ph - tau_mh) / EPSx2;
 
     if (fd_model) {
-      computeFDEntry(*modelh, model, EPS, idir, *fd_model);
+      computeFDCEntry(*modelh, model, EPS, idir, *fd_model);
       delete modelh;
     }
   }
@@ -294,7 +294,7 @@ void CompositeRigidBodyAlgorithm (
 
     // hack to compute finite differences of model quantities
     if (fd_model) {
-      computeFDEntry(*modelh, model, EPS, idir, *fd_model);
+      computeFDCEntry(*modelh, model, EPS, idir, *fd_model);
       delete modelh;
     }
 
