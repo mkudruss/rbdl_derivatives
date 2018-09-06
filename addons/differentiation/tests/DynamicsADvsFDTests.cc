@@ -652,12 +652,9 @@ TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsEDTest) {
 //   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
 // }
 
-
 // -----------------------------------------------------------------------------
-
-
 template<typename T>
-void CompositeRigidBodyAlgorithmADTestTemplate(
+void CompositeRigidBodyAlgorithmADvsFDTestTemplate(
     T & obj,
     unsigned trial_count,
     double array_close_prec) {
@@ -712,32 +709,117 @@ void CompositeRigidBodyAlgorithmADTestTemplate(
   }
 }
 
-TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-8);
+TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmADvsFDTest) {
+  CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-8);
 }
 
-TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-8);
+TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmADvsFDTest) {
+  CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-8);
 }
 
-TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-8);
+TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmADvsFDTest) {
+  CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-8);
 }
 
-TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-6);
+TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmADvsFDTest) {
+  CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-6);
 }
 
-TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-6);
+TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmADvsFDTest) {
+  CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-6);
 }
 
-TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmADTest) {
-  CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-6);
+TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmADvsFDTest) {
+  CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-6);
 }
 
-TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
- CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-5);
+TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADvsFDTest) {
+ CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-5);
+}
+
+// -----------------------------------------------------------------------------
+template<typename T>
+void CompositeRigidBodyAlgorithmADvsFDCTestTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec) {
+
+  Model model = obj.model;
+  Model fd_model = obj.model;
+  Model ad_model = obj.model;
+  ADModel ad_d_model(model);
+  ADModel fd_d_model(model);
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    unsigned ndirs = model.qdot_size;
+    // initialize inputs and directions
+    VectorNd q = VectorNd::Random(model.qdot_size);
+    MatrixNd q_dirs = MatrixNd::Random (model.qdot_size, ndirs);
+
+    // initialize outputs and derivatives
+    MatrixNd H = MatrixNd::Zero(q.size(),q.size());
+    MatrixNd ad_H = MatrixNd::Zero(model.q_size, ndirs);
+    MatrixNd fd_H = MatrixNd::Zero(model.q_size, ndirs);
+    vector<MatrixNd> fd_H_dirs(ndirs, MatrixNd::Zero(model.q_size,model.q_size));
+    vector<MatrixNd> ad_H_dirs(ndirs, MatrixNd::Zero(model.q_size,model.q_size));
+
+    // compute nominal value
+    CompositeRigidBodyAlgorithm(model, q, H, true);
+
+    // evaluate derivatives
+    // -> using finite differences
+    FDC::CompositeRigidBodyAlgorithm(fd_model, &fd_d_model, q, q_dirs, fd_H, fd_H_dirs);
+
+    // -> using algorithmic differences
+    AD::CompositeRigidBodyAlgorithm(ad_model, ad_d_model, q, q_dirs, ad_H, ad_H_dirs);
+
+    // check derivatives of model quantities
+    checkModelsADvsFD(ndirs,
+                      ad_model, ad_d_model,
+                      fd_model, fd_d_model);
+
+    // check nominal values for consistency
+    CHECK_ARRAY_CLOSE (H.data(), ad_H.data(),
+                       model.q_size * model.q_size,
+                       1e-16);
+    CHECK_ARRAY_CLOSE (H.data(), fd_H.data(),
+                       model.q_size * model.q_size,
+                       1e-16);
+
+    // check AD vs FD derivatives for consistency
+    for (size_t idir = 0; idir < model.qdot_size; idir++) {
+      CHECK_ARRAY_CLOSE (fd_H_dirs[idir].data(), ad_H_dirs[idir].data(),
+                         model.q_size * model.q_size,
+                         array_close_prec);
+    }
+  }
+}
+
+TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmFDCTest) {
+  CompositeRigidBodyAlgorithmFDCTestTemplate(*this, 1, 1e-10);
+}
+
+TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmFDCTest) {
+  CompositeRigidBodyAlgorithmFDCTestTemplate(*this, 1, 1e-10);
+}
+
+TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmFDCTest) {
+  CompositeRigidBodyAlgorithmFDCTestTemplate(*this, 1, 1e-10);
+}
+
+TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmFDCTest) {
+  CompositeRigidBodyAlgorithmFDCTestTemplate(*this, 1, 1e-8);
+}
+
+TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmFDCTest) {
+  CompositeRigidBodyAlgorithmFDCTestTemplate(*this, 1, 1e-8);
+}
+
+TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmFDCTest) {
+  CompositeRigidBodyAlgorithmFDCTestTemplate(*this, 1, 1e-8);
+}
+
+TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmFDCTest) {
+ CompositeRigidBodyAlgorithmFDCTestTemplate(*this, 1, 1e-7);
 }
 
 // -----------------------------------------------------------------------------
