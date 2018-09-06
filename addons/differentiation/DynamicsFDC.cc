@@ -220,8 +220,6 @@ void NonlinearEffects (
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == fd_tau.cols());
 
-  NonlinearEffects (model, q, qdot, tau);
-
   VectorNd tau_ph(tau.rows());
   VectorNd tau_mh(tau.rows());
 
@@ -256,6 +254,8 @@ void NonlinearEffects (
       delete modelh;
     }
   }
+
+  NonlinearEffects (model, q, qdot, tau);
 }
 
 RBDL_DLLAPI

@@ -418,7 +418,6 @@ TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpInverseDynamicsEDTest) {
   InverseDynamicsEDTestTemplate(*this, 1, 1e-10);
 }
 
-
 //TEST_FIXTURE( Human36, Human36InverseDynamicsEDTest) {
 //  srand (421337);
 //  InverseDynamicsEDTestTemplate(*this, 1, 1e-5);
@@ -459,7 +458,7 @@ void NonlinearEffectsADTestTemplate(
     AD::NonlinearEffects(ad_model, ad_d_model, q, q_dirs, qdot, qdot_dirs,
                          ad_d_tau_nom, ad_tau_der);
 
-    FD::NonlinearEffects(fd_model, &fd_d_model, q, q_dirs, qdot, qdot_dirs,
+    FDC::NonlinearEffects(fd_model, &fd_d_model, q, q_dirs, qdot, qdot_dirs,
                          fd_d_tau_nom, fd_tau_der);
 
     checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
@@ -489,6 +488,10 @@ TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsADTest) {
 }
 
 TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsADTest) {
+  NonlinearEffectsADTestTemplate(*this, 10, 1e-5);
+}
+
+TEST_FIXTURE( Human36, Human36NonlinearEffectsADTest) {
   NonlinearEffectsADTestTemplate(*this, 10, 1e-5);
 }
 
