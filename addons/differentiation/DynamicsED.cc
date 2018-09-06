@@ -651,22 +651,29 @@ void CompositeRigidBodyAlgorithm (
   const size_t ndirs = q_dirs.cols();
   ed_model.resize_directions(ndirs);
 
-  for (unsigned int i = 1; i < model.mBodies.size(); i++) {
-    if (update_kinematics) {
+  for (unsigned int i = 1; i < model.mBodies.size(); i++)
+  {
+    if (update_kinematics)
+    {
       jcalc_X_lambda_S (model, i, q);
     }
     // nominal evaluation
     model.Ic[i] = model.I[i];
     // derivative evaluation
-    for (unsigned idir = 0; idir < ndirs; idir++) {
+    for (unsigned idir = 0; idir < ndirs; idir++)
+    {
       ed_model.Ic[i][idir].setZero();
     }
   }
 
-  for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
-    if (model.lambda[i] != 0) {
+  for (unsigned int i = model.mBodies.size() - 1; i > 0; i--)
+  {
+    if (model.lambda[i] != 0)
+    {
       SpatialRigidBodyInertia temp
         = model.X_lambda[i].applyTranspose(model.Ic[i]);
+      // nominal evaluation
+      model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + temp;
       // derivative evaluation
       for (unsigned idir = 0; idir < ndirs; idir++) {
       //   // TODO make this fast
@@ -680,8 +687,6 @@ void CompositeRigidBodyAlgorithm (
           + model.X_lambda[i].applyTranspose(rbi).toMatrix()
         ;
       }
-      // nominal evaluation
-      model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + temp;
     }
 
     unsigned int dof_index_i = model.mJoints[i].q_index;
@@ -708,7 +713,7 @@ void CompositeRigidBodyAlgorithm (
         F = model.X_lambda[j].applyTranspose(F);
         // derivative evaluation
         ed_model.F[i].leftCols(ndirs)
-          = crossf_rhs(F).transpose()*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+          = crossf_rhs(F).transpose()*model.S[j]*q_dirs.row(model.mJoints[j].q_index)
           + model.X_lambda[j].toMatrixTranspose()*ed_model.F[i].leftCols(ndirs);
 
         j = model.lambda[j];
