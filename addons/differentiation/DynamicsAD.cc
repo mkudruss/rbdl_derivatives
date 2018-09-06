@@ -723,6 +723,7 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
     unsigned int j = i;
     unsigned int dof_index_j = dof_index_i;
 
+
     while (model.lambda[j] != 0) {
       // // derivative evaluation
       applyTransposeSTSV(ndirs,
@@ -742,6 +743,7 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
       H(dof_index_i,dof_index_j) = F.dot(model.S[j]);
       H(dof_index_j,dof_index_i) = H(dof_index_i,dof_index_j);
     }
+
   }
 
 }

@@ -891,7 +891,7 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
   }
 }
 
-/*
+
 TEST_FIXTURE (CartPendulum, CartPendulumCompositeRigidBodyAlgorithmEDTest)
 {
   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
@@ -923,18 +923,33 @@ TEST_FIXTURE (
 ) {
   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
 }
-*/
 
 TEST_FIXTURE(
   MultiPendulumWithBranches,
-  MultiPendulumWithBranchesCompositeRigidBodyAlgorithmEDTest
+  MultiPendulumWithBranchesCompositeRigidBodyAlgorithmEDTest_4_2
 ) {
   this->create_model(4, 2);
-  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-6);
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
 }
 
-// TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmEDTest) {
-//   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
-// }
+TEST_FIXTURE(
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCompositeRigidBodyAlgorithmEDTest_6_3
+) {
+  this->create_model(6, 3);
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
+}
+
+TEST_FIXTURE(
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCompositeRigidBodyAlgorithmEDTest_12_3
+) {
+  this->create_model(12, 3);
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
+}
+
+TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmEDTest) {
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
+}
 
 // -----------------------------------------------------------------------------

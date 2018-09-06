@@ -691,8 +691,16 @@ void CompositeRigidBodyAlgorithm (
 
         ed_model.Ic[model.lambda[i]][idir]
           = ed_model.Ic[model.lambda[i]][idir]
-          + crossf(model.S[i]*q_dirs(model.mJoints[i].q_index, idir))*temp.toMatrix()
-          - temp.toMatrix()*crossm(model.S[i]*q_dirs(model.mJoints[i].q_index,idir))
+          + crossf(
+            model.X_lambda[i].inverse().toMatrix()
+            * model.S[i]
+            * q_dirs(model.mJoints[i].q_index, idir)
+          )*temp.toMatrix()
+          - temp.toMatrix()*crossm(
+            model.X_lambda[i].inverse().toMatrix()
+            * model.S[i]
+            * q_dirs(model.mJoints[i].q_index,idir)
+          )
           + model.X_lambda[i].applyTranspose(rbi).toMatrix()
         ;
       }
@@ -717,13 +725,26 @@ void CompositeRigidBodyAlgorithm (
       unsigned int j = i;
       unsigned int dof_index_j = dof_index_i;
 
+
       while (model.lambda[j] != 0) {
         // nominal evaluation
-        F = model.X_lambda[j].applyTranspose(F);
+        // F = model.X_lambda[j].applyTranspose(F);
+        SpatialVector temp = model.X_lambda[j].applyTranspose(F);
         // derivative evaluation
         ed_model.F[i].leftCols(ndirs)
-          = model.X_lambda[i].toMatrixTranspose()*crossf_rhs(F).transpose()*model.S[j]*q_dirs.row(model.mJoints[j].q_index)
-          + model.X_lambda[j].toMatrixTranspose()*ed_model.F[i].leftCols(ndirs);
+          = model.X_lambda[j].toMatrixTranspose()*ed_model.F[i].leftCols(ndirs)
+          // - model.X_lambda[j].toMatrixTranspose()*crossm(F).transpose()*model.S[j]*q_dirs.row(model.mJoints[j].q_index)
+          // -crossm(temp).transpose()*model.X_lambda[j].inverse().toMatrix()*model.S[j]*q_dirs.row(model.mJoints[j].q_index)
+        ;
+        for (unsigned idir = 0; idir < ndirs; idir++)
+        {
+          ed_model.F[i].col(idir)
+            += model.X_lambda[j].toMatrixTranspose()
+            * crossf(model.S[j]
+            * q_dirs(model.mJoints[j].q_index, idir), F);
+        }
+        // nominal evaluation
+        F = temp;
 
         j = model.lambda[j];
         dof_index_j = model.mJoints[j].q_index;
@@ -757,6 +778,7 @@ void CompositeRigidBodyAlgorithm (
           abort();
         }
       }
+
     }
     else if (model.mJoints[i].mDoFCount == 3
         && model.mJoints[i].mJointType != JointTypeCustom

@@ -268,7 +268,7 @@ void checkModelsADvsED(
   // }
 
   // derivative check
-  if (false)
+  if (true)
   {
     CHECK_EQUAL(ad_d_model.F.size(), ed_d_model.F.size());
     for (unsigned i = 0; i < ad_d_model.F.size(); i++) {
