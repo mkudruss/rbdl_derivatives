@@ -787,19 +787,20 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
     );
 
     // check nominal values for consistency
+    const double NOM_TOL = 1e-16;
     CHECK_ARRAY_CLOSE (H.data(), ad_H.data(),
                        model.q_size * model.q_size,
-                       1e-10);
+                       NOM_TOL);
     CHECK_ARRAY_CLOSE (H.data(), ed_H.data(),
                        model.q_size * model.q_size,
-                       1e-10);
+                       NOM_TOL);
     CHECK_ARRAY_CLOSE (ad_H.data(), ed_H.data(),
                        model.q_size * model.q_size,
-                       1e-10);
+                       NOM_TOL);
 
     MatrixNd error = (H - ad_H).cwiseAbs();
     double max = error.maxCoeff();
-    if (max > 1e-12) {
+    if (max > NOM_TOL) {
       std::cout << "error = \n" << error << std::endl;
       std::cout << "max   = " << max << std::endl;
       std::cout << "H = \n"<< H << std::endl;
@@ -808,7 +809,7 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
     }
     error = (H - ed_H).cwiseAbs();
     max = error.maxCoeff();
-    if (max > 1e-12) {
+    if (max > NOM_TOL) {
       std::cout << "error = \n" << error << std::endl;
       std::cout << "max   = " << max << std::endl;
       std::cout << "H = \n"<< H << std::endl;
@@ -817,7 +818,7 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
     }
     error = (ad_H - ed_H).cwiseAbs();
     max = error.maxCoeff();
-    if (max > 1e-12) {
+    if (max > NOM_TOL) {
       std::cout << "error = \n" << error << std::endl;
       std::cout << "max   = " << max << std::endl;
       std::cout << "ad_H = \n"<< ad_H << std::endl;
@@ -833,10 +834,10 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
       if (max > 1e-12) {
         std::cout << "error [" << idir << "]= \n" << error << std::endl;
         std::cout << "max   [" << idir << "]= " << max << std::endl;
-        std::cout << "ed_H_dirs[" << idir << "]=\n"
-          << ed_H_dirs[idir] << std::endl;
-        std::cout << "ad_H_dirs[" << idir << "]=\n"
-          << ad_H_dirs[idir] << std::endl;
+        // std::cout << "ed_H_dirs[" << idir << "]=\n"
+        //   << ed_H_dirs[idir] << std::endl;
+        // std::cout << "ad_H_dirs[" << idir << "]=\n"
+        //   << ad_H_dirs[idir] << std::endl;
         std::cout << endl;
       }
       CHECK_ARRAY_CLOSE (

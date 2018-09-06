@@ -636,10 +636,6 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
   bool update_kinematics
 ) {
 
-  for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
-    assert( model.mJoints[i].mJointType != JointTypeCustom);
-    assert( model.mJoints[i].mDoFCount == 1);
-  }
   assert (H.rows() == model.dof_count && H.cols() == model.dof_count);
 
   size_t ndirs = q_dirs.cols();
@@ -663,6 +659,8 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
   }
 
   for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
+    assert( model.mJoints[i].mJointType != JointTypeCustom);
+    assert( model.mJoints[i].mDoFCount == 1);
     if (model.lambda[i] != 0) {
       // derivative evaluation
       SpatialRigidBodyInertia         summand;
@@ -694,8 +692,9 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
     SpatialVector F = model.Ic[i] * model.S[i];
 
     // derivative evaluation
-    for (unsigned j = 0; j < ndirs; j++) {
-      H_ad[j](dof_index_i, dof_index_i) = model.S[i].dot(ad_model.F[i][j]);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      H_ad[idir](dof_index_i, dof_index_i)
+        = model.S[i].dot(ad_model.F[i][idir]);
     }
     // nominal evaluation
     H(dof_index_i, dof_index_i) = model.S[i].dot(F);
