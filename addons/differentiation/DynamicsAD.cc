@@ -235,7 +235,7 @@ void ForwardDynamics (Model& model,
 
 	for (i = 1; i < model.mBodies.size(); i++) {
 		unsigned int q_index = model.mJoints[i].q_index;
-		unsigned int lambda = model.lambda[i];
+		// unsigned int lambda = model.lambda[i];
 		// SpatialTransform X_lambda = model.X_lambda[i];
 
     SpatialVector temp = model.X_lambda[i].apply(model.a[model.lambda[i]]);
@@ -678,6 +678,7 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
     model.Ic[i] = model.I[i];
   }
 
+
   for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
     assert( model.mJoints[i].mJointType != JointTypeCustom);
     assert( model.mJoints[i].mDoFCount == 1);
@@ -742,6 +743,7 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
       H(dof_index_j,dof_index_i) = H(dof_index_i,dof_index_j);
     }
   }
+
 }
 
 // -----------------------------------------------------------------------------

@@ -138,6 +138,69 @@ struct CartPendulumContact {
     RigidBodyDynamics::Math::Vector3d body_point;
 };
 
+struct MultiPendulumWithBranches {
+
+  unsigned int nbranches;
+
+  RigidBodyDynamics::Model model;
+
+  // create multi-pendulum with given number of degrees
+  MultiPendulumWithBranches()
+    : nbranches(0)
+  {};
+
+  void create_model(
+    const unsigned int& dof_count,
+    const unsigned int& branch_count
+  )
+  {
+    using namespace RigidBodyDynamics;
+    using namespace RigidBodyDynamics::Math;
+
+    // does number of branches exceed number of DoFs?
+    if (branch_count > dof_count)
+    {
+      std::cerr << "no of branches exceeds number of DoFs" << std::endl;
+      abort();
+    }
+
+    // coordinate axis convention
+    //  x: points to the right
+    //  y: points up
+    //  z: out of the page
+    model.gravity = Vector3d(0.,-9.81,0.);
+
+    Joint joint (JointTypeRevoluteZ);
+    Body body (
+      1.0,
+      Vector3d (0., 0., 0.),
+      Matrix3d(
+        1., 0., 0.,
+        0., 1., 0.,
+        0., 0., 1.
+      )
+    );
+    SpatialTransform X_T = Xtrans (Vector3d (0., 1., 0.));
+
+    unsigned int branches = 0;
+    for (unsigned int i = 0; i < dof_count; i++) {
+      if ((branch_count > 0) && (dof_count/branch_count)) {
+        if ((i%(dof_count/branch_count)) && (branches < branch_count)) {
+          model.AddBody (0, X_T, joint, body);
+          branches++;
+        } else {
+          model.AppendBody (X_T, joint, body);
+        }
+      } else {
+        model.AppendBody (X_T, joint, body);
+      }
+    }
+
+    // set number of branches
+    nbranches = branches;
+  }
+};
+
 struct Arm2DofX {
     Arm2DofX() {
         using namespace RigidBodyDynamics;

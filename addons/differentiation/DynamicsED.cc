@@ -215,13 +215,6 @@ void InverseDynamics(
       SpatialVector temp = model.X_lambda[i].applyTranspose(model.f[i]);
       model.f[model.lambda[i]] = model.f[model.lambda[i]] + temp;
       // derivative evaluation
-
-//      Eigen::MatrixXd temp_cross2(6, ndirs);
-//      temp_cross2 = model.X_lambda[i].toMatrixTranspose()
-//          * crossf_rhs(model.f[i]).transpose()
-//          * model.S[i]*q_dirs.row(model.mJoints[i].q_index).leftCols(ndirs);
-
-
       // d a[i] / d q
       ed_model.f_q[model.lambda[i]].leftCols(ndirs)
         += model.X_lambda[i].toMatrixTranspose()
@@ -263,7 +256,6 @@ RBDL_DLLAPI void NonlinearEffects (
   model.v[0].setZero();
   model.a[0] = spatial_gravity;
   model.f[0].setZero();
-
   // derivative evaluation
   ed_model.v_q[0].leftCols(ndirs).setZero ();
   ed_model.v_qdot[0].leftCols(ndirs).setZero ();
@@ -408,11 +400,9 @@ RBDL_DLLAPI void NonlinearEffects (
     }
 
     if (model.lambda[i] != 0) {
-
       // nominal evaluation
       SpatialVector temp = model.X_lambda[i].applyTranspose(model.f[i]);
       model.f[model.lambda[i]] += temp;
-
       // derivative evaluation
 
       Eigen::MatrixXd temp_cross2(6, ndirs);
@@ -732,7 +722,7 @@ void CompositeRigidBodyAlgorithm (
         F = model.X_lambda[j].applyTranspose(F);
         // derivative evaluation
         ed_model.F[i].leftCols(ndirs)
-          = crossf_rhs(F).transpose()*model.S[j]*q_dirs.row(model.mJoints[j].q_index)
+          = model.X_lambda[i].toMatrixTranspose()*crossf_rhs(F).transpose()*model.S[j]*q_dirs.row(model.mJoints[j].q_index)
           + model.X_lambda[j].toMatrixTranspose()*ed_model.F[i].leftCols(ndirs);
 
         j = model.lambda[j];

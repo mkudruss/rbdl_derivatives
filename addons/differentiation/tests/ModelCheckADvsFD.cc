@@ -267,6 +267,33 @@ void checkModelsADvsED(
   //   }
   // }
 
+  // derivative check
+  if (false)
+  {
+    CHECK_EQUAL(ad_d_model.F.size(), ed_d_model.F.size());
+    for (unsigned i = 0; i < ad_d_model.F.size(); i++) {
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        // DEBUG OUTPUT
+        RigidBodyDynamics::Math::SpatialVector error
+          = (ad_d_model.F[i][idir] - ed_d_model.F[i].col(idir)).cwiseAbs();
+        double max = error.maxCoeff();
+        if (max > 1e-12) {
+          std::cout << "error [" << i << "][" << idir << "] = \n" << error << std::endl;
+          std::cout << "max   [" << i << "][" << idir << "] = " << max << std::endl;
+          std::cout << "ad_d_model.F[" << i << "][" << idir << "] = \n"
+            << ad_d_model.F[i][idir] << std::endl;
+          std::cout << "ed_d_model.F[" << i << "][" << idir << "] = \n"
+            << ed_d_model.F[i].col(idir) << std::endl;
+          std::cout << endl;
+        }
+        CHECK_ARRAY_CLOSE(
+          ad_d_model.F[i][idir].data(),
+          ed_d_model.F[i].col(idir).data(),
+          6, 1e-7
+        );
+      }
+    }
+  }
 
   // nominal check
   CHECK_EQUAL(ad_model.Ic.size(), ed_model.Ic.size());

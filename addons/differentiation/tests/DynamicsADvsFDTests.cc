@@ -25,6 +25,7 @@ using namespace RigidBodyDynamics::Math;
 const double TEST_PREC = 1.0e-8;
 
 // -----------------------------------------------------------------------------
+/*
 
 template <typename T>
 void ForwardDynamicsADTestTemplate(
@@ -386,8 +387,6 @@ void InverseDynamicsEDTestTemplate(
         CHECK_ARRAY_CLOSE (f1.col(idir).data(), f2.data(), 6, 1e-6);
       }
     }
-
-
     // const unsigned ndirs = ad_model.qdot_size;
     // checkModelsADvsED(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
 
@@ -673,9 +672,9 @@ TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsEDTest) {
    NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
  }
 
-TEST_FIXTURE( Human36, Human36NonlinearEffectsEDTest) {
-  NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
-}
+ TEST_FIXTURE( Human36, Human36NonlinearEffectsEDTest) {
+   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
+ }
 
 // TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFNonlinearEffectsEDTest) {
 //   // add contacts and bind them to constraint set
@@ -770,13 +769,15 @@ TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmADv
 TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
   CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-5);
 }
+*/
 
 // -----------------------------------------------------------------------------
 template<typename T>
 void CompositeRigidBodyAlgorithmEDTestTemplate(
     T & obj,
     unsigned trial_count,
-    double array_close_prec) {
+    double array_close_prec
+  ) {
 
   Model model = obj.model;
   Model ed_model = obj.model;
@@ -819,15 +820,14 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
 
     // check nominal values for consistency
     const double NOM_TOL = 1e-16;
-    CHECK_ARRAY_CLOSE (H.data(), ad_H.data(),
+    MatrixNd error;
+    double max;
+    /*
+    CHECK_ARRAY_CLOSE (
+      H.data(), ad_H.data(),
                        model.q_size * model.q_size,
-                       NOM_TOL);
-    CHECK_ARRAY_CLOSE (H.data(), ed_H.data(),
-                       model.q_size * model.q_size,
-                       NOM_TOL);
-    CHECK_ARRAY_CLOSE (ad_H.data(), ed_H.data(),
-                       model.q_size * model.q_size,
-                       NOM_TOL);
+      NOM_TOL
+    );
 
     MatrixNd error = (H - ad_H).cwiseAbs();
     double max = error.maxCoeff();
@@ -847,6 +847,12 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
       std::cout << "ed_H = \n"<< ed_H << std::endl;
       std::cout << endl;
     }
+    CHECK_ARRAY_CLOSE (
+      H.data(), ed_H.data(),
+      model.q_size * model.q_size,
+      NOM_TOL
+    );
+    */
     error = (ad_H - ed_H).cwiseAbs();
     max = error.maxCoeff();
     if (max > NOM_TOL) {
@@ -857,6 +863,11 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
       std::cout << endl;
     }
 
+    CHECK_ARRAY_CLOSE (
+      ad_H.data(), ed_H.data(),
+      model.q_size * model.q_size,
+      NOM_TOL
+    );
 
     // check AD vs FD derivatives for consistency
     for (size_t idir = 0; idir < model.qdot_size; idir++) {
@@ -880,32 +891,50 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
   }
 }
 
-TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmEDTest) {
-  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
+/*
+TEST_FIXTURE (CartPendulum, CartPendulumCompositeRigidBodyAlgorithmEDTest)
+{
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
 }
 
-TEST_FIXTURE( Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmEDTest) {
-  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
+TEST_FIXTURE (Arm2DofX, Arm2DofXCompositeRigidBodyAlgorithmEDTest)
+{
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
 }
 
-TEST_FIXTURE( Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmEDTest) {
-  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
+TEST_FIXTURE (Arm2DofZ, Arm2DofZCompositeRigidBodyAlgorithmEDTest)
+{
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
 }
 
-TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmEDTest) {
+TEST_FIXTURE (Arm3DofXZYp, Arm3DofXZYpCompositeRigidBodyAlgorithmEDTest)
+{
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
+}
+
+TEST_FIXTURE (Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmEDTest)
+{
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
+}
+
+TEST_FIXTURE (
+  FixedBase6DoF9DoF,
+  FixedBase6DoF9DoFCompositeRigidBodyAlgorithmEDTest
+) {
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
+}
+*/
+
+TEST_FIXTURE(
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCompositeRigidBodyAlgorithmEDTest
+) {
+  this->create_model(4, 2);
   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-6);
 }
 
-TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmEDTest) {
-  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-6);
-}
-
-TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmEDTest) {
-  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-6);
-}
-
- TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmEDTest) {
-   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
- }
+// TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmEDTest) {
+//   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-10);
+// }
 
 // -----------------------------------------------------------------------------
