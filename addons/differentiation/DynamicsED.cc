@@ -337,35 +337,29 @@ RBDL_DLLAPI void NonlinearEffects (
       ed_model.h_qdot[i].leftCols(ndirs)
         = model.I[i].toMatrix()*ed_model.v_qdot[i].leftCols(ndirs);
 
+      Math::MatrixNd cross_rhs_hi_T = crossf_rhs(ed_model.h[i]).transpose();
+
       // nominal evaluation
       model.f[i] = model.I[i] * model.a[i]
         + crossf(model.v[i], ed_model.h[i]);
       // derivative evaluation
       // d f[i] / d q
 
-
-      Eigen::MatrixXd b(6, ndirs);
-      for (unsigned int jj = 0; jj < ndirs; jj++) {
-        b.col(jj) = crossf(ed_model.v_q[i].col(jj), ed_model.h[i]);
-      }
-
-      Eigen::MatrixXd d(6, ndirs);
-      for (unsigned int jj = 0; jj < ndirs; jj++) {
-        d.col(jj) = crossf(ed_model.v_qdot[i].col(jj), ed_model.h[i]);
-      }
-
       ed_model.f_q[i].leftCols(ndirs)
         = model.I[i].toMatrix()*ed_model.a_q[i].leftCols(ndirs)
-                + b
+                + crossf_rhs(ed_model.h[i]).transpose()*ed_model.v_q[i].leftCols(ndirs) //+ b
                 // !!! Note by PM !!!
                 // Replaced
                 //- crossf(ed_model.h[i])*ed_model.v_q[i].leftCols(ndirs)
                 // by d because spatial force cross product is not skew-symmetric
                 + crossf(model.v[i])*ed_model.h_q[i].leftCols(ndirs);
+
+
+
       // d f[i] / d qdot
       ed_model.f_qdot[i].leftCols(ndirs)
         = model.I[i].toMatrix()*ed_model.a_qdot[i].leftCols(ndirs)
-          + d
+          + crossf_rhs(ed_model.h[i]).transpose()*ed_model.v_qdot[i].leftCols(ndirs) //d
           // !!! Note by PM !!!
           // Replaced
           // - crossf(ed_model.h[i])*ed_model.v_qdot[i].leftCols(ndirs)

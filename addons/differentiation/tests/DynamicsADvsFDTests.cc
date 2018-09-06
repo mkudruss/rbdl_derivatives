@@ -624,21 +624,21 @@ TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsEDTest) {
   NonlinearEffectsEDTestTemplate(*this, 1, 1e-6);
 }
 
-// TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
-// }
+TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsEDTest) {
+  NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
+}
 
-// TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
-// }
+TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsEDTest) {
+  NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
+}
 
-// TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
-// }
+TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsEDTest) {
+  NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
+}
 
-// TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
-// }
+TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsEDTest) {
+  NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
+}
 
 // TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFNonlinearEffectsEDTest) {
 //   // add contacts and bind them to constraint set
