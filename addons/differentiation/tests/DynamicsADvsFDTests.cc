@@ -418,10 +418,10 @@ TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpInverseDynamicsEDTest) {
   InverseDynamicsEDTestTemplate(*this, 1, 1e-10);
 }
 
-//TEST_FIXTURE( Human36, Human36InverseDynamicsEDTest) {
-//  srand (421337);
-//  InverseDynamicsEDTestTemplate(*this, 1, 1e-5);
-//}
+TEST_FIXTURE( Human36, Human36InverseDynamicsEDTest) {
+  srand (421337);
+  InverseDynamicsEDTestTemplate(*this, 1, 1e-5);
+}
 
 // -----------------------------------------------------------------------------
 
@@ -431,9 +431,9 @@ void NonlinearEffectsADTestTemplate(
     unsigned trial_count,
     double array_close_prec) {
   Model ad_model      = obj.model;
-  Model fd_model      = obj.model;
+  Model fdc_model      = obj.model;
   ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+  ADModel fdc_d_model = obj.ad_model;
   VectorNd q(obj.model.dof_count);
   VectorNd qdot(obj.model.dof_count);
   VectorNd tau(obj.model.dof_count);
@@ -458,10 +458,10 @@ void NonlinearEffectsADTestTemplate(
     AD::NonlinearEffects(ad_model, ad_d_model, q, q_dirs, qdot, qdot_dirs,
                          ad_d_tau_nom, ad_tau_der);
 
-    FDC::NonlinearEffects(fd_model, &fd_d_model, q, q_dirs, qdot, qdot_dirs,
+    FDC::NonlinearEffects(fdc_model, &fdc_d_model, q, q_dirs, qdot, qdot_dirs,
                          fd_d_tau_nom, fd_tau_der);
 
-    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fdc_model, fdc_d_model);
 
     CHECK_ARRAY_CLOSE (tau_nom.data(), ad_d_tau_nom.data(), tau_nom.rows(), array_close_prec);
     CHECK_ARRAY_CLOSE (tau_nom.data(), fd_d_tau_nom.data(), tau_nom.rows(), array_close_prec);
@@ -640,21 +640,25 @@ TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsEDTest) {
   NonlinearEffectsEDTestTemplate(*this, 1, 1e-6);
 }
 
-// TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
-// }
+ TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsEDTest) {
+   NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
+ }
 
-// TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
-// }
+ TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsEDTest) {
+   NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
+ }
 
-// TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
-// }
+ TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsEDTest) {
+   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
+ }
 
-// TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
-// }
+ TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsEDTest) {
+   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
+ }
+
+ TEST_FIXTURE( Human36, Human36NonlinearEffectsEDTest) {
+   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
+ }
 
 // TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFNonlinearEffectsEDTest) {
 //   // add contacts and bind them to constraint set
@@ -695,7 +699,7 @@ void CompositeRigidBodyAlgorithmADvsFDTestTemplate(
 
     // evaluate derivatives
     // -> using finite differences
-    FD::CompositeRigidBodyAlgorithm(fd_model, &fd_d_model, q, q_dirs, fd_H, fd_H_dirs);
+    FDC::CompositeRigidBodyAlgorithm(fd_model, &fd_d_model, q, q_dirs, fd_H, fd_H_dirs);
 
     // -> using algorithmic differences
     AD::CompositeRigidBodyAlgorithm(ad_model, ad_d_model, q, q_dirs, ad_H, ad_H_dirs);
@@ -746,9 +750,9 @@ TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmADv
   CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-6);
 }
 
- // TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
- //   CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-5);
- // }
+TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
+  CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-5);
+}
 
 // -----------------------------------------------------------------------------
 template<typename T>
@@ -883,8 +887,8 @@ TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmEDT
   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-6);
 }
 
-// TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmEDTest) {
-//   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
-// }
+ TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmEDTest) {
+   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
+ }
 
 // -----------------------------------------------------------------------------

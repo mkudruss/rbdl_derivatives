@@ -301,9 +301,11 @@ void CompositeRigidBodyAlgorithm (
       delete modelh;
     }
 
-    // compute value at current configuration q as nominal value
-    CompositeRigidBodyAlgorithm(model, q, H, true);
+
   }
+  // compute value at current configuration q as nominal value
+  CompositeRigidBodyAlgorithm(model, q, H, true);
+
 }
 
 

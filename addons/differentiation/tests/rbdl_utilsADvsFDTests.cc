@@ -10,6 +10,7 @@
 
 #include "SpatialAlgebraOperatorsAD.h"
 #include "ModelCheckADvsFD.h"
+#include "Human36Fixture.h"
 
 using namespace RigidBodyDynamics;
 using namespace RigidBodyDynamics::Math;
