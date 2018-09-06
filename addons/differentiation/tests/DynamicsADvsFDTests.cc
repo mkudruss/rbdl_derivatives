@@ -388,7 +388,6 @@ TEST_FIXTURE(CartPendulum, CartPendulumInverseDynamicsEDTest){
   InverseDynamicsEDTestTemplate(*this, 1, 1e-10);
 }
 
-/*
 TEST_FIXTURE(Arm2DofX, Arm2DofXInverseDynamicsEDTest) {
   srand (421337);
   InverseDynamicsEDTestTemplate(*this, 1, 1e-10);
@@ -408,7 +407,7 @@ TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpInverseDynamicsEDTest) {
   srand (421337);
   InverseDynamicsEDTestTemplate(*this, 1, 1e-10);
 }
-*/
+
 
 
 // -----------------------------------------------------------------------------
@@ -624,20 +623,24 @@ TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsEDTest) {
   NonlinearEffectsEDTestTemplate(*this, 1, 1e-6);
 }
 
-// TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
-// }
+TEST_FIXTURE( Arm2DofX, Arm2DofXNonlinearEffectsEDTest) {
+  NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
+}
 
-// TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
-// }
+TEST_FIXTURE( Arm2DofZ, Arm2DofZNonlinearEffectsEDTest) {
+  NonlinearEffectsEDTestTemplate(*this, 10, 1e-6);
+}
 
-// TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
-// }
+TEST_FIXTURE( Arm3DofXZYp, Arm3DofXZYpNonlinearEffectsEDTest) {
+  NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
+}
 
-// TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsEDTest) {
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
+TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpNonlinearEffectsEDTest) {
+  NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
+}
+
+// TEST_FIXTURE( Human36, Human36NonlinearEffectsEDTest) {
+//   NonlinearEffectsEDTestTemplate(*this, 1, 1e-8);
 // }
 
 // TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFNonlinearEffectsEDTest) {
@@ -652,7 +655,7 @@ TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsEDTest) {
 
 // -----------------------------------------------------------------------------
 
-/*
+
 template<typename T>
 void CompositeRigidBodyAlgorithmADTestTemplate(
     T & obj,
@@ -708,9 +711,7 @@ void CompositeRigidBodyAlgorithmADTestTemplate(
     }
   }
 }
-*/
 
-/*
 TEST_FIXTURE( CartPendulum, CartPendulumCompositeRigidBodyAlgorithmADTest) {
   CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-8);
 }
@@ -734,11 +735,10 @@ TEST_FIXTURE( Arm3DofXZZp, Arm3DofXZZpCompositeRigidBodyAlgorithmADTest) {
 TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmADTest) {
   CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-6);
 }
-*/
 
- // TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
- //   CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-5);
- // }
+TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
+ CompositeRigidBodyAlgorithmADTestTemplate(*this, 1, 1e-5);
+}
 
 // -----------------------------------------------------------------------------
 template<typename T>
@@ -873,8 +873,8 @@ TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmEDT
   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-6);
 }
 
-// TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmEDTest) {
-//   CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
-// }
+TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmEDTest) {
+  CompositeRigidBodyAlgorithmEDTestTemplate(*this, 1, 1e-8);
+}
 
 // -----------------------------------------------------------------------------
