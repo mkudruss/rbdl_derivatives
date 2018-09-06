@@ -76,9 +76,9 @@ void checkModelsADvsFD(
     for (unsigned i = 0; i < ad_model.Ic.size(); i++) {
       CHECK_CLOSE(ad_d_model.Ic[i][idir].m, fd_d_model.Ic[i][idir].m, 1e-6);
       CHECK_ARRAY_CLOSE(ad_d_model.Ic[i][idir].h.data(), fd_d_model.Ic[i][idir].h.data(), 3, 1e-6);
-      CHECK_CLOSE(ad_d_model.Ic[i][idir].Ixx, fd_d_model.Ic[i][idir].Ixx, 1e-6);
+      CHECK_CLOSE(ad_d_model.Ic[i][idir].Ixx, fd_d_model.Ic[i][idir].Ixx, 1e-5);
       CHECK_CLOSE(ad_d_model.Ic[i][idir].Iyx, fd_d_model.Ic[i][idir].Iyx, 1e-6);
-      CHECK_CLOSE(ad_d_model.Ic[i][idir].Iyy, fd_d_model.Ic[i][idir].Iyy, 1e-6);
+      CHECK_CLOSE(ad_d_model.Ic[i][idir].Iyy, fd_d_model.Ic[i][idir].Iyy, 1e-5);
       CHECK_CLOSE(ad_d_model.Ic[i][idir].Izx, fd_d_model.Ic[i][idir].Izx, 1e-6);
       CHECK_CLOSE(ad_d_model.Ic[i][idir].Izy, fd_d_model.Ic[i][idir].Izy, 1e-6);
       CHECK_CLOSE(ad_d_model.Ic[i][idir].Izz, fd_d_model.Ic[i][idir].Izz, 1e-6);

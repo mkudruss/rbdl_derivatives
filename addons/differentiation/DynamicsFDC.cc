@@ -51,6 +51,9 @@ void ForwardDynamics(
 
   const unsigned int ndirs = q_dirs.cols();
 
+  // nominal evaluation
+  ForwardDynamics(model, q, qdot, tau, qddot,f_ext);
+
   // temporary results
   VectorNd qddot_ph(qddot);
   VectorNd qddot_mh(qddot);
