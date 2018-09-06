@@ -505,6 +505,16 @@ inline SpatialMatrix crossf_rhs(const SpatialVector & w)   {
     -w[4],    w[3],      0.,      0.,      0.,      0.);
 }
 
+inline SpatialMatrix crossf_rhs_T(const SpatialVector & w)   {
+  return SpatialMatrix (
+       0.,    w[2],   -w[1],      0.,    w[5],   -w[4],
+    -w[2],      0.,    w[0],   -w[5],      0.,    w[3],
+     w[1],   -w[0],      0.,    w[4],   -w[3],      0.,
+       0.,    w[5],   -w[4],      0.,      0.,      0.,
+    -w[5],      0.,    w[3],      0.,      0.,      0.,
+     w[4],   -w[3],      0.,      0.,      0.,      0.);
+}
+
 } /* Math */
 
 } /* RigidBodyDynamics */

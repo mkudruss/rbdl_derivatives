@@ -379,7 +379,7 @@ unsigned int Model::AddBody(
   // update the w components of the Quaternions. They are stored at the end
   // of the q vector
   int multdof3_joint_counter = 0;
-  int mCustomJoint_joint_counter = 0;
+  // int mCustomJoint_joint_counter = 0;
   for (unsigned int i = 1; i < mJoints.size(); i++) {
     if (mJoints[i].mJointType == JointTypeSpherical) {
       multdof3_w_index[i] = dof_count + multdof3_joint_counter;

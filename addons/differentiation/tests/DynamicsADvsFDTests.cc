@@ -25,7 +25,7 @@ using namespace RigidBodyDynamics::Math;
 const double TEST_PREC = 1.0e-8;
 
 // -----------------------------------------------------------------------------
-/*
+
 
 template <typename T>
 void ForwardDynamicsADTestTemplate(
@@ -769,7 +769,7 @@ TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmADv
 TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
   CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-5);
 }
-*/
+
 
 // -----------------------------------------------------------------------------
 template<typename T>
@@ -822,15 +822,15 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
     const double NOM_TOL = 1e-16;
     MatrixNd error;
     double max;
-    /*
+
     CHECK_ARRAY_CLOSE (
       H.data(), ad_H.data(),
                        model.q_size * model.q_size,
       NOM_TOL
     );
 
-    MatrixNd error = (H - ad_H).cwiseAbs();
-    double max = error.maxCoeff();
+    error = (H - ad_H).cwiseAbs();
+    max = error.maxCoeff();
     if (max > NOM_TOL) {
       std::cout << "error = \n" << error << std::endl;
       std::cout << "max   = " << max << std::endl;
@@ -852,7 +852,7 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
       model.q_size * model.q_size,
       NOM_TOL
     );
-    */
+
     error = (ad_H - ed_H).cwiseAbs();
     max = error.maxCoeff();
     if (max > NOM_TOL) {
