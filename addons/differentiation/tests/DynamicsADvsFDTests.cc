@@ -25,7 +25,7 @@ using namespace RigidBodyDynamics::Math;
 const double TEST_PREC = 1.0e-8;
 
 // -----------------------------------------------------------------------------
-/*
+
 
 template <typename T>
 void ForwardDynamicsADTestTemplate(
@@ -769,7 +769,7 @@ TEST_FIXTURE( FixedBase6DoF9DoF, FixedBase6DoF9DoFCompositeRigidBodyAlgorithmADv
 TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
   CompositeRigidBodyAlgorithmADvsFDTestTemplate(*this, 1, 1e-5);
 }
-*/
+
 
 // -----------------------------------------------------------------------------
 template<typename T>

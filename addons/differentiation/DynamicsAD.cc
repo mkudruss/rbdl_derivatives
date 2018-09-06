@@ -547,6 +547,7 @@ void NonlinearEffects (
 
   for (unsigned i = 1; i < model.mBodies.size(); i++) {
     unsigned lambda = model.lambda[i];
+
     if (lambda == 0) {
       // derivative code
       for (unsigned idir = 0; idir < ndirs; idir++) {
