@@ -332,6 +332,8 @@ void InverseDynamics(
 			-model.gravity[1],
 			-model.gravity[2]);
 
+  std::vector<SpatialVector> h(model.mBodies.size());
+
 	for (unsigned int i = 1; i < model.mBodies.size(); i++) {
 		unsigned int lambda = model.lambda[i];
 		unsigned int q_index = model.mJoints[i].q_index;
@@ -418,6 +420,13 @@ void InverseDynamics(
     }
 
 		if (!model.mBodies[i].mIsVirtual) {
+      // derivative code
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ad_model.h[i][idir] = model.I[i] * ad_model.v[i][idir];
+      }
+      // nominal code
+      h[i] = model.I[i] * model.v[i];
+
       // derivative evaluation
       for(unsigned int j = 0; j < ndirs; j++) {
         ad_model.f[i][j] = model.I[i] * ad_model.a[i][j]
