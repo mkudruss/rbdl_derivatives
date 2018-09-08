@@ -38,25 +38,27 @@ ADModel::ADModel (RigidBodyDynamics::Model& model) {
     c_J.resize(model.mBodies.size(), vec);
     a.resize(model.mBodies.size(), vec);
 
-    Ic.resize(model.mBodies.size(), SRBI);
-    hc.resize(model.mBodies.size(), vec);
-    F.resize(model.mBodies.size(), vec);
     c.resize(model.mBodies.size(), vec);
     f.resize(model.mBodies.size(), vec);
-    h.resize(model.mBodies.size(), vec);
+
+    Ic.resize(model.mBodies.size(), SRBI);
+    F.resize(model.mBodies.size(), vec);
 
     pA.resize(model.mBodies.size(), vec);
     U.resize(model.mBodies.size(), vec);
     IA.resize(model.mBodies.size(), X);
-    //u.resize(model.mBodies.size(), double);
-    //d.resize(model.mBodies.size(), double);
+    hc.resize(model.mBodies.size(), vec);
+
+    h.resize(model.mBodies.size(), vec);
+
     u.resize(model.u.rows(), ndirs);
     u.setZero();
     d.resize(model.d.rows(), ndirs);
     d.setZero();
 }
 
-void ADModel::resize_directions (unsigned requested_ndirs){
+void ADModel::resize_directions (const unsigned & requested_ndirs)
+{
     if (ndirs < requested_ndirs) {
         ndirs = requested_ndirs;
 
@@ -118,6 +120,10 @@ void ADModel::resize_directions (unsigned requested_ndirs){
 
         for (unsigned int i = 0; i < hc.size(); ++i) {
             hc[i].resize(ndirs, SpatialVector::Zero());
+        }
+
+        for (unsigned int i = 0; i < hc.size(); ++i) {
+            h[i].resize(ndirs, SpatialVector::Zero());
         }
 
         u.resize(u.rows(), ndirs);

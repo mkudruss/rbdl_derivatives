@@ -43,15 +43,12 @@ struct CartPendulum {
         qddot = VectorNd::Constant ((size_t) model.dof_count, 0.);
         tau = VectorNd::Constant ((size_t) model.dof_count, 0.);
 
-        ad_model = ADModel(model);
-
         body_point = RigidBodyDynamics::Math::Vector3d (0., 0., pend_l);
 
         ClearLogOutput();
     }
 
     RigidBodyDynamics::Model model;
-    ADModel ad_model;
 
     unsigned int id_cart, id_pendulum;
     RigidBodyDynamics::Body body_cart, body_pendulum;
@@ -112,19 +109,12 @@ struct CartPendulumContact {
         qddot = VectorNd::Constant ((size_t) model.dof_count, 0.);
         tau = VectorNd::Constant ((size_t) model.dof_count, 0.);
 
-        ad_model = ADModel(model);
-
         body_point = RigidBodyDynamics::Math::Vector3d (0., 0., pend_l);
-
-        // TODO add constraint set
-
 
         ClearLogOutput();
     }
 
     RigidBodyDynamics::Model model;
-    ADModel ad_model;
-    RigidBodyDynamics::ADConstraintSet ad_cs;
 
     unsigned int id_cart, id_pendulum;
     RigidBodyDynamics::Body body_cart, body_pendulum;
@@ -235,15 +225,12 @@ struct Arm2DofX {
         qddot = VectorNd::Constant((size_t) model.dof_count, 0.);
         tau   = VectorNd::Constant((size_t) model.dof_count, 0.);
 
-        ad_model = ADModel(model);
-
         body_point = RigidBodyDynamics::Math::Vector3d (0., arm_l, 0.);
 
         ClearLogOutput();
     }
 
     RigidBodyDynamics::Model model;
-    ADModel ad_model;
 
     unsigned int id_distal, id_proximal;
     RigidBodyDynamics::Body  body_distal, body_proximal;
@@ -291,15 +278,12 @@ struct Arm2DofZ {
         qddot = VectorNd::Constant((size_t) model.dof_count, 0.);
         tau   = VectorNd::Constant((size_t) model.dof_count, 0.);
 
-        ad_model = ADModel(model);
-
         body_point = RigidBodyDynamics::Math::Vector3d (0., arm_l, 0.);
 
         ClearLogOutput();
     }
 
     RigidBodyDynamics::Model model;
-    ADModel ad_model;
 
     unsigned int id_distal, id_proximal;
     RigidBodyDynamics::Body  body_distal, body_proximal;
@@ -352,8 +336,6 @@ struct Arm3DofXZYp {
         qdot  = VectorNd::Constant((size_t) model.dof_count, 0.);
         qddot = VectorNd::Constant((size_t) model.dof_count, 0.);
         tau   = VectorNd::Constant((size_t) model.dof_count, 0.);
-
-        ad_model = ADModel(model);
 
         body_point = RigidBodyDynamics::Math::Vector3d (0., arm_l, 0.);
 
@@ -554,7 +536,6 @@ struct FixedBase6DoF {
     RigidBodyDynamics::Math::Vector3d contact_normal;
 
     RigidBodyDynamics::ConstraintSet constraint_set;
-    RigidBodyDynamics::ADConstraintSet ad_constraint_set;
 };
 
 struct FixedBase6DoF9DoF {

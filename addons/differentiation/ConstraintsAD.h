@@ -55,15 +55,13 @@ struct ADConstraintSet {
   Math::MatrixNd point_accel_t;
   Math::MatrixNd point_global;
 
-  ADConstraintSet() : CS (0) {}
+  ADConstraintSet();
   ADConstraintSet(const ConstraintSet &CS, int dof_count);
 
-  // ~ADConstraintSet() {
-  //   // set reference to NULL
-  //   if (CS != 0){
-  //     CS = 0;
-  //   }
-  // }
+  ~ADConstraintSet() {
+    // set reference to NULL
+    CS = nullptr;
+  }
 
   void resize_directions (const unsigned int& requested_ndirs);
 };

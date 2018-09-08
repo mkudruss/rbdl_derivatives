@@ -33,13 +33,14 @@ void CalcContactJacobianTemplate(
     double array_close_prec) {
   Model   ad_model   = obj.model;
   Model   fd_model   = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  ADModel fd_d_model = ADModel(fd_model);
 
   ConstraintSet ad_cs = obj.constraint_set;
   ConstraintSet fd_cs = obj.constraint_set;
-  ADConstraintSet ad_d_cs = obj.ad_constraint_set;
-  ADConstraintSet fd_d_cs = obj.ad_constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  ADConstraintSet fd_d_cs = ADConstraintSet(fd_cs, fd_model.dof_count);
 
   // set up input quantities
   int const nq = ad_model.dof_count;
@@ -100,7 +101,6 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobian) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
   CalcContactJacobianTemplate(*this, 10, 1e-5);
 }
 
@@ -113,14 +113,15 @@ void CalcContactSystemVariablesTemplate(
   Model   model      = obj.model;
   Model   ad_model   = obj.model;
   Model   fd_model   = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  ADModel fd_d_model = ADModel(fd_model);
 
   ConstraintSet cs = obj.constraint_set;
   ConstraintSet ad_cs = obj.constraint_set;
   ConstraintSet fd_cs = obj.constraint_set;
-  ADConstraintSet ad_d_cs = obj.ad_constraint_set;
-  ADConstraintSet fd_d_cs = obj.ad_constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  ADConstraintSet fd_d_cs = ADConstraintSet(fd_cs, fd_model.dof_count);
 
   // set up input quantities
   int const nq = ad_model.dof_count;
@@ -158,7 +159,6 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactSystemVariables) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
   CalcContactSystemVariablesTemplate(*this, 10);
 }
 
@@ -173,14 +173,15 @@ void ForwardDynamicsConstraintsDirectTemplate(
   Model   model    = obj.model;
   Model   ad_model = obj.model;
   Model   fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  ADModel fd_d_model = ADModel(fd_model);
 
   ConstraintSet cs = obj.constraint_set;
   ConstraintSet ad_cs = obj.constraint_set;
   ConstraintSet fd_cs = obj.constraint_set;
-  ADConstraintSet ad_d_cs = obj.ad_constraint_set;
-  ADConstraintSet fd_d_cs = obj.ad_constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  ADConstraintSet fd_d_cs = ADConstraintSet(fd_cs, fd_model.dof_count);
 
   // set up input quantities
   int const nq = ad_model.dof_count;
@@ -238,7 +239,6 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsConstraintsDirect) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
   ForwardDynamicsConstraintsDirectTemplate(*this, 10, 1e-4);
 }
 
@@ -253,14 +253,15 @@ void ForwardDynamicsAccelerationDeltasTemplate(
   Model   model    = obj.model;
   Model   ad_model = obj.model;
   Model   fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  ADModel fd_d_model = ADModel(fd_model);
 
   ConstraintSet cs = obj.constraint_set;
   ConstraintSet ad_cs = obj.constraint_set;
   ConstraintSet fd_cs = obj.constraint_set;
-  ADConstraintSet ad_d_cs = obj.ad_constraint_set;
-  ADConstraintSet fd_d_cs = obj.ad_constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  ADConstraintSet fd_d_cs = ADConstraintSet(fd_cs, fd_model.dof_count);
 
   // set up input quantities
   int const nq = ad_model.dof_count;
@@ -335,7 +336,6 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsAccelerationDeltas) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
   ForwardDynamicsAccelerationDeltasTemplate(*this, 1, 1e-6);
 }
 
@@ -350,14 +350,15 @@ void ForwardDynamicsApplyConstraintForcesTemplate(
   Model   model    = obj.model;
   Model   ad_model = obj.model;
   Model   fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  ADModel fd_d_model = ADModel(fd_model);
 
   ConstraintSet cs = obj.constraint_set;
   ConstraintSet ad_cs = obj.constraint_set;
   ConstraintSet fd_cs = obj.constraint_set;
-  ADConstraintSet ad_d_cs = obj.ad_constraint_set;
-  ADConstraintSet fd_d_cs = obj.ad_constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  ADConstraintSet fd_d_cs = ADConstraintSet(fd_cs, fd_model.dof_count);
 
   // set up input quantities
   int const nq = ad_model.dof_count;
@@ -446,7 +447,6 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsApplyConstraintForces) 
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
   ForwardDynamicsApplyConstraintForcesTemplate(*this, 1, 1e-6);
 }
 
@@ -461,14 +461,15 @@ void ForwardDynamicsContactsKokkevisTemplate(
   Model   model    = obj.model;
   Model   ad_model = obj.model;
   Model   fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  ADModel fd_d_model = ADModel(fd_model);
 
   ConstraintSet cs = obj.constraint_set;
   ConstraintSet ad_cs = obj.constraint_set;
   ConstraintSet fd_cs = obj.constraint_set;
-  ADConstraintSet ad_d_cs = obj.ad_constraint_set;
-  ADConstraintSet fd_d_cs = obj.ad_constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  ADConstraintSet fd_d_cs = ADConstraintSet(fd_cs, fd_model.dof_count);
 
   // set up input quantities
   int const nq = ad_model.dof_count;
@@ -526,7 +527,6 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsContactsKokkevis) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
   ForwardDynamicsContactsKokkevisTemplate(*this, 1, 5e-6);
 }
 
@@ -540,14 +540,15 @@ void ForwardDynamicsContactsKokkevisTemplateFDC(
   Model   model    = obj.model;
   Model   ad_model = obj.model;
   Model   fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  ADModel fd_d_model = ADModel(fd_model);
 
   ConstraintSet cs = obj.constraint_set;
   ConstraintSet ad_cs = obj.constraint_set;
   ConstraintSet fd_cs = obj.constraint_set;
-  ADConstraintSet ad_d_cs = obj.ad_constraint_set;
-  ADConstraintSet fd_d_cs = obj.ad_constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  ADConstraintSet fd_d_cs = ADConstraintSet(fd_cs, fd_model.dof_count);
 
   // set up input quantities
   int const nq = ad_model.dof_count;
@@ -605,7 +606,6 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsContactsKokkevis_FDC) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
   ForwardDynamicsContactsKokkevisTemplateFDC(*this, 1, 1e-8);
 }
 
@@ -717,14 +717,15 @@ void ComputeContactImpulsesDirectTestTemplate(
   Model   model      = obj.model;
   Model   ad_model   = obj.model;
   Model   fd_model   = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  ADModel fd_d_model = ADModel(fd_model);
 
   ConstraintSet   cs      = obj.constraint_set;
   ConstraintSet   ad_cs   = obj.constraint_set;
   ConstraintSet   fd_cs   = obj.constraint_set;
-  ADConstraintSet ad_d_cs = obj.ad_constraint_set;
-  ADConstraintSet fd_d_cs = obj.ad_constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  ADConstraintSet fd_d_cs = ADConstraintSet(fd_cs, fd_model.dof_count);
 
   int const nq       = model.dof_count;
   int const ndirs    = 2 * nq;
@@ -770,7 +771,6 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFComputeContactImpulsesDirectTest) {
   constraint_set.AddContactConstraint (
         contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
   ComputeContactImpulsesDirectTestTemplate(*this, 5, 1e-5);
 }
 

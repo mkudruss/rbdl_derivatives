@@ -15,8 +15,10 @@ namespace RigidBodyDynamics {
 
 using namespace RigidBodyDynamics::Math;
 
-ADConstraintSet::ADConstraintSet(const ConstraintSet & CS_, int _dof_count) :
-  CS (0)
+ADConstraintSet::ADConstraintSet(const ConstraintSet & CS_, int _dof_count)
+  : ndirs (0)
+  , dof_count (0)
+  , CS (0)
 {
   // std::cout << "in " << __func__ << std::endl;
   dof_count = _dof_count;

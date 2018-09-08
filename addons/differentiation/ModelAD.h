@@ -62,7 +62,7 @@ struct ADModel {
     ADModel ();
     ADModel (RigidBodyDynamics::Model& model);
 
-    void resize_directions (unsigned requested_ndirs);
+    void resize_directions (const unsigned & requested_ndirs);
 
 };
 

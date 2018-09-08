@@ -28,8 +28,9 @@ void UpdateKinematicsCustomTemplate(
     unsigned trial_count) {
   Model   ad_model = obj.model;
   Model   fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+
+  ADModel ad_d_model(ad_model);
+  ADModel fd_d_model(fd_model);
 
   int const nq = obj.model.dof_count;
   unsigned ndirs = 3 * nq;
@@ -86,7 +87,7 @@ void CalcPointVelocityTemplate(
     unsigned trial_count,
     double array_close_prec) {
   Model   model = obj.model;
-  ADModel ad_model = obj.ad_model;
+  ADModel ad_model(model);
 
   // set up input quantities
   int const nq = model.dof_count;
@@ -169,8 +170,8 @@ void CalcPointVelocity6DTemplate(
   Model   model = obj.model;
   Model   ad_model = obj.model;
   Model   fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+  ADModel ad_d_model(ad_model);
+  ADModel fd_d_model(fd_model);
 
   // set up input quantities
   int const nq = ad_model.dof_count;
@@ -260,8 +261,8 @@ void CalcBaseToBodyCoordinatesTemplate(
   Model   model = obj.model;
   Model   ad_model = obj.model;
   Model   fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+  ADModel ad_d_model(ad_model);
+  ADModel fd_d_model(fd_model);
 
   // set up input quantities
   int const nq = model.dof_count;
@@ -343,8 +344,8 @@ void CalcBodyToBaseCoordinatesTemplate(
     double array_close_prec) {
   Model ad_model = obj.model;
   Model fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+  ADModel ad_d_model(ad_model);
+  ADModel fd_d_model(fd_model);
 
   int const nq = ad_model.dof_count;
   unsigned const ndirs = nq;
@@ -438,7 +439,7 @@ void CalcBodyWorldOrientationTemplate(
     unsigned trial_count,
     double array_close_prec) {
   Model & model = obj.model;
-  ADModel & ad_model = obj.ad_model;
+  ADModel ad_model(model);
   int const nq = model.dof_count;
 
   VectorNd q = VectorNd::Zero(nq);
@@ -496,7 +497,7 @@ void CalcPointAccelerationTemplate(
     unsigned trial_count,
     double array_close_prec) {
   Model   & model    = obj.model;
-  ADModel & ad_model = obj.ad_model;
+  ADModel ad_model(model);
   int const nq       = model.dof_count;
 
   VectorNd q    = VectorNd::Zero(nq);
@@ -576,8 +577,8 @@ void CalcPointJacobianTemplate(
   Model model = obj.model;
   Model ad_model = obj.model;
   Model fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+  ADModel ad_d_model(ad_model);
+  ADModel fd_d_model(fd_model);
 
   int const nq = ad_model.dof_count;
   unsigned const ndirs = nq;
@@ -661,9 +662,9 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian) {
   CalcPointJacobianTemplate(*this, 10, 1e-5);
 }
 
-TEST_FIXTURE ( Human36, Human36CalcPointJacobian) {
-  CalcPointJacobianTemplate(*this, 10, 1e-5);
-}
+// TEST_FIXTURE ( Human36, Human36CalcPointJacobian) {
+//   CalcPointJacobianTemplate(*this, 10, 1e-5);
+// }
 
 
 // -----------------------------------------------------------------------------
@@ -676,8 +677,8 @@ void CalcPointJacobian6DTemplate(
   Model model = obj.model;
   Model ad_model = obj.model;
   Model fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+  ADModel ad_d_model(ad_model);
+  ADModel fd_d_model(fd_model);
 
   int const nq = ad_model.dof_count;
   unsigned const ndirs = nq;
@@ -755,9 +756,9 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian6D) {
   CalcPointJacobian6DTemplate(*this, 10, 1e-5);
 }
 
-TEST_FIXTURE ( Human36, Human36CalcPointJacobian6D) {
-  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
-}
+// TEST_FIXTURE ( Human36, Human36CalcPointJacobian6D) {
+//   CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+// }
 
 
 // -----------------------------------------------------------------------------

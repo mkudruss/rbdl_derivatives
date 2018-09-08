@@ -36,9 +36,11 @@ void ForwardDynamicsADTestTemplate(
   Model ad_model = obj.model;
   Model fd_model = obj.model;
   Model fdc_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
-  ADModel fdc_d_model = obj.ad_model;
+
+  ADModel ad_d_model(ad_model);
+  ADModel fd_d_model(fd_model);
+  ADModel fdc_d_model(fdc_model);
+
   srand(666);
 
   for(unsigned int trial = 0; trial < trial_count; trial++) {
@@ -184,8 +186,10 @@ void InverseDynamicsADTestTemplate(
 ) {
   Model ad_model      = obj.model;
   Model fdc_model      = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fdc_d_model = obj.ad_model;
+
+  ADModel ad_d_model(ad_model);
+  ADModel fdc_d_model(fdc_model);
+
   VectorNd & q     = obj.q;
   VectorNd & qdot  = obj.qdot;
   VectorNd & qddot = obj.qddot;
@@ -283,8 +287,9 @@ void InverseDynamicsEDTestTemplate(
 ) {
   Model ad_model      = obj.model;
   Model ed_model      = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  EDModel ed_d_model = EDModel(ed_model);
+
+  ADModel ad_d_model(ad_model);
+  EDModel ed_d_model(ed_model);
 
   VectorNd & q     = obj.q;
   VectorNd & qdot  = obj.qdot;
@@ -444,11 +449,14 @@ template<typename T>
 void NonlinearEffectsADTestTemplate(
     T & obj,
     unsigned trial_count,
-    double array_close_prec) {
+    double array_close_prec
+) {
   Model ad_model      = obj.model;
   Model fdc_model      = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fdc_d_model = obj.ad_model;
+
+  ADModel ad_d_model(ad_model);
+  ADModel fdc_d_model(fdc_model);
+
   VectorNd q(obj.model.dof_count);
   VectorNd qdot(obj.model.dof_count);
   VectorNd tau(obj.model.dof_count);
@@ -695,8 +703,8 @@ void CompositeRigidBodyAlgorithmADvsFDTestTemplate(
   Model model = obj.model;
   Model fd_model = obj.model;
   Model ad_model = obj.model;
-  ADModel ad_d_model(model);
-  ADModel fd_d_model(model);
+  ADModel ad_d_model(ad_model);
+  ADModel fd_d_model(fd_model);
   for (unsigned trial = 0; trial < trial_count; trial++) {
     unsigned ndirs = model.qdot_size;
     // initialize inputs and directions

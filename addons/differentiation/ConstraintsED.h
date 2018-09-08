@@ -58,12 +58,10 @@ struct EDConstraintSet {
   EDConstraintSet() : CS (0) {}
   EDConstraintSet(const ConstraintSet &CS, int dof_count);
 
-  // ~ADConstraintSet() {
-  //   // set reference to NULL
-  //   if (CS != 0){
-  //     CS = 0;
-  //   }
-  // }
+  ~EDConstraintSet() {
+    // this class does not own this pointer
+    CS = nullptr;
+  }
 
   void resize_directions (const unsigned int& requested_ndirs);
 };

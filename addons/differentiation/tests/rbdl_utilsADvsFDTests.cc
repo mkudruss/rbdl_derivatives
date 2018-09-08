@@ -511,7 +511,8 @@ TEST(CheckAddSqrFormSTSM_noalias) {
 template <typename T>
 void CalcPotentialEnergyADTestTemplate(T & obj) {
   Model & model = obj.model;
-  ADModel & ad_model = obj.ad_model;
+  ADModel ad_model = ADModel(model);
+
   VectorNd & q = obj.q;
   VectorNd & qdot = obj.qdot;
 
@@ -572,7 +573,8 @@ void CalcKineticEnergyADTestTemplate(
     unsigned trial_count,
     double array_close_prec) {
   Model & model = obj.model;
-  ADModel & ad_model = obj.ad_model;
+  ADModel ad_model = ADModel(model);
+
   VectorNd & q = obj.q;
   VectorNd & qdot = obj.qdot;
 
@@ -621,8 +623,9 @@ template<typename T>
 void CalcCenterOfMassADTestTemplate(T & obj) {
   Model ad_model = obj.model;
   Model fd_model = obj.model;
-  ADModel ad_d_model = obj.ad_model;
-  ADModel fd_d_model = obj.ad_model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  ADModel fd_d_model = ADModel(fd_model);
 
   VectorNd & q = obj.q;
   VectorNd & qdot = obj.qdot;

@@ -305,10 +305,11 @@ void InverseDynamics(
     VectorNd& tau,
     MatrixNd& ad_tau,
     vector<SpatialVector> const * f_ext,
-    vector<vector<SpatialVector>> const * f_ext_dirs) {
+    vector<vector<SpatialVector>> const * f_ext_dirs
+) {
   assert((f_ext == NULL) == (f_ext_dirs == NULL));
 
-  unsigned ndirs = q_dirs.cols();
+  const unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == qddot_dirs.cols());
   ad_model.resize_directions(ndirs);
@@ -516,7 +517,7 @@ void NonlinearEffects (
     VectorNd & tau,
     MatrixNd & ad_tau
 ) {
-  unsigned ndirs = q_dirs.cols();
+  const unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs <= ad_tau.cols());
   ad_model.resize_directions(ndirs);

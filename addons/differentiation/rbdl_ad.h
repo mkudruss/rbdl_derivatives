@@ -8,13 +8,14 @@
 #ifndef RBDL_AD_H
 #define RBDL_AD_H
 
+#include "ConstraintsED.h"
 #include "ConstraintsAD.h"
 #include "ConstraintsFD.h"
 #include "ConstraintsFDC.h"
+#include "DynamicsED.h"
 #include "DynamicsAD.h"
 #include "DynamicsFD.h"
 #include "DynamicsFDC.h"
-#include "DynamicsED.h"
 #include "FdModelEntry.h"
 #include "JointAD.h"
 #include "KinematicsAD.h"
