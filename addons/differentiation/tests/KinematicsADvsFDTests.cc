@@ -8,6 +8,7 @@
 
 #include "KinematicsAD.h"
 #include "KinematicsFD.h"
+#include "KinematicsFDC.h"
 
 #include "Fixtures.h"
 #include "Human36Fixture.h"
@@ -111,6 +112,9 @@ void CalcPointVelocityTemplate(
 
     for (unsigned i = 1; i < model.mBodies.size(); i++) {
       unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
+      if (body_id == 0) {
+        continue;
+      }
       // call nominal version
       G = CalcPointVelocity (
             model, q, qdot, body_id, point_position, true);
@@ -195,6 +199,10 @@ void CalcPointVelocity6DTemplate(
 
     for (unsigned i = 1; i < model.mBodies.size(); i++) {
       unsigned int body_id = model.mBodyNameMap[ad_model.GetBodyName(i)];
+      if (body_id == 0) {
+        continue;
+      }
+
       // call nominal version
       pv6d = CalcPointVelocity6D(model, q, qdot, body_id, pt_pos);
 
@@ -287,6 +295,9 @@ void CalcBaseToBodyCoordinatesTemplate(
 
     for (unsigned i = 1; i < model.mBodies.size(); i++) {
       unsigned int body_id = model.mBodyNameMap[model.GetBodyName(i)];
+      if (body_id == 0) {
+        continue;
+      }
 
       G = CalcBaseToBodyCoordinates (
             model, q, body_id, point_position, update_kinematics);
@@ -368,6 +379,9 @@ void CalcBodyToBaseCoordinatesTemplate(
 
     for (unsigned i = 1; i < ad_model.mBodies.size(); i++) {
       unsigned int body_id = ad_model.mBodyNameMap[ad_model.GetBodyName(i)];
+      if (body_id == 0) {
+        continue;
+      }
       // call nominal version
       G = CalcBodyToBaseCoordinates (
             ad_model, q, body_id, point_position, update_kinematics
@@ -453,6 +467,9 @@ void CalcBodyWorldOrientationTemplate(
   do {
     for (unsigned i = 1; i < model.mBodies.size(); i++) {
       unsigned id = model.mBodyNameMap[model.GetBodyName(i)];
+      if (id == 0) {
+        continue;
+      }
       Matrix3d ad_E = AD::CalcBodyWorldOrientation(model, ad_model, q, q_dirs, id, ad_E_dirs);
       Matrix3d fd_E = FD::CalcBodyWorldOrientation(model, q, q_dirs, id, fd_E_dirs);
       CHECK_ARRAY_CLOSE(ad_E.data(), fd_E.data(), 9, array_close_prec);
@@ -520,6 +537,9 @@ void CalcPointAccelerationTemplate(
   do {
     for (unsigned i = 1; i < model.mBodies.size(); i++) {
       unsigned id = model.mBodyNameMap[model.GetBodyName(i)];
+      if (id == 0) {
+        continue;
+      }
       Vector3d ad_a = AD::CalcPointAcceleration(
             model, ad_model,
             q, q_dirs, qd, qd_dirs, qdd, qdd_dirs,
@@ -573,7 +593,8 @@ template <typename T>
 void CalcPointJacobianTemplate(
     T & obj,
     unsigned trial_count,
-    double array_close_prec) {
+    double array_close_prec
+) {
   Model model = obj.model;
   Model ad_model = obj.model;
   Model fd_model = obj.model;
@@ -590,35 +611,41 @@ void CalcPointJacobianTemplate(
     VectorNd q = VectorNd::Random(nq);
     MatrixNd q_dirs = MatrixNd::Random(nq, nq);
 
-    // set up no output quantities
-    MatrixNd G = MatrixNd::Zero (3, nq);
-    MatrixNd ad_G = MatrixNd::Zero (3, nq);
-    MatrixNd fd_G = MatrixNd::Zero (3, nq);
-
-    // set up derivative output quantities
-    vector<MatrixNd> ad_G_dirs (ndirs, ad_G);
-    vector<MatrixNd> fd_G_dirs (ndirs, fd_G);
-
     for (unsigned i = 2; i < ad_model.mBodies.size(); i++) {
       unsigned int body_id = ad_model.mBodyNameMap[ad_model.GetBodyName(i)];
+      if (body_id == 0) {
+        continue;
+      }
+
+      // set up no output quantities
+      MatrixNd G = MatrixNd::Zero (3, nq);
+      MatrixNd ad_G = MatrixNd::Zero (3, nq);
+      MatrixNd fd_G = MatrixNd::Zero (3, nq);
+
+      // set up derivative output quantities
+      vector<MatrixNd> ad_G_dirs (ndirs, ad_G);
+      vector<MatrixNd> fd_G_dirs (ndirs, fd_G);
 
       CalcPointJacobian (
-            model, q, body_id, point_position, G, update_kinematics);
+        model, q, body_id, point_position, G, update_kinematics
+      );
 
       AD::CalcPointJacobian (
-            ad_model, ad_d_model,
-            q, q_dirs,
-            body_id,
-            point_position,
-            ad_G, ad_G_dirs,
-            update_kinematics);
+        ad_model, ad_d_model,
+        q, q_dirs,
+        body_id,
+        point_position,
+        ad_G, ad_G_dirs,
+        update_kinematics
+      );
 
-      FD::CalcPointJacobian (
-            fd_model, &fd_d_model,
-            q, q_dirs,
-            body_id,
-            point_position,
-            fd_G, fd_G_dirs);
+      FDC::CalcPointJacobian (
+        fd_model, &fd_d_model,
+        q, q_dirs,
+        body_id,
+        point_position,
+        fd_G, fd_G_dirs
+      );
 
       checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
 
@@ -626,10 +653,16 @@ void CalcPointJacobianTemplate(
       CHECK_ARRAY_CLOSE(fd_G.data(), G.data(), G.size(), array_close_prec);
 
       for (unsigned idir = 0; idir < ndirs; idir++) {
-        if ( (ad_G_dirs[idir] - fd_G_dirs[idir]).norm() > array_close_prec) {
-          std::cout << "G_dirs " << i << "," << idir << std::endl;
-          std::cout << ad_G_dirs[idir] << "\n" << std::endl;
-          std::cout << fd_G_dirs[idir] << "\n" << std::endl;
+        MatrixNd error;
+        double max;
+        error = (ad_G_dirs[idir] - fd_G_dirs[idir]).cwiseAbs();
+        max = error.maxCoeff();
+        if (max > array_close_prec) {
+          std::cout << "error = \n" << error << std::endl;
+          std::cout << "max   = " << max << std::endl;
+          std::cout << "ad_G_dirs[" << idir << "] = \n"<< ad_G_dirs[idir] << std::endl;
+          std::cout << "fd_G_dirs[" << idir << "] = \n"<< fd_G_dirs[idir] << std::endl;
+          std::cout << endl;
         }
 
         CHECK_ARRAY_CLOSE(
@@ -642,29 +675,55 @@ void CalcPointJacobianTemplate(
   }
 }
 
+
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointJacobian) {
-  CalcPointJacobianTemplate(*this, 10, 1e-5);
+  CalcPointJacobianTemplate(*this, 10, 1e-10);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointJacobian) {
-  CalcPointJacobianTemplate(*this, 10, 1e-5);
+  CalcPointJacobianTemplate(*this, 10, 1e-10);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointJacobian) {
-  CalcPointJacobianTemplate(*this, 10, 1e-5);
+  CalcPointJacobianTemplate(*this, 10, 1e-10);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointJacobian) {
-  CalcPointJacobianTemplate(*this, 10, 1e-5);
+  CalcPointJacobianTemplate(*this, 10, 1e-10);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian) {
-  CalcPointJacobianTemplate(*this, 10, 1e-5);
+  CalcPointJacobianTemplate(*this, 10, 1e-10);
 }
 
-// TEST_FIXTURE ( Human36, Human36CalcPointJacobian) {
-//   CalcPointJacobianTemplate(*this, 10, 1e-5);
-// }
+TEST_FIXTURE(
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCalcPointJacobian_4_2
+) {
+  this->create_model(4, 2);
+  CalcPointJacobianTemplate(*this, 10, 1e-10);
+}
+
+TEST_FIXTURE(
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCalcPointJacobian_6_3
+) {
+  this->create_model(6, 3);
+  CalcPointJacobianTemplate(*this, 10, 1e-10);
+}
+
+TEST_FIXTURE(
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCalcPointJacobian_12_3
+) {
+  this->create_model(12, 3);
+  CalcPointJacobianTemplate(*this, 10, 1e-10);
+}
+
+
+TEST_FIXTURE ( Human36, Human36CalcPointJacobian) {
+  CalcPointJacobianTemplate(*this, 10, 1e-9);
+}
 
 
 // -----------------------------------------------------------------------------
@@ -673,7 +732,8 @@ template <typename T>
 void CalcPointJacobian6DTemplate(
     T & obj,
     unsigned trial_count,
-    double array_close_prec) {
+    double array_close_prec
+) {
   Model model = obj.model;
   Model ad_model = obj.model;
   Model fd_model = obj.model;
@@ -690,17 +750,20 @@ void CalcPointJacobian6DTemplate(
     VectorNd q = VectorNd::Random(nq);
     MatrixNd q_dirs = MatrixNd::Random(nq, nq);
 
-    // set up no output quantities
-    MatrixNd G = MatrixNd::Zero (6, nq);
-    MatrixNd ad_G = MatrixNd::Zero (6, nq);
-    MatrixNd fd_G = MatrixNd::Zero (6, nq);
-
-    // set up derivative output quantities
-    vector<MatrixNd> ad_G_dirs (ndirs, ad_G);
-    vector<MatrixNd> fd_G_dirs (ndirs, fd_G);
-
     for (unsigned i = 2; i < ad_model.mBodies.size(); i++) {
       unsigned int body_id = ad_model.mBodyNameMap[ad_model.GetBodyName(i)];
+      if (body_id == 0) {
+        continue;
+      }
+
+      // set up no output quantities
+      MatrixNd G = MatrixNd::Zero (6, nq);
+      MatrixNd ad_G = MatrixNd::Zero (6, nq);
+      MatrixNd fd_G = MatrixNd::Zero (6, nq);
+
+      // set up derivative output quantities
+      vector<MatrixNd> ad_G_dirs (ndirs, ad_G);
+      vector<MatrixNd> fd_G_dirs (ndirs, fd_G);
 
       CalcPointJacobian6D (
             model, q, body_id, point_position, G, update_kinematics);
@@ -713,7 +776,7 @@ void CalcPointJacobian6DTemplate(
             ad_G, ad_G_dirs,
             update_kinematics);
 
-      FD::CalcPointJacobian6D (
+      FDC::CalcPointJacobian6D (
             fd_model, &fd_d_model,
             q, q_dirs,
             body_id,
@@ -726,6 +789,18 @@ void CalcPointJacobian6DTemplate(
       CHECK_ARRAY_CLOSE(fd_G.data(), G.data(), G.rows() * G.cols(), array_close_prec);
 
       for (unsigned idir = 0; idir < ndirs; idir++) {
+        MatrixNd error;
+        double max;
+        error = (ad_G_dirs[idir] - fd_G_dirs[idir]).cwiseAbs();
+        max = error.maxCoeff();
+        if (max > array_close_prec) {
+          std::cout << "error = \n" << error << std::endl;
+          std::cout << "max   = " << max << std::endl;
+          std::cout << "ad_G_dirs[" << idir << "] = \n"<< ad_G_dirs[idir] << std::endl;
+          std::cout << "fd_G_dirs[" << idir << "] = \n"<< fd_G_dirs[idir] << std::endl;
+          std::cout << endl;
+        }
+
         CHECK_ARRAY_CLOSE(
               ad_G_dirs[idir].data(),
               fd_G_dirs[idir].data(),
@@ -737,28 +812,52 @@ void CalcPointJacobian6DTemplate(
 }
 
 TEST_FIXTURE ( CartPendulum, CartPendulumCalcPointJacobian6D) {
-  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+  CalcPointJacobian6DTemplate(*this, 10, 1e-10);
 }
 
 TEST_FIXTURE ( Arm2DofX, Arm2DofXCalcPointJacobian6D) {
-  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+  CalcPointJacobian6DTemplate(*this, 10, 1e-10);
 }
 
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZCalcPointJacobian6D) {
-  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+  CalcPointJacobian6DTemplate(*this, 10, 1e-10);
 }
 
 TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpCalcPointJacobian6D) {
-  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+  CalcPointJacobian6DTemplate(*this, 10, 1e-10);
 }
 
 TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpCalcPointJacobian6D) {
-  CalcPointJacobian6DTemplate(*this, 10, 1e-5);
+  CalcPointJacobian6DTemplate(*this, 10, 1e-10);
 }
 
-// TEST_FIXTURE ( Human36, Human36CalcPointJacobian6D) {
-//   CalcPointJacobian6DTemplate(*this, 10, 1e-5);
-// }
+TEST_FIXTURE(
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCalcPointJacobian6D_4_2
+) {
+  this->create_model(4, 2);
+  CalcPointJacobian6DTemplate(*this, 10, 1e-10);
+}
+
+TEST_FIXTURE(
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCalcPointJacobian6D_6_3
+) {
+  this->create_model(6, 3);
+  CalcPointJacobian6DTemplate(*this, 10, 1e-10);
+}
+
+TEST_FIXTURE(
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCalcPointJacobian6D_12_3
+) {
+  this->create_model(12, 3);
+  CalcPointJacobian6DTemplate(*this, 10, 1e-10);
+}
+
+TEST_FIXTURE ( Human36, Human36CalcPointJacobian6D) {
+  CalcPointJacobian6DTemplate(*this, 10, 1e-9);
+}
 
 
 // -----------------------------------------------------------------------------

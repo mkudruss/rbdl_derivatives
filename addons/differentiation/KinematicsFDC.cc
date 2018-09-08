@@ -13,18 +13,28 @@
 
 #include "KinematicsAD.h"
 #include "KinematicsFD.h"
-#include "FdModelEntry.h"
+#include "ModelEntryFDC.h"
+
+#include <cfloat>
 
 using namespace std;
+using namespace RigidBodyDynamics::Math;
 
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
 // -----------------------------------------------------------------------------
-namespace FD {
+namespace FDC {
 // -----------------------------------------------------------------------------
 
-using namespace RigidBodyDynamics::Math;
+// define constant difference perturbation according to theory,
+// i.e. EPS = eps^(1/3) = cubic_root(eps).
+// Here, we us cmath cubic root implementation, i.e. cubic_root = cbrt.
+// NOTE assumes that directions are normalized to one
+const double EPS = cbrt(DBL_EPSILON);
+const double EPSx2 = 2.0*EPS; // for convenience, we directly compute the denominator
 
+
+/*
 RBDL_DLLAPI Vector3d CalcBodyToBaseCoordinates (
     Model & model,
     ADModel * fd_model,
@@ -214,6 +224,7 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
 	}
 	return ref;
 }
+*/
 
 RBDL_DLLAPI
 void CalcPointJacobian (
@@ -224,17 +235,19 @@ void CalcPointJacobian (
     unsigned int body_id,
     Math::Vector3d const &point_position,
     Math::MatrixNd &G,
-    std::vector<Math::MatrixNd> &G_dirs) {
-  unsigned int ndirs = q_dirs.cols();
+    std::vector<Math::MatrixNd> &G_dirs
+) {
+  const unsigned int ndirs = q_dirs.cols();
+  assert(G_dirs.size() == ndirs);
+
   if (fd_model) {
     fd_model->resize_directions(ndirs);
   }
 
-  double const h = 1e-8;
   bool const update_kinematics = true;
 
-  // temporary evaluation at current point
-  CalcPointJacobian (model, q, body_id, point_position, G, update_kinematics);
+  MatrixNd Gh = MatrixNd::Zero (G.rows(), G.cols());
+  MatrixNd Gm = MatrixNd::Zero (G.rows(), G.cols());
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
     Model *modelh;
@@ -244,19 +257,34 @@ void CalcPointJacobian (
       modelh = &model;
     }
 
-    VectorNd q_dir = q_dirs.block(0, idir, model.q_size, 1);
-    MatrixNd Gh = MatrixNd::Zero (3, model.dof_count);
-
-    // temporary evaluation at perturbed point
+    // forward perturbation
     CalcPointJacobian (
-      *modelh, q + h * q_dir, body_id, point_position, Gh, update_kinematics
+      *modelh,
+      q + EPS * q_dirs.col(idir),
+      body_id, point_position,
+      Gh,
+      update_kinematics
     );
-    G_dirs[idir] = (Gh - G) / h;
+
+    // backward perturbation
+    CalcPointJacobian (
+      model,
+      q - EPS * q_dirs.col(idir),
+      body_id, point_position,
+      Gm,
+      update_kinematics
+    );
+
+    G_dirs[idir] = (Gh - Gm) / EPSx2;
+
     if (fd_model) {
-      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      computeFDCEntry(*modelh, model, EPS, idir, *fd_model);
       delete modelh;
     }
   }
+
+  // nominal evaluation
+  CalcPointJacobian (model, q, body_id, point_position, G, update_kinematics);
 }
 
 RBDL_DLLAPI void CalcPointJacobian6D (
@@ -267,17 +295,15 @@ RBDL_DLLAPI void CalcPointJacobian6D (
     unsigned body_id,
     Vector3d const &point_position,
     MatrixNd &G,
-    vector<MatrixNd> &fd_G) {
-  unsigned const ndirs = q_dirs.cols();
+    vector<MatrixNd> &fd_G
+) {
+  const unsigned int ndirs = q_dirs.cols();
   assert(ndirs == fd_G.size());
 
-  double const h = 1e-8;
   G.setZero();
-  CalcPointJacobian6D(model, q, body_id, point_position, G);
+  MatrixNd Gh = MatrixNd::Zero (G.rows(), G.cols());
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    MatrixNd Gh(G.rows(), G.cols());
-    VectorNd qh = q + h * q_dirs.col(idir);
 
     Model *modelh;
     if (fd_model) {
@@ -286,18 +312,29 @@ RBDL_DLLAPI void CalcPointJacobian6D (
       modelh = &model;
     }
 
-    Gh.setZero();
-    CalcPointJacobian6D(*modelh, qh, body_id, point_position, Gh);
-    fd_G[idir] = (Gh - G) / h;
+    // forward perturbation
+    CalcPointJacobian6D(
+      *modelh, q + EPS * q_dirs.col(idir), body_id, point_position, Gh
+    );
+
+    // backward perturbation
+    CalcPointJacobian6D(
+      model, q - EPS * q_dirs.col(idir), body_id, point_position, G
+    );
+
+    fd_G[idir] = (Gh - G) / EPSx2;
 
     if (fd_model) {
-      computeFDEntry(model, *modelh, h, idir, *fd_model);
+      computeFDCEntry(*modelh, model, EPS, idir, *fd_model);
       delete modelh;
     }
   }
 
+  // nominal evaluation
+  CalcPointJacobian6D(model, q, body_id, point_position, G);
 }
 
+/*
 RBDL_DLLAPI
 void UpdateKinematicsCustom (
     Model &model,
@@ -331,110 +368,10 @@ void UpdateKinematicsCustom (
     }
   }
 }
-
+*/
 
 // -----------------------------------------------------------------------------
-} // Namespace FD
-// -----------------------------------------------------------------------------
-
-
-
-//    void fd_UpdateKinematics (
-//            Model &model,
-//            const Math::VectorNd &q,
-//            const Math::VectorNd &q_dirs,
-//            const Math::VectorNd &qdot,
-//            const Math::VectorNd &qdot_dirs,
-//            const Math::VectorNd &qddot,
-//            const Math::VectorNd &qddot_dirs,
-//            std::vector<std::vector<SpatialMatrix> > &fd_X_lambda,
-//            std::vector<std::vector<SpatialMatrix> > &fd_X_base,
-//            std::vector<std::vector<SpatialVector> > &fd_a,
-//            std::vector<std::vector<SpatialVector> > &fd_v,
-//            std::vector<std::vector<SpatialVector> > &fd_c
-//    ) {
-//        unsigned int ndirs = q_dirs.cols();
-//        double h = 1.0e-8;
-
-//        std::vector<SpatialMatrix> ref_X_lambda (model.mBodies.size(), SpatialMatrix::Zero());
-//        std::vector<SpatialMatrix> ref_X_base (model.mBodies.size(), SpatialMatrix::Zero());
-//        std::vector<SpatialVector> ref_a (model.mBodies.size(), SpatialVector::Zero());
-//        std::vector<SpatialVector> ref_v (model.mBodies.size(), SpatialVector::Zero());
-//        std::vector<SpatialVector> ref_c (model.mBodies.size(), SpatialVector::Zero());
-
-//        // evaluate y(t)
-//        UpdateKinematics (model, q, qdot, qddot);
-//        for (unsigned int i = 0; i < model.mBodies.size(); i++) {
-//            ref_X_lambda[i] = model.X_lambda[i].toMatrix();
-//            ref_X_base[i] = model.X_base[i].toMatrix();
-//            ref_a[i] = model.a[i];
-//            ref_v[i] = model.v[i];
-//            ref_c[i] = model.c[i];
-//        }
-
-//        for (unsigned int j = 0; j < ndirs; j++) {
-//            VectorNd q_dir = q_dirs.block(0, j, model.q_size, 1);
-//            VectorNd qdot_dir = qdot_dirs.block(0, j, model.q_size, 1);
-//            VectorNd qddot_dir = qddot_dirs.block(0, j, model.q_size, 1);
-
-//            // evaluate y(t+h*d)
-//            UpdateKinematics (
-//                model,
-//                q + h * q_dir,
-//                qdot + h * qdot_dir,
-//                qddot + h * qddot_dir
-//            );
-
-//            for (unsigned int i = 0; i < model.mBodies.size(); i++) {
-//                fd_X_lambda[i][j] = (model.X_lambda[i].toMatrix() - ref_X_lambda[i]) / h;
-//                fd_X_base[i][j] = (model.X_base[i].toMatrix() - ref_X_base[i]) / h;
-//                fd_a[i][j] = (model.a[i] - ref_a[i]) / h;
-//                fd_v[i][j] = (model.v[i] - ref_v[i]) / h;
-//                fd_c[i][j] = (model.c[i] - ref_c[i]) / h;
-//            }
-//        }
-//    };
-
-//    RBDL_DLLAPI
-//    Vector3d fd_CalcPointAcceleration (
-//            Model &model,
-//            const Math::VectorNd &q,
-//            const Math::VectorNd &q_dirs,
-//            const Math::VectorNd &qdot,
-//            const Math::VectorNd &qdot_dirs,
-//            const Math::VectorNd &qddot,
-//            const Math::VectorNd &qddot_dirs,
-//            unsigned int body_id,
-//            const Math::Vector3d &point_position,
-//            const Math::MatrixNd &fd_derivative,
-//            bool update_kinematics = true
-//    ) {
-//        // evaluate y(t)
-//        Vector3d ref = CalcPointAcceleration (model, q, qdot, qddot, body_id, point_position);
-
-//        unsigned int ndirs = q_dirs.cols();
-//        double h = 1.0e-8;
-
-//        for (unsigned int j = 0; j < ndirs; j++) {
-//            VectorNd q_dir = q_dirs.block(0, j, model.q_size, 1);
-//            VectorNd qdot_dir = qdot_dirs.block(0, j, model.q_size, 1);
-//            VectorNd qddot_dir = qddot_dirs.block(0, j, model.q_size, 1);
-
-//            // evaluate y(t+h*d)
-//            Vector3d res_hd = CalcPointAcceleration (
-//                model,
-//                q + h * q_dir,
-//                qdot + h * qdot_dir,
-//                qddot + h * qddot_dir,
-//                body_id, point_position
-//            );
-
-//            //fd_derivative.block<3,1>(0, j) = (res_hd - ref) / h;
-//        }
-
-//        return ref;
-//    };
-
+} // Namespace FDC
 // -----------------------------------------------------------------------------
 } // Namespace RigidBodyDynamics
 // -----------------------------------------------------------------------------

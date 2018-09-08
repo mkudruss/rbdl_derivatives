@@ -9,9 +9,8 @@
 
 #include <cfloat>
 
-using namespace RigidBodyDynamics::Math;
-
 using std::vector;
+using namespace RigidBodyDynamics::Math;
 
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
@@ -50,9 +49,6 @@ void ForwardDynamics(
   );
 
   const unsigned int ndirs = q_dirs.cols();
-
-  // nominal evaluation
-  ForwardDynamics(model, q, qdot, tau, qddot,f_ext);
 
   // temporary results
   VectorNd qddot_ph(qddot);
@@ -216,7 +212,7 @@ void NonlinearEffects (
     Math::VectorNd &tau,
     Math::MatrixNd &fd_tau
 ) {
-  unsigned ndirs = q_dirs.cols();
+  const unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == fd_tau.cols());
 
@@ -239,7 +235,7 @@ void NonlinearEffects (
       tau_ph
     );
 
-    // backward evaluation
+    // backward perturbation
     NonlinearEffects (
       model,
       q - EPS * q_dirs.col(idir),
@@ -300,7 +296,6 @@ void CompositeRigidBodyAlgorithm (
       computeFDCEntry(*modelh, model, EPS, idir, *fd_model);
       delete modelh;
     }
-
 
   }
   // compute value at current configuration q as nominal value

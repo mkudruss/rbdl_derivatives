@@ -445,7 +445,8 @@ RBDL_DLLAPI Vector3d CalcPointVelocity (
     const VectorNd &QDot,
     unsigned int body_id,
     const Vector3d &point_position,
-    bool update_kinematics) {
+    bool update_kinematics
+) {
   LOG << "-------- " << __func__ << " --------" << std::endl;
   assert (model.IsBodyId(body_id));
   assert (model.q_size == Q.size());

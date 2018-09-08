@@ -224,8 +224,11 @@ void CalcPointJacobian (
     unsigned int body_id,
     Math::Vector3d const &point_position,
     Math::MatrixNd &G,
-    std::vector<Math::MatrixNd> &G_dirs) {
-  unsigned int ndirs = q_dirs.cols();
+    std::vector<Math::MatrixNd> &G_dirs
+) {
+  const unsigned int ndirs = q_dirs.cols();
+  assert(G_dirs.size() == ndirs);
+
   if (fd_model) {
     fd_model->resize_directions(ndirs);
   }
@@ -236,6 +239,8 @@ void CalcPointJacobian (
   // temporary evaluation at current point
   CalcPointJacobian (model, q, body_id, point_position, G, update_kinematics);
 
+  MatrixNd Gh = MatrixNd::Zero (G.rows(), G.cols());
+
   for (unsigned idir = 0; idir < ndirs; idir++) {
     Model *modelh;
     if (fd_model) {
@@ -244,14 +249,18 @@ void CalcPointJacobian (
       modelh = &model;
     }
 
-    VectorNd q_dir = q_dirs.block(0, idir, model.q_size, 1);
-    MatrixNd Gh = MatrixNd::Zero (3, model.dof_count);
-
     // temporary evaluation at perturbed point
     CalcPointJacobian (
-      *modelh, q + h * q_dir, body_id, point_position, Gh, update_kinematics
+      *modelh,
+      q + h * q_dirs.col(idir),
+      body_id, point_position,
+      Gh,
+      update_kinematics
     );
+
+    // nominal evaluation
     G_dirs[idir] = (Gh - G) / h;
+
     if (fd_model) {
       computeFDEntry(model, *modelh, h, idir, *fd_model);
       delete modelh;

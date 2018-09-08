@@ -1,5 +1,5 @@
-#ifndef RBDL_KINEMATICS_FD_h
-#define RBDL_KINEMATICS_FD_h
+#ifndef RBDL_KINEMATICS_FDC_h
+#define RBDL_KINEMATICS_FDC_h
 
 #include <rbdl/Model.h>
 #include <rbdl/rbdl_math.h>
@@ -108,7 +108,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
     Math::MatrixNd const & qdd_dirs);
 
 // -----------------------------------------------------------------------------
-} // namespace FD
+} // namespace FDC
 // -----------------------------------------------------------------------------
 } // namespace RigidBodyDynamics
 // -----------------------------------------------------------------------------

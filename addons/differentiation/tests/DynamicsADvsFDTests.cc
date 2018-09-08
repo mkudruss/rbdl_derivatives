@@ -782,11 +782,10 @@ TEST_FIXTURE( Human36, Human36CompositeRigidBodyAlgorithmADTest) {
 // -----------------------------------------------------------------------------
 template<typename T>
 void CompositeRigidBodyAlgorithmEDTestTemplate(
-    T & obj,
-    unsigned trial_count,
-    double array_close_prec
-  ) {
-
+  T & obj,
+  unsigned trial_count,
+  double array_close_prec
+) {
   Model model = obj.model;
   Model ed_model = obj.model;
   Model ad_model = obj.model;
