@@ -70,7 +70,6 @@ struct EDConstraintSet {
 namespace ED {
 // -----------------------------------------------------------------------------
 
-/*
 RBDL_DLLAPI void CalcConstraintsPositionError (
     Model &model,
     EDModel &ed_model,
@@ -82,10 +81,9 @@ RBDL_DLLAPI void CalcConstraintsPositionError (
     Math::MatrixNd &ed_err,
     bool update_kinematics
     );
-*/
 
 RBDL_DLLAPI
-void CalcConstraintsJacobian(
+void CalcConstraintsJacobian (
     Model   & model,
     EDModel & ed_model,
     const Math::VectorNd & q,
@@ -97,7 +95,8 @@ void CalcConstraintsJacobian(
     bool update_kinematics = true
     );
 
-RBDL_DLLAPI void CalcConstrainedSystemVariables (
+RBDL_DLLAPI
+void CalcConstrainedSystemVariables (
     Model &model,
     EDModel &ed_model,
     const Math::VectorNd  &q,
@@ -126,7 +125,7 @@ void ForwardDynamicsConstraintsDirect (
     );
 
 RBDL_DLLAPI
-void ComputeConstraintImpulsesDirect(
+void ComputeConstraintImpulsesDirect (
     Model & model,
     EDModel & ed_model,
     const Math::VectorNd & q,

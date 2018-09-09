@@ -21,7 +21,8 @@ using namespace RigidBodyDynamics::Math;
 const double EPS = cbrt(DBL_EPSILON);
 const double EPSx2 = 2*EPS; // for convenience, we directly compute the denominator
 
-RBDL_DLLAPI void CalcConstrainedSystemVariables (
+RBDL_DLLAPI
+void CalcConstrainedSystemVariables (
     Model &model,
     ADModel *fd_model, // NULL means execution without fd_model update
     const VectorNd &q,
@@ -30,37 +31,60 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     const MatrixNd &qdot_dirs,
     const VectorNd &tau,
     const MatrixNd &tau_dirs,
-    ConstraintSet   &cs,
-    ADConstraintSet &fd_cs) {
+    ConstraintSet  &cs,
+    ADConstraintSet *fd_cs // NULL means execution without fd_model update
+) {
   unsigned const ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == tau_dirs.cols());
 
-  ConstraintSet const cs_in = cs;
-
-  CalcConstrainedSystemVariables(model, q, qdot, tau, cs);
-
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    Model *modelh = &model;
-    VectorNd qh    = q + EPS * q_dirs.col(idir);
-    VectorNd qdoth = qdot + EPS * qdot_dirs.col(idir);
-    VectorNd tauh  = tau + EPS * tau_dirs.col(idir);
-    ConstraintSet csh = cs_in;
-
+    Model * modelh;
     if (fd_model) {
       modelh = new Model(model);
+    } else {
+      modelh = &model;
     }
 
-    CalcConstrainedSystemVariables(*modelh, qh, qdoth, tauh, csh);
+    ConstraintSet * csh;
+    if (fd_cs) {
+      csh = new ConstraintSet(cs);
+    } else {
+      csh = &cs;
+    }
 
-    // TODO make it analogue to ADMOdel with pointer arithmetic
-    // computeFDEntry(cs, csh, EPS, idir, fd_cs);
+    // forward perturbation
+    CalcConstrainedSystemVariables(
+      *modelh,
+      q + EPS * q_dirs.col(idir),
+      qdot + EPS * qdot_dirs.col(idir),
+      tau + EPS * tau_dirs.col(idir),
+      *csh
+    );
+
+    // backward perturbation
+    CalcConstrainedSystemVariables(
+      model,
+      q - EPS * q_dirs.col(idir),
+      qdot - EPS * qdot_dirs.col(idir),
+      tau - EPS * tau_dirs.col(idir),
+      cs
+    );
 
     if (fd_model) {
-      computeFDCEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCEntry(*modelh, model, EPS, idir, *fd_model);
       delete modelh;
     }
+
+    if (fd_cs) {
+      computeFDCEntry(*csh, cs, EPS, idir, *fd_cs);
+      delete csh;
+    }
   }
+
+  // nominal evaluation
+  CalcConstrainedSystemVariables(model, q, qdot, tau, cs);
+
 }
 
 

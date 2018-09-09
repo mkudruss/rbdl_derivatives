@@ -15,7 +15,8 @@ namespace RigidBodyDynamics {
 namespace FDC {
 // -----------------------------------------------------------------------------
 
-RBDL_DLLAPI void CalcConstrainedSystemVariables (
+RBDL_DLLAPI
+void CalcConstrainedSystemVariables (
     Model &model,
     ADModel *fd_model, // NULL means execution without fd_model update
     const Math::VectorNd &q,
@@ -24,8 +25,8 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     const Math::MatrixNd &qdot_dirs,
     const Math::VectorNd &tau,
     const Math::MatrixNd &tau_dirs,
-    ConstraintSet   &cs,
-    ADConstraintSet &fd_CS);
+    ConstraintSet        &cs,
+    ADConstraintSet      *fd_cs);
 
 RBDL_DLLAPI
 void CalcConstraintsJacobian (
@@ -33,8 +34,8 @@ void CalcConstraintsJacobian (
     ADModel *fd_model, // NULL means execution without fd_model update
     const Math::VectorNd &q,
     const Math::MatrixNd &q_dirs,
-    ConstraintSet &CS,
-    ADConstraintSet &fd_CS,
+    ConstraintSet &cs,
+    ADConstraintSet * fd_cs,
     Math::MatrixNd &G,
     std::vector<Math::MatrixNd> &G_dirs);
 
@@ -46,8 +47,8 @@ void ComputeConstraintImpulsesDirect (
     const Math::MatrixNd & q_dirs,
     const Math::VectorNd & qdot_minus,
     const Math::MatrixNd & qdot_minus_dirs,
-    ConstraintSet   & CS,
-    ADConstraintSet * fd_CS,
+    ConstraintSet   & cs,
+    ADConstraintSet * fd_cs,
     Math::VectorNd  & qdot_plus,
     Math::MatrixNd  & fd_qdot_plus
     );
@@ -77,8 +78,8 @@ void ComputeConstraintImpulsesDirect (
     const Math::MatrixNd & q_dirs,
     const Math::VectorNd & qdot_minus,
     const Math::MatrixNd & qdot_minus_dirs,
-    ConstraintSet & CS,
-    ADConstraintSet * fd_CS,
+    ConstraintSet & cs,
+    ADConstraintSet * fd_cs,
     Math::MatrixNd & fd_b,
     std::vector<Math::MatrixNd> & fd_A,
     Math::VectorNd & qdot_plus,
@@ -116,7 +117,7 @@ void ForwardDynamicsContactsKokkevis (
   const Math::MatrixNd &qdot_dirs,
   const Math::VectorNd &tau,
   const Math::MatrixNd &tau_dirs,
-  ConstraintSet &CS,
+  ConstraintSet &cs,
   ADConstraintSet &fd_cs,
   Math::VectorNd &qddot,
   Math::MatrixNd  &fd_qddot

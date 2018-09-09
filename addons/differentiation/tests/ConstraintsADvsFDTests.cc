@@ -7,6 +7,7 @@
 #include "rbdl/Kinematics.h"
 #include "rbdl/rbdl_mathutils.h"
 
+#include "ConstraintsED.h"
 #include "ConstraintsAD.h"
 #include "ConstraintsFD.h"
 #include "ConstraintsFDC.h"
@@ -29,8 +30,9 @@ double const TEST_PREC = 1.0e-8;
 template <typename T>
 void CalcContactJacobianTemplate(
     T & obj,
-    unsigned trial_count,
-    double array_close_prec) {
+    const unsigned trial_count,
+    const double array_close_prec
+) {
   Model   ad_model   = obj.model;
   Model   fd_model   = obj.model;
 
@@ -135,12 +137,16 @@ void CalcContactSystemVariablesTemplate(
   MatrixNd tau_dirs = MatrixNd::Identity(nq, nq);
   for (unsigned trial = 0; trial < trial_count; trial++) {
     CalcConstrainedSystemVariables(model, q, qd, tau, cs);
-    AD::CalcConstrainedSystemVariables(ad_model, ad_d_model,
-                                   q, q_dirs, qd, qd_dirs,
-                                   tau, tau_dirs, ad_cs, ad_d_cs);
-    FD::CalcConstrainedSystemVariables(fd_model, &fd_d_model,
-                                       q, q_dirs, qd, qd_dirs,
-                                       tau, tau_dirs, fd_cs, fd_d_cs);
+    AD::CalcConstrainedSystemVariables(
+      ad_model, ad_d_model,
+      q, q_dirs, qd, qd_dirs,
+      tau, tau_dirs, ad_cs, ad_d_cs
+    );
+    FDC::CalcConstrainedSystemVariables(
+      fd_model, &fd_d_model,
+      q, q_dirs, qd, qd_dirs,
+      tau, tau_dirs, fd_cs, &fd_d_cs
+    );
 
     checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
     // checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
@@ -161,6 +167,73 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactSystemVariables) {
   constraint_set.Bind (model);
   CalcContactSystemVariablesTemplate(*this, 10);
 }
+
+// -----------------------------------------------------------------------------
+
+template <typename T>
+void CalcContactSystemVariablesEDvsADTemplate(
+    T & obj,
+    const unsigned trial_count
+) {
+  Model model = obj.model;
+  Model ad_model = obj.model;
+  Model fd_model = obj.model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  EDModel fd_d_model = EDModel(fd_model);
+
+  ConstraintSet cs = obj.constraint_set;
+  ConstraintSet ad_cs = obj.constraint_set;
+  ConstraintSet fd_cs = obj.constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  EDConstraintSet fd_d_cs = EDConstraintSet(fd_cs, fd_model.dof_count);
+
+  // set up input quantities
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
+
+  VectorNd q = VectorNd::Zero(nq);
+  MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+  VectorNd qd = VectorNd::Zero(nq);
+  MatrixNd qd_dirs = MatrixNd::Identity(nq, nq);
+  VectorNd tau = VectorNd::Zero(nq);
+  MatrixNd tau_dirs = MatrixNd::Identity(nq, nq);
+
+  for (unsigned trial = 0; trial < trial_count; trial++)
+  {
+    CalcConstrainedSystemVariables(model, q, qd, tau, cs);
+
+    RigidBodyDynamics::AD::CalcConstrainedSystemVariables (
+      ad_model, ad_d_model,
+      q, q_dirs, qd, qd_dirs,
+      tau, tau_dirs, ad_cs, ad_d_cs
+    );
+
+    RigidBodyDynamics::ED::CalcConstrainedSystemVariables(
+      fd_model, fd_d_model,
+      q, q_dirs, qd, qd_dirs,
+      tau, tau_dirs, fd_cs, fd_d_cs
+    );
+
+    checkModelsADvsED(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+
+    q.setRandom();
+    qd.setRandom();
+    tau.setRandom();
+    q_dirs.setRandom();
+    qd_dirs.setRandom();
+    tau_dirs.setRandom();
+  }
+}
+
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactSystemVariablesEDvsAD) {
+  // add contacts and bind them to constraint set
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+  constraint_set.Bind (model);
+  CalcContactSystemVariablesEDvsADTemplate(*this, 10);
+}
+
 
 // -----------------------------------------------------------------------------
 

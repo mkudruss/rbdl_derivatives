@@ -35,7 +35,8 @@ void ForwardDynamics (Model& model,
     VectorNd& qddot,
     MatrixNd& ad_qddot,
     vector<SpatialVector> const * f_ext,
-    vector<vector<SpatialVector> > const * f_ext_dirs) {
+    vector<vector<SpatialVector> > const * f_ext_dirs
+) {
   assert((f_ext == NULL) == (f_ext_dirs == NULL));
 
 	SpatialVector spatial_gravity (0., 0., 0., model.gravity[0], model.gravity[1], model.gravity[2]);

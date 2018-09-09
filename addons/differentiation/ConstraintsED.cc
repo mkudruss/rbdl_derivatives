@@ -377,6 +377,7 @@ RBDL_DLLAPI void CalcConstraintsPositionError (
     err[lci] = cs.constraintAxis[lci].transpose() * d;
   }
 }
+*/
 
 RBDL_DLLAPI void CalcConstraintsJacobian(
     Model &model,
@@ -397,22 +398,20 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
   ed_CS.resize_directions(ndirs);
 
   if (update_kinematics) {
-    // nominal + derivative evaluation
-    UpdateKinematicsCustom (model, ed_model, &q, &q_dirs, 0, 0, 0, 0);
+    UpdateKinematicsCustom (model, &q, NULL, NULL);
   }
 
   // variables to check whether we need to recompute G.
   ConstraintSet::ConstraintType prev_constraint_type
     = ConstraintSet::ConstraintTypeLast;
-  unsigned prev_body_id_1 = 0;
-  unsigned prev_body_id_2 = 0;
-
-  vector<SpatialTransform> prev_body_X_1_dirs(ndirs);
-  vector<SpatialTransform> prev_body_X_2_dirs(ndirs);
+  unsigned int prev_body_id_1 = 0;
+  unsigned int prev_body_id_2 = 0;
   SpatialTransform prev_body_X_1;
   SpatialTransform prev_body_X_2;
 
-  for (unsigned int i = 0; i < CS.contactConstraintIndices.size(); i++) {
+  /*
+  for (unsigned int i = 0; i < CS.contactConstraintIndices.size(); i++)
+  {
     const unsigned int c = CS.contactConstraintIndices[i];
 
     // only compute the matrix Gi if actually needed
@@ -421,53 +420,30 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
         || prev_body_X_1.r != CS.point[c]) {
 
       // Compute the jacobian for the point.
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        ed_CS.Gi[idir].setZero();
-      }
       CS.Gi.setZero();
-      CalcPointJacobian (model, ed_model, q, q_dirs,
-                         CS.body[c], CS.point[c],
-                         CS.Gi, ed_CS.Gi,
-                         false);
-
+      CalcPointJacobian (model, Q, CS.body[c], CS.point[c], CS.Gi, false);
       prev_constraint_type = ConstraintSet::ContactConstraint;
 
       // Update variables for optimization check.
       prev_body_id_1 = CS.body[c];
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        prev_body_X_1_dirs[idir].setZero();
-      }
-      prev_body_X_1 = RigidBodyDynamics::Xtrans(CS.point[c]);
+      prev_body_X_1 = Xtrans(CS.point[c]);
     }
 
     for(unsigned int j = 0; j < model.dof_count; j++) {
-      MatrixNd gaxis_dirs(3, ndirs);
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        gaxis_dirs.col(idir) = ed_CS.Gi[idir].col(j);
-      }
       Vector3d gaxis (CS.Gi(0,j), CS.Gi(1,j), CS.Gi(2,j));
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        G_dirs[idir](c,j) = gaxis_dirs.col(idir).transpose() * CS.normal[c];
-      }
       G(c,j) = gaxis.transpose() * CS.normal[c];
     }
   }
 
   // Variables used for computations.
-  MatrixNd ed_normal(3, ndirs);
-  vector<SpatialVector> ed_axis(ndirs);
-  MatrixNd ed_pos_p(3, ndirs);
-  vector<Matrix3d> ed_rot_p(ndirs);
-  vector<SpatialTransform> ed_X_0p(ndirs);
-
   Vector3d normal;
   SpatialVector axis;
   Vector3d pos_p;
   Matrix3d rot_p;
   SpatialTransform X_0p;
 
-  for (unsigned i = 0; i < CS.loopConstraintIndices.size(); i++) {
-    unsigned const c = CS.loopConstraintIndices[i];
+  for (unsigned int i = 0; i < CS.loopConstraintIndices.size(); i++) {
+    const unsigned int c = CS.loopConstraintIndices[i];
 
     // Only recompute variables if necessary.
     if( prev_body_id_1 != CS.body_p[c]
@@ -478,44 +454,17 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
         || prev_body_X_2.E != CS.X_s[c].E) {
 
       // Compute the 6D jacobians of the two contact points.
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        ed_CS.GSpi[idir].setZero();
-      }
       CS.GSpi.setZero();
-
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        ed_CS.GSsi[idir].setZero();
-      }
       CS.GSsi.setZero();
-
-      CalcPointJacobian6D(model, ed_model, q, q_dirs, CS.body_p[c],
-                          CS.X_p[c].r, CS.GSpi, ed_CS.GSpi, false);
-
-      CalcPointJacobian6D(model, ed_model, q, q_dirs, CS.body_s[c],
-                          CS.X_s[c].r, CS.GSsi, ed_CS.GSsi, false);
-
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        ed_CS.GSJ[idir] = ed_CS.GSsi[idir] - ed_CS.GSpi[idir];
-      }
+      CalcPointJacobian6D(model, Q, CS.body_p[c], CS.X_p[c].r, CS.GSpi, false);
+      CalcPointJacobian6D(model, Q, CS.body_s[c], CS.X_s[c].r, CS.GSsi, false);
       CS.GSJ = CS.GSsi - CS.GSpi;
 
       // Compute position and rotation matrix from predecessor body to base.
-
-      pos_p = CalcBodyToBaseCoordinates(model, ed_model, q, q_dirs,
-                                        CS.body_p[c], CS.X_p[c].r,
-                                        ed_pos_p, false);
-
-      rot_p = CalcBodyWorldOrientation(model, ed_model, q, q_dirs,
-                                       CS.body_p[c], ed_rot_p, false);
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        ed_rot_p[idir] = ed_rot_p[idir].transpose() * CS.X_p[c].E;
-      }
-      rot_p = rot_p.transpose() * CS.X_p[c].E;
-
-
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        ed_X_0p[idir] = SpatialTransform(ed_rot_p[idir], ed_pos_p.col(idir));
-      }
+      pos_p = CalcBodyToBaseCoordinates (model, Q, CS.body_p[c], CS.X_p[c].r
+          , false);
+      rot_p = CalcBodyWorldOrientation (model, Q, CS.body_p[c]
+          , false).transpose()* CS.X_p[c].E;
       X_0p = SpatialTransform (rot_p, pos_p);
 
       // Update variables for optimization check.
@@ -527,21 +476,13 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
     }
 
     // Express the constraint axis in the base frame.
-    applySTSV(ndirs,
-              X_0p, ed_X_0p,
-              CS.constraintAxis[c],
-              axis, ed_axis);
+    axis = X_0p.apply(CS.constraintAxis[c]);
 
     // Compute the constraint Jacobian row.
-    for (unsigned idir = 0; idir < ndirs; idir++) {
-      G_dirs[idir].row(c) =
-          axis.transpose() * ed_CS.GSJ[idir]
-          + ed_axis[idir].transpose() * CS.GSJ;
-    }
-    G.row(c) = axis.transpose() * CS.GSJ;
+    G.block(c, 0, 1, model.dof_count) = axis.transpose() * CS.GSJ;
   }
+  */
 }
-*/
 
 RBDL_DLLAPI void CalcConstrainedSystemVariables (
     Model &model,
@@ -555,7 +496,7 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     ConstraintSet   &CS,
     EDConstraintSet &ed_CS
 ) {
-  unsigned ndirs = q_dirs.cols();
+  const unsigned ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == tau_dirs.cols());
   ed_model.resize_directions(ndirs);
@@ -576,18 +517,17 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     model, ed_model, q, q_dirs, CS.H, ed_CS.H, false
   );
 
-  /*
   // Compute G
   // We have to update model.X_base as they are not automatically computed
   // by NonlinearEffects()
   for (unsigned int i = 1; i < model.mBodies.size(); i++) {
-    unsigned int lambda = model.lambda[i];
-    AD::mulSTST (ndirs,
-             model.X_lambda[i], ed_model.X_lambda[i],
-             model.X_base[lambda], ed_model.X_base[lambda],
-             model.X_base[i], ed_model.X_base[i]);
+    // nominal evaluation
+    model.X_base[i] = model.X_lambda[i] * model.X_base[model.lambda[i]];
   }
-  CalcConstraintsJacobian(model, ed_model, q, q_dirs, CS, ed_CS, CS.G, ed_CS.G, false);
+  RigidBodyDynamics::ED::CalcConstraintsJacobian(
+    model, ed_model, q, q_dirs, CS, ed_CS, CS.G, ed_CS.G, false
+  );
+  /*
 
   // Compute position error for Baumgarte Stabilization.
   CalcConstraintsPositionError (model, ed_model, q, q_dirs,

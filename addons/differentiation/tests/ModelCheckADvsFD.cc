@@ -469,7 +469,8 @@ void checkConstraintSetsADvsFD (
     ConstraintSet const & ad_cs,
     ADConstraintSet const & ad_d_cs,
     ConstraintSet const & fd_cs,
-    ADConstraintSet const & fd_d_cs) {
+    ADConstraintSet const & fd_d_cs
+) {
 
   // nominal check
   CHECK_EQUAL(ad_cs.H.rows(), fd_cs.H.rows());

@@ -16,7 +16,7 @@ SET ( TESTS_SRCS
     rbdl_utilsADvsFDTests.cc
     DynamicsADvsFDTests.cc
     KinematicsADvsFDTests.cc
-    # ConstraintsADvsFDTests.cc
+    ConstraintsADvsFDTests.cc
     ModelCheckADvsFD.cc
 )
 

@@ -474,7 +474,7 @@ void CalcConstraintsJacobian (
   ConstraintSet &CS,
   Math::MatrixNd &G,
   bool update_kinematics
-  ) {
+) {
   if (update_kinematics) {
     UpdateKinematicsCustom (model, &Q, NULL, NULL);
   }

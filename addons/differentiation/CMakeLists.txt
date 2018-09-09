@@ -27,10 +27,11 @@ SET ( DIFFERENTIATION_SOURCES
 	ModelED.cc
 	FdModelEntry.cc
 	ModelEntryFDC.cc
+	ConstraintsED.cc
 	ConstraintsAD.cc
 	ConstraintsFD.cc
 	ConstraintsFDC.cc
-	ConstraintsED.cc
+	KinematicsED.cc
 	KinematicsAD.cc
 	KinematicsFD.cc
 	KinematicsFDC.cc

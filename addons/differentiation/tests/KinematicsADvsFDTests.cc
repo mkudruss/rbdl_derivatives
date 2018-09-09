@@ -6,6 +6,7 @@
 #include "rbdl/Kinematics.h"
 #include "rbdl/rbdl_mathutils.h"
 
+#include "KinematicsED.h"
 #include "KinematicsAD.h"
 #include "KinematicsFD.h"
 #include "KinematicsFDC.h"
@@ -45,9 +46,9 @@ void UpdateKinematicsCustomTemplate(
     MatrixNd qd_dirs = MatrixNd::Random(nq, ndirs);
     MatrixNd qdd_dirs = MatrixNd::Random(nq, ndirs);
 
-    AD::UpdateKinematicsCustom(ad_model, ad_d_model, &q, &q_dirs, &qd, &qd_dirs, &qdd, &qdd_dirs);
+    RigidBodyDynamics::AD::UpdateKinematicsCustom(ad_model, ad_d_model, &q, &q_dirs, &qd, &qd_dirs, &qdd, &qdd_dirs);
 
-    FD::UpdateKinematicsCustom(fd_model, &fd_d_model, q, q_dirs, qd, qd_dirs, qdd, qdd_dirs);
+    RigidBodyDynamics::FD::UpdateKinematicsCustom(fd_model, &fd_d_model, q, q_dirs, qd, qd_dirs, qdd, qdd_dirs);
 
     checkModelsADvsFD(
           ndirs,
@@ -120,13 +121,17 @@ void CalcPointVelocityTemplate(
             model, q, qdot, body_id, point_position, true);
 
       // call FD version
-      fd_G = FD::CalcPointVelocity (model, q, q_dirs, qdot, qdot_dirs,
-                                    body_id, point_position, fd_G_dirs);
+      fd_G = RigidBodyDynamics::FD::CalcPointVelocity (
+        model, q, q_dirs, qdot, qdot_dirs,
+        body_id, point_position, fd_G_dirs
+      );
 
       // call AD version
-      ad_G = AD::CalcPointVelocity (model, ad_model, q, q_dirs, qdot,
-                                    qdot_dirs, body_id, point_position,
-                                    ad_G_dirs, true);
+      ad_G = RigidBodyDynamics::AD::CalcPointVelocity (
+        model, ad_model, q, q_dirs, qdot,
+        qdot_dirs, body_id, point_position,
+        ad_G_dirs, true
+      );
 
       // nominal check
       CHECK_ARRAY_CLOSE(ad_G.data(), G.data(), G.size(), array_close_prec);
@@ -207,12 +212,12 @@ void CalcPointVelocity6DTemplate(
       pv6d = CalcPointVelocity6D(model, q, qdot, body_id, pt_pos);
 
       // call FD version
-      fd_pv6d = FD::CalcPointVelocity6D(
+      fd_pv6d = RigidBodyDynamics::FD::CalcPointVelocity6D (
             fd_model, &fd_d_model, q, q_dirs, qdot, qdot_dirs,
             body_id, pt_pos, fd_pv6d_dirs);
 
       // call AD version
-      ad_pv6d = AD::CalcPointVelocity6D(
+      ad_pv6d = RigidBodyDynamics::AD::CalcPointVelocity6D (
             ad_model, ad_d_model, q, q_dirs, qdot, qdot_dirs,
             body_id, pt_pos, ad_pv6d_dirs);
 
@@ -264,8 +269,9 @@ TEST_FIXTURE ( Human36, Human36CalcPointVelocity6D) {
 template <typename T>
 void CalcBaseToBodyCoordinatesTemplate(
     T & obj,
-    unsigned trial_count,
-    double array_close_prec) {
+    const unsigned trial_count,
+    const double array_close_prec
+) {
   Model   model = obj.model;
   Model   ad_model = obj.model;
   Model   fd_model = obj.model;
@@ -302,11 +308,11 @@ void CalcBaseToBodyCoordinatesTemplate(
       G = CalcBaseToBodyCoordinates (
             model, q, body_id, point_position, update_kinematics);
 
-      fd_G = FD::CalcBaseToBodyCoordinates (
+      fd_G = RigidBodyDynamics::FD::CalcBaseToBodyCoordinates (
             fd_model, &fd_d_model, q, q_dirs, body_id, point_position,
             point_position_dirs, fd_G_dirs);
 
-      ad_G = AD::CalcBaseToBodyCoordinates (
+      ad_G = RigidBodyDynamics::AD::CalcBaseToBodyCoordinates (
             ad_model, ad_d_model, q, q_dirs, body_id, point_position,
             point_position_dirs, ad_G_dirs, update_kinematics);
 
@@ -351,8 +357,9 @@ TEST_FIXTURE ( Human36, Human36CalcBaseToBodyCoordinates) {
 template <typename T>
 void CalcBodyToBaseCoordinatesTemplate(
     T & obj,
-    unsigned trial_count,
-    double array_close_prec) {
+    const unsigned trial_count,
+    const double array_close_prec
+) {
   Model ad_model = obj.model;
   Model fd_model = obj.model;
   ADModel ad_d_model(ad_model);
@@ -388,7 +395,7 @@ void CalcBodyToBaseCoordinatesTemplate(
             );
 
       // call FD version
-      G_fd = FD::CalcBodyToBaseCoordinates (
+      G_fd = RigidBodyDynamics::FD::CalcBodyToBaseCoordinates (
             fd_model, &fd_d_model,
             q, q_dirs,
             body_id,
@@ -397,7 +404,7 @@ void CalcBodyToBaseCoordinatesTemplate(
             );
 
       // call AD version
-      G_ad = AD::CalcBodyToBaseCoordinates (
+      G_ad = RigidBodyDynamics::AD::CalcBodyToBaseCoordinates (
             ad_model, ad_d_model,
             q, q_dirs,
             body_id,
@@ -450,8 +457,9 @@ TEST_FIXTURE ( Human36, Human36CalcBodyToBaseCoordinates) {
 template <typename T>
 void CalcBodyWorldOrientationTemplate(
     T & obj,
-    unsigned trial_count,
-    double array_close_prec) {
+    const unsigned trial_count,
+    const double array_close_prec
+) {
   Model & model = obj.model;
   ADModel ad_model(model);
   int const nq = model.dof_count;
@@ -470,8 +478,15 @@ void CalcBodyWorldOrientationTemplate(
       if (id == 0) {
         continue;
       }
-      Matrix3d ad_E = AD::CalcBodyWorldOrientation(model, ad_model, q, q_dirs, id, ad_E_dirs);
-      Matrix3d fd_E = FD::CalcBodyWorldOrientation(model, q, q_dirs, id, fd_E_dirs);
+
+      Matrix3d ad_E = RigidBodyDynamics::AD::CalcBodyWorldOrientation(
+        model, ad_model, q, q_dirs, id, ad_E_dirs
+      );
+
+      Matrix3d fd_E = RigidBodyDynamics::FD::CalcBodyWorldOrientation(
+        model, q, q_dirs, id, fd_E_dirs
+      );
+
       CHECK_ARRAY_CLOSE(ad_E.data(), fd_E.data(), 9, array_close_prec);
       for (int idir = 0; idir < ndirs; idir++) {
         CHECK_ARRAY_CLOSE(fd_E_dirs[idir].data(), ad_E_dirs[idir].data(), 9, array_close_prec);
@@ -511,8 +526,9 @@ TEST_FIXTURE ( Human36, Human36CalcBodyWorldOrientation) {
 template <typename T>
 void CalcPointAccelerationTemplate(
     T & obj,
-    unsigned trial_count,
-    double array_close_prec) {
+    const unsigned trial_count,
+    const double array_close_prec
+) {
   Model   & model    = obj.model;
   ADModel ad_model(model);
   int const nq       = model.dof_count;
@@ -540,15 +556,18 @@ void CalcPointAccelerationTemplate(
       if (id == 0) {
         continue;
       }
-      Vector3d ad_a = AD::CalcPointAcceleration(
+
+      Vector3d ad_a = RigidBodyDynamics::AD::CalcPointAcceleration (
             model, ad_model,
             q, q_dirs, qd, qd_dirs, qdd, qdd_dirs,
             id, reference_point,
             ad_a_dirs);
-      Vector3d fd_a = FD::CalcPointAcceleration(
+
+      Vector3d fd_a = RigidBodyDynamics::FD::CalcPointAcceleration (
             model,
             q, q_dirs, qd, qd_dirs, qdd, qdd_dirs,
             id, reference_point, fd_a_dirs);
+
       CHECK_ARRAY_CLOSE(ad_a.data(), fd_a.data(), 3, array_close_prec);
       CHECK_ARRAY_CLOSE(fd_a_dirs.data(), ad_a_dirs.data(),
                         3 * ndirs, array_close_prec);
@@ -592,8 +611,8 @@ TEST_FIXTURE ( Human36, Human36CalcPointAcceleration) {
 template <typename T>
 void CalcPointJacobianTemplate(
     T & obj,
-    unsigned trial_count,
-    double array_close_prec
+    const unsigned trial_count,
+    const double array_close_prec
 ) {
   Model model = obj.model;
   Model ad_model = obj.model;
@@ -630,7 +649,7 @@ void CalcPointJacobianTemplate(
         model, q, body_id, point_position, G, update_kinematics
       );
 
-      AD::CalcPointJacobian (
+      RigidBodyDynamics::AD::CalcPointJacobian (
         ad_model, ad_d_model,
         q, q_dirs,
         body_id,
@@ -639,7 +658,7 @@ void CalcPointJacobianTemplate(
         update_kinematics
       );
 
-      FDC::CalcPointJacobian (
+      RigidBodyDynamics::FDC::CalcPointJacobian (
         fd_model, &fd_d_model,
         q, q_dirs,
         body_id,
@@ -725,14 +744,157 @@ TEST_FIXTURE ( Human36, Human36CalcPointJacobian) {
   CalcPointJacobianTemplate(*this, 10, 1e-9);
 }
 
-
 // -----------------------------------------------------------------------------
 
 template <typename T>
+void CalcPointJacobianEDvsADTemplate(
+    T & obj,
+    const unsigned trial_count,
+    const double array_close_prec
+) {
+  Model model = obj.model;
+  Model ad_model = obj.model;
+  Model fd_model = obj.model;
+  ADModel ad_d_model(ad_model);
+  EDModel fd_d_model(fd_model);
+
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
+  bool update_kinematics = true;
+
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    Vector3d point_position = Vector3d::Random();
+
+    VectorNd q = VectorNd::Random(nq);
+    MatrixNd q_dirs = MatrixNd::Random(nq, nq);
+
+    for (unsigned i = 2; i < ad_model.mBodies.size(); i++) {
+      unsigned int body_id = ad_model.mBodyNameMap[ad_model.GetBodyName(i)];
+      if (body_id == 0) {
+        continue;
+      }
+
+      // set up no output quantities
+      MatrixNd G = MatrixNd::Zero (3, nq);
+      MatrixNd ad_G = MatrixNd::Zero (3, nq);
+      MatrixNd fd_G = MatrixNd::Zero (3, nq);
+
+      // set up derivative output quantities
+      vector<MatrixNd> ad_G_dirs (ndirs, ad_G);
+      vector<MatrixNd> fd_G_dirs (ndirs, fd_G);
+
+      CalcPointJacobian (
+        model, q, body_id, point_position, G, update_kinematics
+      );
+
+      RigidBodyDynamics::AD::CalcPointJacobian (
+        ad_model, ad_d_model,
+        q, q_dirs,
+        body_id,
+        point_position,
+        ad_G, ad_G_dirs,
+        update_kinematics
+      );
+
+      RigidBodyDynamics::ED::CalcPointJacobian (
+        fd_model, fd_d_model,
+        q, q_dirs,
+        body_id,
+        point_position,
+        fd_G, fd_G_dirs
+      );
+
+      checkModelsADvsED(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+
+      CHECK_ARRAY_CLOSE(ad_G.data(), G.data(), G.size(), array_close_prec);
+      CHECK_ARRAY_CLOSE(fd_G.data(), G.data(), G.size(), array_close_prec);
+
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        MatrixNd error;
+        double max;
+        error = (ad_G_dirs[idir] - fd_G_dirs[idir]).cwiseAbs();
+        max = error.maxCoeff();
+        if (max > array_close_prec) {
+          std::cout << "error = \n" << error << std::endl;
+          std::cout << "max   = " << max << std::endl;
+          std::cout << "ad_G_dirs[" << idir << "] = \n"<< ad_G_dirs[idir] << std::endl;
+          std::cout << "fd_G_dirs[" << idir << "] = \n"<< fd_G_dirs[idir] << std::endl;
+          std::cout << endl;
+        }
+
+        CHECK_ARRAY_CLOSE(
+          ad_G_dirs[idir].data(),
+          fd_G_dirs[idir].data(),
+          ad_G_dirs[idir].size(),
+          array_close_prec
+        );
+      }
+    }
+  }
+}
+
+TEST_FIXTURE (CartPendulum, CartPendulumCalcPointJacobianEDvsAD)
+{
+  CalcPointJacobianEDvsADTemplate (*this, 10, 1e-10);
+}
+
+/*
+TEST_FIXTURE (Arm2DofX, Arm2DofXCalcPointJacobianEDvsAD)
+{
+  CalcPointJacobianEDvsADTemplate (*this, 10, 1e-10);
+}
+
+TEST_FIXTURE (Arm2DofZ, Arm2DofZCalcPointJacobianEDvsAD)
+{
+  CalcPointJacobianEDvsADTemplate (*this, 10, 1e-10);
+}
+
+TEST_FIXTURE (Arm3DofXZYp, Arm3DofXZYpCalcPointJacobianEDvsAD)
+{
+  CalcPointJacobianEDvsADTemplate (*this, 10, 1e-10);
+}
+
+TEST_FIXTURE (Arm3DofXZZp, Arm3DofXZZpCalcPointJacobianEDvsAD)
+{
+  CalcPointJacobianEDvsADTemplate (*this, 10, 1e-10);
+}
+
+TEST_FIXTURE (
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCalcPointJacobianEDvsAD_4_2
+) {
+  this->create_model(4, 2);
+  CalcPointJacobianEDvsADTemplate (*this, 10, 1e-10);
+}
+
+TEST_FIXTURE (
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCalcPointJacobianEDvsAD_6_3
+) {
+  this->create_model(6, 3);
+  CalcPointJacobianEDvsADTemplate (*this, 10, 1e-10);
+}
+
+TEST_FIXTURE (
+  MultiPendulumWithBranches,
+  MultiPendulumWithBranchesCalcPointJacobianEDvsAD_12_3
+) {
+  this->create_model(12, 3);
+  CalcPointJacobianEDvsADTemplate (*this, 10, 1e-10);
+}
+
+TEST_FIXTURE (Human36, Human36CalcPointJacobianEDvsAD)
+{
+  CalcPointJacobianEDvsADTemplate (*this, 10, 1e-9);
+}
+*/
+
+// -----------------------------------------------------------------------------
+template <typename T>
 void CalcPointJacobian6DTemplate(
     T & obj,
-    unsigned trial_count,
-    double array_close_prec
+    const unsigned trial_count,
+    const double array_close_prec
 ) {
   Model model = obj.model;
   Model ad_model = obj.model;
@@ -768,7 +930,7 @@ void CalcPointJacobian6DTemplate(
       CalcPointJacobian6D (
             model, q, body_id, point_position, G, update_kinematics);
 
-      AD::CalcPointJacobian6D (
+      RigidBodyDynamics::AD::CalcPointJacobian6D (
             ad_model, ad_d_model,
             q, q_dirs,
             body_id,
@@ -776,7 +938,7 @@ void CalcPointJacobian6DTemplate(
             ad_G, ad_G_dirs,
             update_kinematics);
 
-      FDC::CalcPointJacobian6D (
+      RigidBodyDynamics::FDC::CalcPointJacobian6D (
             fd_model, &fd_d_model,
             q, q_dirs,
             body_id,
