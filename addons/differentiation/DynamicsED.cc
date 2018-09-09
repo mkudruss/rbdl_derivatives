@@ -53,12 +53,14 @@ void InverseDynamics(
   model.v[0].setZero ();
   model.a[0].set (0., 0., 0., -model.gravity[0], -model.gravity[1], -model.gravity[2]);
   // derivative evaluation
-  ed_model.v_q[0].setZero ();
-  ed_model.v_qdot[0].setZero ();
-  ed_model.v_qddot[0].setZero ();
-  ed_model.a_q[0].setZero ();
-  ed_model.a_qdot[0].setZero ();
-  ed_model.a_qddot[0].setZero ();
+  ed_model.v[0].setZero ();
+//  ed_model.v_q[0].setZero ();
+//  ed_model.v_qdot[0].setZero ();
+//  ed_model.v_qddot[0].setZero ();
+  ed_model.a[0].setZero();
+//  ed_model.a_q[0].setZero ();
+//  ed_model.a_qdot[0].setZero ();
+//  ed_model.a_qddot[0].setZero ();
 
   for (unsigned int i = 1; i < model.mBodies.size(); i++) {
     unsigned int q_index = model.mJoints[i].q_index;
@@ -71,66 +73,85 @@ void InverseDynamics(
     model.v[i] = temp + model.v_J[i];
     // derivative evaluation
     // d v[i] / d q
-    ed_model.v_q[i].leftCols(ndirs)
+    ed_model.v[i].leftCols(ndirs)
         = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
-        + model.X_lambda[i].toMatrix()*ed_model.v_q[model.lambda[i]].leftCols(ndirs);
-      // TODO exploit structure from S
-//      = crossm(temp)*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
-//      + model.X_lambda[i].toMatrix()*ed_model.v_q[lambda].leftCols(ndirs);
-    // d v[i] / d qdot
-    ed_model.v_qdot[i].leftCols(ndirs)
-        = model.X_lambda[i].toMatrix()*ed_model.v_qdot[model.lambda[i]].leftCols(ndirs)
-                + model.S[i]*qdot_dirs.row(model.mJoints[i].q_index);
-//      = model.X_lambda[i].toMatrix()*ed_model.v_qdot[lambda].leftCols(ndirs)
-//      // + model.X_lambda[i].apply(model.v[lambda])
-//      // d v_J(q, qdot) / d qdot * qdot_dir = S_i(q) * qdot_dir = ed_model
-//      + model.S[i]*qdot_dirs.row(model.mJoints[i].q_index);
-      // model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
-    // d v[i] / d qddot = 0
-    ed_model.v_qddot[i].leftCols(ndirs).setZero();
+        + model.X_lambda[i].toMatrix()*ed_model.v[lambda].leftCols(ndirs)
+        + model.S[i]*qdot_dirs.row(model.mJoints[i].q_index);
+
+    // deprecated
+//    ed_model.v_q[i].leftCols(ndirs)
+//        = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+//        + model.X_lambda[i].toMatrix()*ed_model.v_q[lambda].leftCols(ndirs);
+//      // TODO exploit structure from S
+////      = crossm(temp)*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
+////      + model.X_lambda[i].toMatrix()*ed_model.v_q[lambda].leftCols(ndirs);
+//    // d v[i] / d qdot
+//    ed_model.v_qdot[i].leftCols(ndirs)
+//        = model.X_lambda[i].toMatrix()*ed_model.v_qdot[lambda].leftCols(ndirs)
+//                + model.S[i]*qdot_dirs.row(model.mJoints[i].q_index);
+////      = model.X_lambda[i].toMatrix()*ed_model.v_qdot[lambda].leftCols(ndirs)
+////      // + model.X_lambda[i].apply(model.v[lambda])
+////      // d v_J(q, qdot) / d qdot * qdot_dir = S_i(q) * qdot_dir = ed_model
+////      + model.S[i]*qdot_dirs.row(model.mJoints[i].q_index);
+//      // model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
+//    // d v[i] / d qddot = 0
+////    ed_model.v_qddot[i].leftCols(ndirs).setZero();
 
     // nominal evaluation
     model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
     // derivative evaluation
-    // d c[i] / d q
-    ed_model.c_q[i].leftCols(ndirs)
-      = -crossm(model.v_J[i]) * ed_model.v_q[i].leftCols(ndirs);
-    // d c[i] / d qdot
-    ed_model.c_qdot[i].leftCols(ndirs)
-      = crossm(model.v[i])*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
-        -crossm(model.v_J[i]) * ed_model.v_qdot[i].leftCols(ndirs);
-    // d c[i] / d qddot = 0
-    ed_model.c_qddot[i].leftCols(ndirs).setZero();
 
-    if(model.mJoints[i].mJointType != JointTypeCustom){
-      if (model.mJoints[i].mDoFCount == 1) {
+    ed_model.c[i].leftCols(ndirs) =
+        crossm(model.v[i])*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
+        - crossm(model.v_J[i]) * (ed_model.v[i].leftCols(ndirs) );
+// deprecated
+//    // d c[i] / d q
+//    ed_model.c_q[i].leftCols(ndirs)
+//      = -crossm(model.v_J[i]) * ed_model.v_q[i].leftCols(ndirs);
+//    // d c[i] / d qdot
+//    ed_model.c_qdot[i].leftCols(ndirs)
+//      = crossm(model.v[i])*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
+//        -crossm(model.v_J[i]) * ed_model.v_qdot[i].leftCols(ndirs);
+//    // d c[i] / d qddot = 0
+//    //    ed_model.c_qddot[i].leftCols(ndirs).setZero();
+
+    if(model.mJoints[i].mDoFCount == 1 && model.mJoints[i].mJointType != JointTypeCustom){
         // nominal evaluation
         temp = model.X_lambda[i].apply(model.a[model.lambda[i]]);
         model.a[i] = temp + model.c[i] + model.S[i] * qddot[q_index];
         // derivative evaluation
-        // d a[i] / d q
-        ed_model.a_q[i].leftCols(ndirs)
-          = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
-          + model.X_lambda[i].toMatrix()*ed_model.a_q[lambda].leftCols(ndirs)
-          + ed_model.c_q[i].leftCols(ndirs);
-          // + model.S[i] * qddot[q_index];
-        // d a[i] / d qdot
-        ed_model.a_qdot[i].leftCols(ndirs)
-          = model.X_lambda[i].toMatrix()*ed_model.a_qdot[lambda].leftCols(ndirs)
-          + ed_model.c_qdot[i].leftCols(ndirs);
-        // d a[i] / d qddot
-        ed_model.a_qddot[i].leftCols(ndirs)
-          = model.X_lambda[i].toMatrix()* ed_model.a_qddot[lambda].leftCols(ndirs)
-          + ed_model.c_qddot[i].leftCols(ndirs)
-          + model.S[i] * qddot_dirs.row(model.mJoints[i].q_index).leftCols(ndirs);
+        ed_model.a[i] = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+            + model.X_lambda[i].toMatrix()*ed_model.a[lambda].leftCols(ndirs)
+            + ed_model.c[i].leftCols(ndirs)
+            + model.S[i] * qddot_dirs.row(model.mJoints[i].q_index).leftCols(ndirs);
 
-      } else if (model.mJoints[i].mDoFCount == 3) {
-        cerr << "Multi-dof not supported." << endl;
-        abort();
-      }
-    }else if(model.mJoints[i].mJointType == JointTypeCustom){
+// deprecated
+//        // d a[i] / d q
+//        ed_model.a_q[i].leftCols(ndirs)
+//          = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+//          + model.X_lambda[i].toMatrix()*ed_model.a_q[lambda].leftCols(ndirs)
+//          + ed_model.c_q[i].leftCols(ndirs);
+//          // + model.S[i] * qddot[q_index];
+//        // d a[i] / d qdot
+//        ed_model.a_qdot[i].leftCols(ndirs)
+//          = model.X_lambda[i].toMatrix()*ed_model.a_qdot[lambda].leftCols(ndirs)
+//          + ed_model.c_qdot[i].leftCols(ndirs);
+//        // d a[i] / d qddot
+//        ed_model.a_qddot[i].leftCols(ndirs)
+//          = model.X_lambda[i].toMatrix()* ed_model.a_qddot[lambda].leftCols(ndirs)
+//          + ed_model.c_qddot[i].leftCols(ndirs)
+//          + model.S[i] * qddot_dirs.row(model.mJoints[i].q_index).leftCols(ndirs);
+
+    } else if (model.mJoints[i].mDoFCount == 3) {
+      cerr << "Multi-dof not supported." << endl;
+      abort();
+    } else if(model.mJoints[i].mJointType == JointTypeCustom){
       cerr << __FILE__ << " " << __LINE__
-           << ": Custom joints not supported." << endl;    abort();
+           << ": Custom joints not supported." << endl;
+      abort();
+    } else {
+      cerr << __FILE__ << " " << __LINE__
+           << ": Unknown unsupported joint." << endl;
       abort();
     }
 
@@ -138,46 +159,58 @@ void InverseDynamics(
       // nominal evaluation
       ed_model.h[i] = model.I[i] * model.v[i];
       // derivative evaluation
-      // d a[i] / d q
-      ed_model.h_q[i].leftCols(ndirs)
-        = model.I[i].toMatrix()*ed_model.v_q[i].leftCols(ndirs);
-      // d a[i] / d qdot
-      ed_model.h_qdot[i].leftCols(ndirs)
-        = model.I[i].toMatrix()*ed_model.v_qdot[i].leftCols(ndirs);
-      // d a[i] / d qddot
-      ed_model.h_qddot[i].leftCols(ndirs)
-        = model.I[i].toMatrix()*ed_model.v_qddot[i].leftCols(ndirs);
+      Math::MatrixNd const Ii_mat = model.I[i].toMatrix();
+
+// deprecated
+//      // d a[i] / d q
+//      ed_model.h_q[i].leftCols(ndirs)
+//        = Ii_mat*ed_model.v_q[i].leftCols(ndirs);
+//      // d a[i] / d qdot
+//      ed_model.h_qdot[i].leftCols(ndirs)
+//        = Ii_mat*ed_model.v_qdot[i].leftCols(ndirs);
+//      // d a[i] / d qddot
+//      ed_model.h_qddot[i].leftCols(ndirs)
+//        = Ii_mat*ed_model.v_qddot[i].leftCols(ndirs);
 
       // nominal evaluation
       model.f[i] = model.I[i] * model.a[i] + crossf(model.v[i], ed_model.h[i]);
       // derivative evaluation
 
-      // d a[i] / d q
-      ed_model.f_q[i].leftCols(ndirs)
-        = model.I[i].toMatrix() * ed_model.a_q[i].leftCols(ndirs)
-           + crossf_rhs(ed_model.h[i]).transpose() * ed_model.v_q[i].leftCols(ndirs)
-           + crossf(model.v[i]) * ed_model.h_q[i].leftCols(ndirs);
-      // d a[i] / d qdot
-      ed_model.f_qdot[i].leftCols(ndirs)
-        = model.I[i].toMatrix() * ed_model.a_qdot[i].leftCols(ndirs)
-          + crossf_rhs(ed_model.h[i]).transpose() * ed_model.v_qdot[i].leftCols(ndirs)
-          + crossf(model.v[i]) * ed_model.h_qdot[i].leftCols(ndirs);
-      // d a[i] / d qddot
-      ed_model.f_qddot[i].leftCols(ndirs)
-        = model.I[i].toMatrix() * ed_model.a_qddot[i].leftCols(ndirs)
-          + crossf_rhs(ed_model.h[i]).transpose() * ed_model.v_qddot[i].leftCols(ndirs)
-          + crossf(model.v[i]) * ed_model.h_qddot[i].leftCols(ndirs);
+      ed_model.f[i].leftCols(ndirs) =
+          Ii_mat * (ed_model.a[i].leftCols(ndirs))
+          + (crossf_rhs_T(ed_model.h[i]) + crossf(model.v[i]) * Ii_mat)
+          * (ed_model.v[i].leftCols(ndirs));
+          //+  * (ed_model.v_q[i].leftCols(ndirs) + ed_model.v_qdot[i].leftCols(ndirs) + ed_model.v_qddot[i].leftCols(ndirs));
+
+// deprecated
+//      // d a[i] / d q
+//      ed_model.f_q[i].leftCols(ndirs)
+//        = Ii_mat * ed_model.a_q[i].leftCols(ndirs)
+//           + crossf_rhs_T(ed_model.h[i]) * ed_model.v_q[i].leftCols(ndirs)
+//           + crossf(model.v[i]) * ed_model.h_q[i].leftCols(ndirs);
+//      // d a[i] / d qdot
+//      ed_model.f_qdot[i].leftCols(ndirs)
+//        = Ii_mat * ed_model.a_qdot[i].leftCols(ndirs)
+//          + crossf_rhs_T(ed_model.h[i]) * ed_model.v_qdot[i].leftCols(ndirs)
+//          + crossf(model.v[i]) * ed_model.h_qdot[i].leftCols(ndirs);
+//      // d a[i] / d qddot
+//      ed_model.f_qddot[i].leftCols(ndirs)
+//        = Ii_mat * ed_model.a_qddot[i].leftCols(ndirs)
+//          + crossf_rhs_T(ed_model.h[i]) * ed_model.v_qddot[i].leftCols(ndirs)
+//          + crossf(model.v[i]) * ed_model.h_qddot[i].leftCols(ndirs);
 
     } else {
       // nominal evaluation
       model.f[i].setZero();
       // derivative evaluation
-      // d a[i] / d q
-      ed_model.f_q[i].leftCols(ndirs).setZero();
-      // d a[i] / d qdot
-      ed_model.f_qdot[i].leftCols(ndirs).setZero();
-      // d a[i] / d qddot
-      ed_model.f_qddot[i].leftCols(ndirs).setZero();
+      ed_model.f[i].setZero();
+// deprecated
+//      // d a[i] / d q
+//      ed_model.f_q[i].leftCols(ndirs).setZero();
+//      // d a[i] / d qdot
+//      ed_model.f_qdot[i].leftCols(ndirs).setZero();
+//      // d a[i] / d qddot
+//      ed_model.f_qddot[i].leftCols(ndirs).setZero();
     }
   }
 
@@ -188,45 +221,55 @@ void InverseDynamics(
   }
 
   for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
-    if(model.mJoints[i].mJointType != JointTypeCustom){
-      if (model.mJoints[i].mDoFCount == 1) {
+
+
+    if(model.mJoints[i].mDoFCount == 1 && model.mJoints[i].mJointType != JointTypeCustom){
         const unsigned int q_index = model.mJoints[i].q_index;
         // nominal evaluation
         tau[q_index] = model.S[i].dot(model.f[i]);
         // derivative evaluation
         // d tau [i] = d tau [i] / d q + d tau [i] / d qdot + d tau [i] / d qddot
         ed_tau.row(q_index)
-          = model.S[i].transpose() * ed_model.f_q[i].leftCols(ndirs)
-          + model.S[i].transpose() * ed_model.f_qdot[i].leftCols(ndirs)
-          + model.S[i].transpose() * ed_model.f_qddot[i].leftCols(ndirs);
+            = model.S[i].transpose() * ed_model.f[i].leftCols(ndirs);
+// deprecated
+//          = model.S[i].transpose() * (ed_model.f_q[i].leftCols(ndirs)
+//          + ed_model.f_qdot[i].leftCols(ndirs)
+//          + ed_model.f_qddot[i].leftCols(ndirs));
 
-      } else if (model.mJoints[i].mDoFCount == 3) {
-        cerr << "Multi-dof not supported." << endl;
-        abort();
-      }
+    } else if (model.mJoints[i].mDoFCount == 3) {
+      cerr << "Multi-dof not supported." << endl;
+      abort();
     } else if (model.mJoints[i].mJointType == JointTypeCustom) {
       cerr << __FILE__ << " " << __LINE__
            << ": Custom joints not supported." << endl;    abort();
+      abort();
+    } else {
+      cerr << __FILE__ << " " << __LINE__
+           << ": Unknown unsupported joint." << endl;
       abort();
     }
 
     if (model.lambda[i] != 0) {
       // nominal evaluation
-      SpatialVector temp = model.X_lambda[i].applyTranspose(model.f[i]);
-      model.f[model.lambda[i]] = model.f[model.lambda[i]] + temp;
+      model.f[model.lambda[i]] += model.X_lambda[i].applyTranspose(model.f[i]);
       // derivative evaluation
       // d a[i] / d q
-      ed_model.f_q[model.lambda[i]].leftCols(ndirs)
-        += model.X_lambda[i].toMatrixTranspose()
-          * crossf_rhs(model.f[i]).transpose()
-          * model.S[i]*q_dirs.row(model.mJoints[i].q_index).leftCols(ndirs)
-        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_q[i].leftCols(ndirs);
-      // d a[i] / d qdot
-      ed_model.f_qdot[model.lambda[i]].leftCols(ndirs)
-        += model.X_lambda[i].toMatrixTranspose()*ed_model.f_qdot[i].leftCols(ndirs);
-      // d a[i] / d qddot
-      ed_model.f_qddot[model.lambda[i]].leftCols(ndirs)
-        += model.X_lambda[i].toMatrixTranspose()*ed_model.f_qddot[i].leftCols(ndirs);
+      ed_model.f[model.lambda[i]].leftCols(ndirs) +=
+          model.X_lambda[i].toMatrixTranspose()
+          * (crossf_rhs_T(model.f[i]) * model.S[i]*q_dirs.row(model.mJoints[i].q_index).leftCols(ndirs)
+             + ed_model.f[i].leftCols(ndirs));
+// deprecated
+//      ed_model.f_q[model.lambda[i]].leftCols(ndirs)
+//        += model.X_lambda[i].toMatrixTranspose()
+//          * crossf_rhs(model.f[i]).transpose()
+//          * model.S[i]*q_dirs.row(model.mJoints[i].q_index).leftCols(ndirs)
+//        + model.X_lambda[i].toMatrixTranspose()*ed_model.f_q[i].leftCols(ndirs);
+//      // d a[i] / d qdot
+//      ed_model.f_qdot[model.lambda[i]].leftCols(ndirs)
+//        += model.X_lambda[i].toMatrixTranspose()*ed_model.f_qdot[i].leftCols(ndirs);
+//      // d a[i] / d qddot
+//      ed_model.f_qddot[model.lambda[i]].leftCols(ndirs)
+//        += model.X_lambda[i].toMatrixTranspose()*ed_model.f_qddot[i].leftCols(ndirs);
     }
   }
 
