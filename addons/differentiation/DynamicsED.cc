@@ -318,16 +318,15 @@ RBDL_DLLAPI void NonlinearEffects (
       }
     }
 
-    ed_model.v_q[i].leftCols(ndirs).setZero ();
-    ed_model.v_qdot[i].leftCols(ndirs).setZero ();
-    ed_model.v_qddot[i].leftCols(ndirs).setZero ();
-    ed_model.a_q[i].leftCols(ndirs).setZero ();
-    ed_model.a_qdot[i].leftCols(ndirs).setZero ();
-    ed_model.a_qddot[i].leftCols(ndirs).setZero ();
+//    ed_model.v_q[i].leftCols(ndirs).setZero ();
+//    ed_model.v_qdot[i].leftCols(ndirs).setZero ();
+//    ed_model.v_qddot[i].leftCols(ndirs).setZero ();
+//    ed_model.a_q[i].leftCols(ndirs).setZero ();
+//    ed_model.a_qdot[i].leftCols(ndirs).setZero ();
+//    ed_model.a_qddot[i].leftCols(ndirs).setZero ();
     ed_model.f[i].leftCols(ndirs).setZero();
     model.f[i].setZero();
-    ed_model.f_q[i].leftCols(ndirs).setZero();
-    ed_model.f_qdot[i].leftCols(ndirs).setZero();
+    ed_model.f[i].leftCols(ndirs).setZero();
   }
 
   for (unsigned int i = 1; i < model.mJointUpdateOrder.size(); i++) {
@@ -335,111 +334,136 @@ RBDL_DLLAPI void NonlinearEffects (
   }
 
   for (unsigned int i = 1; i < model.mBodies.size(); i++) {
-
-
     if (model.lambda[i] == 0) {
       // nominal evaluation
       model.v[i] = model.v_J[i];
       // derivative evaluation
       // d v[i] / d qdot
-      ed_model.v_qdot[i].leftCols(ndirs).row(bodyidx2s1idx[i]) = qdot_dirs.row(model.mJoints[i].q_index);
+      ed_model.v[i].leftCols(ndirs).row(bodyidx2s1idx[i]) = qdot_dirs.row(model.mJoints[i].q_index);
+// deprecated
+//      ed_model.v_qdot[i].leftCols(ndirs).row(bodyidx2s1idx[i]) = qdot_dirs.row(model.mJoints[i].q_index);
 
       // nominal evaluation
       model.a[i] = model.X_lambda[i].apply(spatial_gravity);
       // derivative evaluation
-      // d a[i] / d q
-      ed_model.a_q[i].leftCols(ndirs)
-        = crossm(model.a[i])*model.S[i]*q_dirs.row(model.mJoints[i].q_index);
-      // d a[i] / d qdot
-      ed_model.a_qdot[i].leftCols(ndirs).setZero();
+      ed_model.a[i] = crossm(model.a[i])*model.S[i]*q_dirs.row(model.mJoints[i].q_index);
+// deprecated
+//      // d a[i] / d q
+//      ed_model.a_q[i].leftCols(ndirs)
+//        = crossm(model.a[i])*model.S[i]*q_dirs.row(model.mJoints[i].q_index);
+//      // d a[i] / d qdot
+//      ed_model.a_qdot[i].leftCols(ndirs).setZero();
     } else {
       // nominal evaluation
       SpatialVector temp = model.X_lambda[i].apply(model.v[model.lambda[i]]);
       model.v[i] = temp + model.v_J[i];
       // derivative evaluation
-      // d v[i] / d q
-      ed_model.v_q[i].leftCols(ndirs)
-        = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
-        + model.X_lambda[i].toMatrix()*ed_model.v_q[model.lambda[i]].leftCols(ndirs);
-      // d v[i] / d qdot
-      ed_model.v_qdot[i].leftCols(ndirs) = model.X_lambda[i].toMatrix()*ed_model.v_qdot[model.lambda[i]].leftCols(ndirs);
-      ed_model.v_qdot[i].leftCols(ndirs).row(bodyidx2s1idx[i]) += qdot_dirs.row(model.mJoints[i].q_index);
+      ed_model.v[i].leftCols(ndirs)
+          = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+          + model.X_lambda[i].toMatrix() * ed_model.v[model.lambda[i]].leftCols(ndirs)
+          + model.S[i] * qdot_dirs.row(model.mJoints[i].q_index);
+
+// deprecated
+//      // d v[i] / d q
+//      ed_model.v_q[i].leftCols(ndirs)
+//        = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+//        + model.X_lambda[i].toMatrix() * ed_model.v_q[model.lambda[i]].leftCols(ndirs);
+//      // d v[i] / d qdot
+//      ed_model.v_qdot[i].leftCols(ndirs) = model.X_lambda[i].toMatrix()*ed_model.v_qdot[model.lambda[i]].leftCols(ndirs);
+//      ed_model.v_qdot[i].leftCols(ndirs).row(bodyidx2s1idx[i]) += qdot_dirs.row(model.mJoints[i].q_index);
 
       // nominal evaluation
       model.c[i] = model.c_J[i] + crossm(model.v[i], model.v_J[i]);
       // derivative evaluation
-      // d c[i] / d q
-      ed_model.c_q[i].leftCols(ndirs) = -crossm(model.v_J[i])*ed_model.v_q[i].leftCols(ndirs);
-      // d c[i] / d qdot
-      ed_model.c_qdot[i].leftCols(ndirs)
-        = crossm(model.v[i])*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
-        - crossm(model.v_J[i])*ed_model.v_qdot[i].leftCols(ndirs);
+      ed_model.c[i].leftCols(ndirs) =crossm(model.v[i])*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
+          - crossm(model.v_J[i])*(ed_model.v[i].leftCols(ndirs));
+// deprecated
+//      // d c[i] / d q
+//      ed_model.c_q[i].leftCols(ndirs) = -crossm(model.v_J[i])*ed_model.v_q[i].leftCols(ndirs);
+//      // d c[i] / d qdot
+//      ed_model.c_qdot[i].leftCols(ndirs)
+//        = crossm(model.v[i])*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
+//        - crossm(model.v_J[i])*ed_model.v_qdot[i].leftCols(ndirs);
 
       // nominal evaluation
       temp = model.X_lambda[i].apply(model.a[model.lambda[i]]);
       model.a[i] = temp + model.c[i];
       // derivative evaluation
-      // d a[i] / d q
-      ed_model.a_q[i].leftCols(ndirs)
-        = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
-        + model.X_lambda[i].toMatrix()*ed_model.a_q[model.lambda[i]].leftCols(ndirs)
-        + ed_model.c_q[i].leftCols(ndirs);
-      // d a[i] / d qdot
-      ed_model.a_qdot[i].leftCols(ndirs)
-        = model.X_lambda[i].toMatrix()*ed_model.a_qdot[model.lambda[i]].leftCols(ndirs)
-        + ed_model.c_qdot[i].leftCols(ndirs);
+      ed_model.a[i].leftCols(ndirs) =
+          crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+          + model.X_lambda[i].toMatrix()*ed_model.a[model.lambda[i]].leftCols(ndirs)
+          + ed_model.c[i].leftCols(ndirs);
+
+// deprecated
+//      // d a[i] / d q
+//      ed_model.a_q[i].leftCols(ndirs)
+//        = crossm(temp)*model.S[i]*q_dirs.row(model.mJoints[i].q_index)
+//        + model.X_lambda[i].toMatrix()*ed_model.a_q[model.lambda[i]].leftCols(ndirs)
+//        + ed_model.c_q[i].leftCols(ndirs);
+//      // d a[i] / d qdot
+//      ed_model.a_qdot[i].leftCols(ndirs)
+//        = model.X_lambda[i].toMatrix()*ed_model.a_qdot[model.lambda[i]].leftCols(ndirs)
+//        + ed_model.c_qdot[i].leftCols(ndirs);
     }
 
     if (!model.mBodies[i].mIsVirtual) {
       // nominal evaluation
-      ed_model.h[i] = model.I[i]*model.v[i];
-      // derivative evaluation
-      // d h[i] / d q
-      ed_model.h_q[i].leftCols(ndirs)
-        = model.I[i].toMatrix()*ed_model.v_q[i].leftCols(ndirs);
-      // d h[i] / d qdot
-      ed_model.h_qdot[i].leftCols(ndirs)
-        = model.I[i].toMatrix()*ed_model.v_qdot[i].leftCols(ndirs);
+      ed_model.h[i] = model.I[i] * model.v[i];
+      Math::MatrixNd const Ii_mat = model.I[i].toMatrix();
+
+      // deprecated
+//      // derivative evaluation
+//      // d h[i] / d q
+//      ed_model.h_q[i].leftCols(ndirs)
+//        = model.I[i].toMatrix()*ed_model.v_q[i].leftCols(ndirs);
+//      // d h[i] / d qdot
+//      ed_model.h_qdot[i].leftCols(ndirs)
+//        = model.I[i].toMatrix()*ed_model.v_qdot[i].leftCols(ndirs);
 
       SpatialMatrix cross_rhs_hi_T = crossf_rhs_T(ed_model.h[i]);
       SpatialMatrix cross_lhs_vi = crossf(model.v[i]);
 
       // nominal evaluation
       model.f[i] = model.I[i] * model.a[i] + crossf(model.v[i], ed_model.h[i]);
-
       // derivative evaluation
-      // d f[i] / d q
-      ed_model.f_q[i].leftCols(ndirs)
-        = model.I[i].toMatrix()*ed_model.a_q[i].leftCols(ndirs)
-                + cross_rhs_hi_T * ed_model.v_q[i].leftCols(ndirs)
-                + cross_lhs_vi * ed_model.h_q[i].leftCols(ndirs);
+      ed_model.f[i].leftCols(ndirs)
+          = Ii_mat*(ed_model.a[i].leftCols(ndirs))
+          + (cross_rhs_hi_T + cross_lhs_vi * Ii_mat) * (ed_model.v[i].leftCols(ndirs));
 
-      // d f[i] / d qdot
-      ed_model.f_qdot[i].leftCols(ndirs)
-        = model.I[i].toMatrix()*ed_model.a_qdot[i].leftCols(ndirs)
-          + cross_rhs_hi_T * ed_model.v_qdot[i].leftCols(ndirs)
-          + cross_lhs_vi * ed_model.h_qdot[i].leftCols(ndirs);
+// deprecated
+//      // d f[i] / d q
+//      ed_model.f_q[i].leftCols(ndirs)
+//        = model.I[i].toMatrix()*ed_model.a_q[i].leftCols(ndirs)
+//                + cross_rhs_hi_T * ed_model.v_q[i].leftCols(ndirs)
+//                + cross_lhs_vi * ed_model.h_q[i].leftCols(ndirs);
+
+//      // d f[i] / d qdot
+//      ed_model.f_qdot[i].leftCols(ndirs)
+//        = model.I[i].toMatrix()*ed_model.a_qdot[i].leftCols(ndirs)
+//          + cross_rhs_hi_T * ed_model.v_qdot[i].leftCols(ndirs)
+//          + cross_lhs_vi * ed_model.h_qdot[i].leftCols(ndirs);
     }
   }
 
   for (unsigned int i = model.mBodies.size() - 1; i > 0; i--) {
-    if(model.mJoints[i].mJointType != JointTypeCustom){
-      if (model.mJoints[i].mDoFCount == 1) {
+    if(model.mJoints[i].mDoFCount == 1 && model.mJoints[i].mJointType != JointTypeCustom){
         const unsigned int q_index = model.mJoints[i].q_index;
         // nominal evaluation
         tau[q_index] = model.f[i](bodyidx2s1idx[i]);
       // derivative evaluation
       // d tau [i] = d tau [i] / d q + d tau [i] / d qdot
-        ed_tau.row(q_index)
-          = ed_model.f_q[i].leftCols(ndirs).row(bodyidx2s1idx[i]) + ed_model.f_qdot[i].leftCols(ndirs).row(bodyidx2s1idx[i]);
+        ed_tau.row(q_index) = ed_model.f[i].leftCols(ndirs).row(bodyidx2s1idx[i]);
 
-      } else if (model.mJoints[i].mDoFCount == 3) {
-        cerr << "Multi-dof not supported." << endl;
-        abort();
-      }
     } else if(model.mJoints[i].mJointType == JointTypeCustom) {
       cerr << __FILE__ << " " << __LINE__
            << ": Custom joints not supported." << endl;    abort();
+      abort();
+    } else if (model.mJoints[i].mDoFCount == 3) {
+      cerr << "Multi-dof not supported." << endl;
+      abort();
+    } else {
+      cerr << __FILE__ << " " << __LINE__
+           << ": Unknown unsupported joint." << endl;
       abort();
     }
 
@@ -448,14 +472,19 @@ RBDL_DLLAPI void NonlinearEffects (
       SpatialVector temp = model.X_lambda[i].applyTranspose(model.f[i]);
       model.f[model.lambda[i]] += temp;
       // derivative evaluation
-      // d f[model.lambda[i]] / d q
-      ed_model.f_q[model.lambda[i]].leftCols(ndirs)
-        += model.X_lambda[i].toMatrixTranspose()
+      ed_model.f[model.lambda[i]].leftCols(ndirs)
+          += model.X_lambda[i].toMatrixTranspose()
           * (crossf_rhs_T(model.f[i]) * model.S[i]*q_dirs.row(model.mJoints[i].q_index).leftCols(ndirs)
-             + ed_model.f_q[i].leftCols(ndirs));
-      // d f[model.lambda[i]] / d qdot
-      ed_model.f_qdot[model.lambda[i]].leftCols(ndirs)
-        += model.X_lambda[i].toMatrixTranspose()*ed_model.f_qdot[i].leftCols(ndirs);
+             + ed_model.f[i].leftCols(ndirs));
+// deprecated
+//      // d f[model.lambda[i]] / d q
+//      ed_model.f_q[model.lambda[i]].leftCols(ndirs)
+//        += model.X_lambda[i].toMatrixTranspose()
+//          * (crossf_rhs_T(model.f[i]) * model.S[i]*q_dirs.row(model.mJoints[i].q_index).leftCols(ndirs)
+//             + ed_model.f_q[i].leftCols(ndirs));
+//      // d f[model.lambda[i]] / d qdot
+//      ed_model.f_qdot[model.lambda[i]].leftCols(ndirs)
+//        += model.X_lambda[i].toMatrixTranspose()*ed_model.f_qdot[i].leftCols(ndirs);
     }
   }
 }
@@ -682,12 +711,15 @@ void CompositeRigidBodyAlgorithm (
   const size_t ndirs = q_dirs.cols();
   ed_model.resize_directions(ndirs);
 
-  for (unsigned int i = 1; i < model.mBodies.size(); i++)
+  if (update_kinematics)
   {
-    if (update_kinematics)
+    for (unsigned int i = 1; i < model.mBodies.size(); i++)
     {
       jcalc_X_lambda_S (model, i, q);
     }
+  }
+  for (unsigned int i = 1; i < model.mBodies.size(); i++)
+  {
     // nominal evaluation
     model.Ic[i] = model.I[i];
     // derivative evaluation
@@ -701,28 +733,22 @@ void CompositeRigidBodyAlgorithm (
   {
     if (model.lambda[i] != 0)
     {
-      SpatialRigidBodyInertia temp
-        = model.X_lambda[i].applyTranspose(model.Ic[i]);
+      SpatialRigidBodyInertia temp = model.X_lambda[i].applyTranspose(model.Ic[i]);
       // nominal evaluation
-      model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + temp;
+      model.Ic[model.lambda[i]] += temp;
       // derivative evaluation
+
+      Math::SpatialVector const imv = model.X_lambda[i].inverse().apply(model.S[i]);
+
       for (unsigned idir = 0; idir < ndirs; idir++) {
-      //   // TODO make this fast
+        // TODO make this fast
         SpatialRigidBodyInertia rbi;
         rbi.createFromMatrix(ed_model.Ic[i][idir]);
 
         ed_model.Ic[model.lambda[i]][idir]
-          = ed_model.Ic[model.lambda[i]][idir]
-          + crossf(
-            model.X_lambda[i].inverse().toMatrix()
-            * model.S[i]
-            * q_dirs(model.mJoints[i].q_index, idir)
-          )*temp.toMatrix()
-          - temp.toMatrix()*crossm(
-            model.X_lambda[i].inverse().toMatrix()
-            * model.S[i]
-            * q_dirs(model.mJoints[i].q_index,idir)
-          )
+          += crossf(imv * q_dirs(model.mJoints[i].q_index, idir)) * temp.toMatrix()
+          - temp.toMatrix() * crossm(imv * q_dirs(model.mJoints[i].q_index, idir))
+//          + model.X_lambda[i].applyXTIX(ed_model.Ic[i][idir]);
           + model.X_lambda[i].applyTranspose(rbi).toMatrix()
         ;
       }
@@ -730,84 +756,56 @@ void CompositeRigidBodyAlgorithm (
 
     unsigned int dof_index_i = model.mJoints[i].q_index;
 
-    if (model.mJoints[i].mDoFCount == 1
-        && model.mJoints[i].mJointType != JointTypeCustom)
+    if (model.mJoints[i].mDoFCount == 1 && model.mJoints[i].mJointType != JointTypeCustom)
     {
       // nominal evaluation
       SpatialVector F             = model.Ic[i] * model.S[i];
       H(dof_index_i, dof_index_i) = model.S[i].dot(F);
+
       // derivative evaluation
       for (unsigned idir = 0; idir < ndirs; idir++)
       {
         ed_model.F[i].col(idir) = ed_model.Ic[i][idir] * model.S[i];
-        H_dirs[idir](dof_index_i, dof_index_i)
-          = model.S[i].dot(ed_model.F[i].col(idir));
+        H_dirs[idir](dof_index_i, dof_index_i) = model.S[i].dot(ed_model.F[i].col(idir));
       }
 
       unsigned int j = i;
       unsigned int dof_index_j = dof_index_i;
 
-
       while (model.lambda[j] != 0) {
-        // nominal evaluation
-        // F = model.X_lambda[j].applyTranspose(F);
-        SpatialVector temp = model.X_lambda[j].applyTranspose(F);
         // derivative evaluation
-        ed_model.F[i].leftCols(ndirs)
-          = model.X_lambda[j].toMatrixTranspose()*ed_model.F[i].leftCols(ndirs)
-          + model.X_lambda[j].toMatrixTranspose()*crossf_rhs(F).transpose()*model.S[j]*q_dirs.row(model.mJoints[j].q_index)
-        ;
+        ed_model.F[i].leftCols(ndirs) = model.X_lambda[j].toMatrixTranspose()
+            * (ed_model.F[i].leftCols(ndirs) + crossf_rhs_T(F)*model.S[j]*q_dirs.row(model.mJoints[j].q_index).leftCols(ndirs));
         // nominal evaluation
-        F = temp;
+        F = model.X_lambda[j].applyTranspose(F);
 
         j = model.lambda[j];
         dof_index_j = model.mJoints[j].q_index;
 
-        if(model.mJoints[j].mJointType != JointTypeCustom)
-        {
-          if (model.mJoints[j].mDoFCount == 1)
-          {
-            // nominal evaluation
-            H(dof_index_i,dof_index_j) = F.dot(model.S[j]);
-            H(dof_index_j,dof_index_i) = H(dof_index_i,dof_index_j);
-            // derivative evaluation
-            for (unsigned idir = 0; idir < ndirs; idir++) {
-              H_dirs[idir](dof_index_i, dof_index_j)
-                = ed_model.F[i].col(idir).dot(model.S[j]);
-              H_dirs[idir](dof_index_j, dof_index_i)
-                = H_dirs[idir](dof_index_i, dof_index_j);
-            }
-          }
-          else if (model.mJoints[j].mDoFCount == 3
-          ) {
-            cerr << __FILE__ << " " << __LINE__ << ":"
-                 << "Multi-DoF joint not supported." << endl;
-            abort();
-          }
-        }
-        else if (model.mJoints[j].mJointType == JointTypeCustom
-        ){
-          cerr << __FILE__ << " " << __LINE__ << ":"
-               << " Custom joint not supported." << endl;
-          abort();
+        // nominal evaluation
+        H(dof_index_i,dof_index_j) = F.dot(model.S[j]);
+        H(dof_index_j,dof_index_i) = H(dof_index_i,dof_index_j);
+        // derivative evaluation
+        for (unsigned idir = 0; idir < ndirs; idir++) {
+          H_dirs[idir](dof_index_i, dof_index_j)
+            = ed_model.F[i].col(idir).dot(model.S[j]);
+          H_dirs[idir](dof_index_j, dof_index_i)
+            = H_dirs[idir](dof_index_i, dof_index_j);
         }
       }
-
-    }
-    else if (model.mJoints[i].mDoFCount == 3
-        && model.mJoints[i].mJointType != JointTypeCustom
-    ) {
+    } else if (model.mJoints[i].mDoFCount == 3 && model.mJoints[i].mJointType != JointTypeCustom) {
       cerr << __FILE__ << " " << __LINE__ << ":"
            << "Multi-DoF joint not supported." << endl;
       abort();
-    }
-    else if (model.mJoints[i].mJointType == JointTypeCustom
-    ) {
+    } else if (model.mJoints[i].mJointType == JointTypeCustom) {
       cerr << __FILE__ << " " << __LINE__ << ":"
-           << " Custom joint not supported." << endl;
+           << " Custom joints not supported." << endl;
+      abort();
+    } else {
+      cerr << __FILE__ << " " << __LINE__
+           << ": Unknown unsupported joint." << endl;
       abort();
     }
-
   }
 }
 

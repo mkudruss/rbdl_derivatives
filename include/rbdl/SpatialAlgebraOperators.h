@@ -74,6 +74,18 @@ struct RBDL_DLLAPI SpatialRigidBodyInertia {
         );
   }
 
+  SpatialRigidBodyInertia operator+= (const SpatialRigidBodyInertia& rbi) {
+    m += rbi.m;
+    h += rbi.h;
+    Ixx += rbi.Ixx;
+    Iyx += rbi.Iyx;
+    Iyy += rbi.Iyy;
+    Izx += rbi.Izx;
+    Izy += rbi.Izy;
+    Izz += rbi.Izz;
+    return *this;
+  }
+
   void createFromMatrix (const SpatialMatrix &Ic) {
     m = Ic(3,3);
     h.set (-Ic(1,5), Ic(0,5), -Ic(0,4));
@@ -249,6 +261,12 @@ struct RBDL_DLLAPI SpatialTransform {
         - VectorCrossMatrix (E_T_mr) * VectorCrossMatrix (r));
   }
 
+  SpatialMatrix applyXTIX(const SpatialMatrix & I) const {
+    SpatialMatrix const X = toMatrix();
+    return X.transpose() * I * X;
+  }
+
+
   SpatialVector applyAdjoint (const SpatialVector &f_sp) {
     Vector3d En_rxf = E * (Vector3d (f_sp[0], f_sp[1], f_sp[2]) - r.cross(Vector3d (f_sp[3], f_sp[4], f_sp[5])));
     //		Vector3d En_rxf = E * (Vector3d (f_sp[0], f_sp[1], f_sp[2]) - r.cross(Eigen::Map<Vector3d> (&(f_sp[3]))));
@@ -310,6 +328,26 @@ struct RBDL_DLLAPI SpatialTransform {
 
     return result;
   }
+
+  SpatialMatrix toMatrixInverse() const {
+    Matrix3d ET = E.transpose();
+    Vector3d mEr = -E*r;
+
+    Matrix3d _ETmErx =
+      ET * Matrix3d (
+          0., -mEr[2], mEr[1],
+          mEr[2], 0., -mEr[0],
+          -mEr[1], mEr[0], 0.
+          );
+    SpatialMatrix result;
+    result.block<3,3>(0,0) = ET;
+    result.block<3,3>(0,3) = Matrix3d::Zero(3,3);
+    result.block<3,3>(3,0) = -_ETmErx;
+    result.block<3,3>(3,3) = ET;
+
+    return result;
+  }
+
 
   SpatialTransform inverse() const {
     return SpatialTransform (
