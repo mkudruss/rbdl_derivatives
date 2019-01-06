@@ -30,6 +30,7 @@ RBDL_DLLAPI Math::Vector3d CalcBaseToBodyCoordinates (
     Math::MatrixNd const & base_point_position_dirs,
     Math::MatrixNd & ad_base_to_body_coordinates,
     bool update_kinematics = true);
+*/
 
 RBDL_DLLAPI void UpdateKinematicsCustom (
     Model &model,
@@ -41,6 +42,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
     Math::VectorNd const * qddot,
     Math::MatrixNd const * qddot_dirs);
 
+/*
 RBDL_DLLAPI void UpdateKinematics (
     Model & model,
     EDModel & ad_model,

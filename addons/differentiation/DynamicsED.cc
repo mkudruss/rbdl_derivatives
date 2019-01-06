@@ -718,6 +718,7 @@ void CompositeRigidBodyAlgorithm (
       jcalc_X_lambda_S (model, i, q);
     }
   }
+
   for (unsigned int i = 1; i < model.mBodies.size(); i++)
   {
     // nominal evaluation
@@ -733,11 +734,12 @@ void CompositeRigidBodyAlgorithm (
   {
     if (model.lambda[i] != 0)
     {
-      SpatialRigidBodyInertia temp = model.X_lambda[i].applyTranspose(model.Ic[i]);
       // nominal evaluation
+      // NOTE we require temporary spatial rbi for efficient computation
+      SpatialRigidBodyInertia temp = model.X_lambda[i].applyTranspose(model.Ic[i]);
       model.Ic[model.lambda[i]] += temp;
-      // derivative evaluation
 
+      // derivative evaluation
       Math::SpatialVector const imv = model.X_lambda[i].inverse().apply(model.S[i]);
 
       for (unsigned idir = 0; idir < ndirs; idir++) {

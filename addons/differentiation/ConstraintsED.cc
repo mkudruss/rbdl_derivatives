@@ -391,7 +391,7 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
     bool update_kinematics
 ) {
   const unsigned int ndirs = q_dirs.cols();
-  assert(ndirs <= G_dirs.size());
+  assert(ndirs == G_dirs.size());
 
   // resize if required
   ed_model.resize_directions(ndirs);
@@ -405,11 +405,10 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
   ConstraintSet::ConstraintType prev_constraint_type
     = ConstraintSet::ConstraintTypeLast;
   unsigned int prev_body_id_1 = 0;
-  unsigned int prev_body_id_2 = 0;
+  // unsigned int prev_body_id_2 = 0;
   SpatialTransform prev_body_X_1;
   SpatialTransform prev_body_X_2;
 
-  /*
   for (unsigned int i = 0; i < CS.contactConstraintIndices.size(); i++)
   {
     const unsigned int c = CS.contactConstraintIndices[i];
@@ -417,11 +416,14 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
     // only compute the matrix Gi if actually needed
     if (prev_constraint_type != CS.constraintType[c]
         || prev_body_id_1 != CS.body[c]
-        || prev_body_X_1.r != CS.point[c]) {
+        || prev_body_X_1.r != CS.point[c])
+    {
 
       // Compute the jacobian for the point.
       CS.Gi.setZero();
-      CalcPointJacobian (model, Q, CS.body[c], CS.point[c], CS.Gi, false);
+      CalcPointJacobian (model, q, CS.body[c], CS.point[c], CS.Gi, false);
+      // std::cout << "CS.Gi = \n" << CS.Gi << std::endl;
+      // std::cout << std::endl;
       prev_constraint_type = ConstraintSet::ContactConstraint;
 
       // Update variables for optimization check.
@@ -432,9 +434,14 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
     for(unsigned int j = 0; j < model.dof_count; j++) {
       Vector3d gaxis (CS.Gi(0,j), CS.Gi(1,j), CS.Gi(2,j));
       G(c,j) = gaxis.transpose() * CS.normal[c];
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        // G_dirs[idir].block<3,1>(0, q_index) = ad_ptv[idir].segment<3>(3);
+      }
     }
+
   }
 
+  /*
   // Variables used for computations.
   Vector3d normal;
   SpatialVector axis;
@@ -572,7 +579,10 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
         -CS.normal[c].transpose() * ed_gamma_i;
     CS.gamma[c] = CS.acceleration[c] - CS.normal[c].dot(gamma_i);
   }
+  */
 
+  // LOOP CONSTRAINTS NOT SUPPORTED
+  /*
   for (unsigned int i = 0; i < CS.loopConstraintIndices.size(); i++) {
     const unsigned int c = CS.loopConstraintIndices[i];
 

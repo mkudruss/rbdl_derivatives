@@ -64,6 +64,31 @@ struct RBDL_DLLAPI SpatialRigidBodyInertia {
         );
   }
 
+  SpatialRigidBodyInertia operator* (const double &value) {
+    return SpatialRigidBodyInertia (
+        m * value,
+        h * value,
+        Ixx * value,
+        Iyx * value,
+        Iyy * value,
+        Izx * value,
+        Izy * value,
+        Izz * value
+        );
+  }
+
+  SpatialRigidBodyInertia operator*= (const double& value) {
+    m *= value;
+    h *= value;
+    Ixx *= value;
+    Iyx *= value;
+    Iyy *= value;
+    Izx *= value;
+    Izy *= value;
+    Izz *= value;
+    return *this;
+  }
+
   SpatialRigidBodyInertia operator+ (const SpatialRigidBodyInertia &rbi) {
     return SpatialRigidBodyInertia (
         m + rbi.m,
@@ -83,6 +108,28 @@ struct RBDL_DLLAPI SpatialRigidBodyInertia {
     Izx += rbi.Izx;
     Izy += rbi.Izy;
     Izz += rbi.Izz;
+    return *this;
+  }
+
+  SpatialRigidBodyInertia operator- (const SpatialRigidBodyInertia &rbi) {
+    return SpatialRigidBodyInertia (
+        m - rbi.m,
+        h - rbi.h,
+        Ixx - rbi.Ixx,
+        Iyx - rbi.Iyx, Iyy - rbi.Iyy,
+        Izx - rbi.Izx, Izy - rbi.Izy, Izz - rbi.Izz
+        );
+  }
+
+  SpatialRigidBodyInertia operator-= (const SpatialRigidBodyInertia& rbi) {
+    m -= rbi.m;
+    h -= rbi.h;
+    Ixx -= rbi.Ixx;
+    Iyx -= rbi.Iyx;
+    Iyy -= rbi.Iyy;
+    Izx -= rbi.Izx;
+    Izy -= rbi.Izy;
+    Izz -= rbi.Izz;
     return *this;
   }
 
