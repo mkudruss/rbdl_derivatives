@@ -740,18 +740,45 @@ void CompositeRigidBodyAlgorithm (
       model.Ic[model.lambda[i]] += temp;
 
       // derivative evaluation
-      Math::SpatialVector const imv = model.X_lambda[i].inverse().apply(model.S[i]);
+      // NOTE we have to transform back S vector
+      const Math::SpatialVector imv = model.X_lambda[i].inverse().apply(model.S[i]);
 
       for (unsigned idir = 0; idir < ndirs; idir++) {
-        // TODO make this fast
-        SpatialRigidBodyInertia rbi;
-        rbi.createFromMatrix(ed_model.Ic[i][idir]);
+        Vector3d E_T_mr = model.X_lambda[i].E.transpose() * ed_model.Ic[i][idir].h;
+        SpatialRigidBodyInertia rbi = SpatialRigidBodyInertia (
+          0.,
+          E_T_mr,
+          model.X_lambda[i].E.transpose() *
+          Matrix3d (
+            ed_model.Ic[i][idir].Ixx, ed_model.Ic[i][idir].Iyx, ed_model.Ic[i][idir].Izx,
+            ed_model.Ic[i][idir].Iyx, ed_model.Ic[i][idir].Iyy, ed_model.Ic[i][idir].Izy,
+            ed_model.Ic[i][idir].Izx, ed_model.Ic[i][idir].Izy, ed_model.Ic[i][idir].Izz
+            ) * model.X_lambda[i].E
+          - VectorCrossMatrix(model.X_lambda[i].r) * VectorCrossMatrix (model.X_lambda[i].E.transpose() * ed_model.Ic[i][idir].h)
+          - VectorCrossMatrix (E_T_mr) * VectorCrossMatrix (model.X_lambda[i].r)
+        );
 
+        const Math::Vector3d w = imv.head(3)*q_dirs(model.mJoints[i].q_index, idir);
+        const Math::Vector3d v0 = imv.tail(3)*q_dirs(model.mJoints[i].q_index, idir);
         ed_model.Ic[model.lambda[i]][idir]
-          += crossf(imv * q_dirs(model.mJoints[i].q_index, idir)) * temp.toMatrix()
-          - temp.toMatrix() * crossm(imv * q_dirs(model.mJoints[i].q_index, idir))
-//          + model.X_lambda[i].applyXTIX(ed_model.Ic[i][idir]);
-          + model.X_lambda[i].applyTranspose(rbi).toMatrix()
+          += SpatialRigidBodyInertia (
+              0,
+              w.cross(temp.h) + temp.m * v0,
+              Matrix3d(
+                -temp.Iyx*w[2] + temp.Izx*w[1] - temp.Iyx*w[2] + temp.Izx*w[1] + 2.*(temp.h[1]*v0[1] + temp.h[2]*v0[2]),
+                 temp.Ixx*w[2] - temp.Izx*w[0] - temp.Iyy*w[2] + temp.Izy*w[1] -     temp.h[0]*v0[1] - temp.h[1]*v0[0] ,
+                -temp.Ixx*w[1] + temp.Iyx*w[0] - temp.Izy*w[2] + temp.Izz*w[1] -     temp.h[0]*v0[2] - temp.h[2]*v0[0] ,
+
+                 temp.Ixx*w[2] - temp.Iyy*w[2] + temp.Izy*w[1] - temp.Izx*w[0] -     temp.h[0]*v0[1] - temp.h[1]*v0[0] ,
+                 temp.Iyx*w[2] + temp.Iyx*w[2] - temp.Izy*w[0] - temp.Izy*w[0] + 2.*(temp.h[0]*v0[0] + temp.h[2]*v0[2]),
+                 temp.Izx*w[2] - temp.Iyx*w[1] + temp.Iyy*w[0] - temp.Izz*w[0] -     temp.h[1]*v0[2] - temp.h[2]*v0[1] ,
+
+                -temp.Ixx*w[1] + temp.Iyx*w[0] - temp.Izy*w[2] + temp.Izz*w[1] -     temp.h[0]*v0[2] - temp.h[2]*v0[0] ,
+                -temp.Iyx*w[1] + temp.Iyy*w[0] + temp.Izx*w[2] - temp.Izz*w[0] -     temp.h[1]*v0[2] - temp.h[2]*v0[1] ,
+                -temp.Izx*w[1] + temp.Izy*w[0] - temp.Izx*w[1] + temp.Izy*w[0] + 2.*(temp.h[0]*v0[0] + temp.h[1]*v0[1])
+              )
+          )
+          + rbi
         ;
       }
     }

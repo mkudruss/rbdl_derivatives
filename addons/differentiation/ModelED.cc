@@ -39,7 +39,7 @@ EDModel::EDModel (RigidBodyDynamics::Model& model) {
     //std::vector<double> double(ndirs, 0.0);
 
     // inertias
-    Ic.resize(model.mBodies.size(), X);
+    Ic.resize(model.mBodies.size(), SRBI);
 
     // spatial matrices
     IA.resize(model.mBodies.size(), X);

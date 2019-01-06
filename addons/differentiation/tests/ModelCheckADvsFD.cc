@@ -312,7 +312,7 @@ void checkModelsADvsED(
     for (unsigned idir = 0; idir < ndirs; idir++) {
       // DEBUG OUTPUT
       RigidBodyDynamics::Math::SpatialMatrix error
-        = (ad_d_model.Ic[i][idir].toMatrix() - ed_d_model.Ic[i][idir]).cwiseAbs();
+        = (ad_d_model.Ic[i][idir].toMatrix() - ed_d_model.Ic[i][idir].toMatrix()).cwiseAbs();
       double max = error.maxCoeff();
       if (max > 1e-12) {
         std::cout << "error [" << i << "][" << idir << "] = \n" << error << std::endl;
@@ -320,11 +320,11 @@ void checkModelsADvsED(
         std::cout << "ad_d_model.Ic[" << i << "][" << idir << "] = \n"
           << ad_d_model.Ic[i][idir].toMatrix() << std::endl;
         std::cout << "ed_d_model.Ic[" << i << "][" << idir << "] = \n"
-          << ed_d_model.Ic[i][idir] << std::endl;
+          << ed_d_model.Ic[i][idir].toMatrix() << std::endl;
         std::cout << endl;
       }
       CHECK_ARRAY_CLOSE(
-        ad_d_model.Ic[i][idir].toMatrix().data(), ed_d_model.Ic[i][idir].data(),
+        ad_d_model.Ic[i][idir].toMatrix().data(), ed_d_model.Ic[i][idir].toMatrix().data(),
         6*6, 1e-12
       );
     }

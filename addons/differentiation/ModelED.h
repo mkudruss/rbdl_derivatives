@@ -35,7 +35,7 @@ struct EDModel {
     unsigned int ndirs;
 
     // inertias
-    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > Ic;
+    std::vector<std::vector<RigidBodyDynamics::Math::SpatialRigidBodyInertia> > Ic;
 
     // spatial matrices
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > IA;

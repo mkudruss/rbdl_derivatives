@@ -424,22 +424,17 @@ void efficient_analytic_derivative_of_spatial_inertia(
         0,
         w.cross(I.h) + I.m * v0,
         Matrix3d(
-          -I.Iyx*w[2] + I.Izx*w[1] - I.Iyx*w[2] + I.Izx*w[1],
-           I.Ixx*w[2] - I.Izx*w[0] - I.Iyy*w[2] + I.Izy*w[1],
-          -I.Ixx*w[1] + I.Iyx*w[0] - I.Izy*w[2] + I.Izz*w[1],
+          -I.Iyx*w[2] + I.Izx*w[1] - I.Iyx*w[2] + I.Izx*w[1] + 2.*(I.h[1]*v0[1] + I.h[2]*v0[2]),
+           I.Ixx*w[2] - I.Izx*w[0] - I.Iyy*w[2] + I.Izy*w[1] -     I.h[0]*v0[1] - I.h[1]*v0[0] ,
+          -I.Ixx*w[1] + I.Iyx*w[0] - I.Izy*w[2] + I.Izz*w[1] -     I.h[0]*v0[2] - I.h[2]*v0[0] ,
 
-           I.Ixx*w[2] - I.Iyy*w[2] + I.Izy*w[1] - I.Izx*w[0],
-           I.Iyx*w[2] + I.Iyx*w[2] - I.Izy*w[0] - I.Izy*w[0],
-           I.Izx*w[2] - I.Iyx*w[1] + I.Iyy*w[0] - I.Izz*w[0],
+           I.Ixx*w[2] - I.Iyy*w[2] + I.Izy*w[1] - I.Izx*w[0] -     I.h[0]*v0[1] - I.h[1]*v0[0] ,
+           I.Iyx*w[2] + I.Iyx*w[2] - I.Izy*w[0] - I.Izy*w[0] + 2.*(I.h[0]*v0[0] + I.h[2]*v0[2]),
+           I.Izx*w[2] - I.Iyx*w[1] + I.Iyy*w[0] - I.Izz*w[0] -     I.h[1]*v0[2] - I.h[2]*v0[1] ,
 
-          -I.Ixx*w[1] + I.Iyx*w[0] - I.Izy*w[2] + I.Izz*w[1],
-          -I.Iyx*w[1] + I.Iyy*w[0] + I.Izx*w[2] - I.Izz*w[0],
-          -I.Izx*w[1] + I.Izy*w[0] - I.Izx*w[1] + I.Izy*w[0]
-        )
-        - Matrix3d(
-          -2.*(I.h[1]*v0[1] + I.h[2]*v0[2]),      I.h[0]*v0[1] + I.h[1]*v0[0] ,      I.h[0]*v0[2] + I.h[2]*v0[0],
-               I.h[0]*v0[1] + I.h[1]*v0[0] , -2.*(I.h[0]*v0[0] + I.h[2]*v0[2]),      I.h[1]*v0[2] + I.h[2]*v0[1],
-               I.h[0]*v0[2] + I.h[2]*v0[0] ,      I.h[1]*v0[2] + I.h[2]*v0[1] , -2.*(I.h[0]*v0[0] + I.h[1]*v0[1])
+          -I.Ixx*w[1] + I.Iyx*w[0] - I.Izy*w[2] + I.Izz*w[1] -     I.h[0]*v0[2] - I.h[2]*v0[0] ,
+          -I.Iyx*w[1] + I.Iyy*w[0] + I.Izx*w[2] - I.Izz*w[0] -     I.h[1]*v0[2] - I.h[2]*v0[1] ,
+          -I.Izx*w[1] + I.Izy*w[0] - I.Izx*w[1] + I.Izy*w[0] + 2.*(I.h[0]*v0[0] + I.h[1]*v0[1])
         )
     );
 
