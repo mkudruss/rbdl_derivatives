@@ -44,6 +44,8 @@ struct EDModel {
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_lambda;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_base;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialTransform> > X_J;
+    std::vector<RigidBodyDynamics::Math::SpatialTransform> X_0;
+
 
     // spatial vectors
     std::vector<SpatialDirection> v_J;

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <unittest++/UnitTest++.h>
 
+#include <Eigen/Dense>
 
 #include "rbdl/Model.h"
 #include "rbdl/Dynamics.h"
@@ -28,6 +29,7 @@ static const double EPS = std::sqrt(numeric_limits<double>::epsilon());
 // -----------------------------------------------------------------------------
 /*! \brief We want to compute the derivative of d X(q(t)) / dt
 */
+
 template <typename T>
 void analytic_derivative_of_spatial_transform(
   T & obj,
@@ -49,11 +51,21 @@ void analytic_derivative_of_spatial_transform(
   SpatialMatrix X_ad = -crossm(S*Qdot(0))*X;
 
   // print results
-  // cout << "X_fd: " << endl << X_fd.transpose() << endl;
-  // cout << "X_ad: " << endl << X_ad.transpose() << endl;
-  // cout << "error(max): " << endl << (X_ad - X_fd).cwiseAbs().transpose()
-  //      << endl << " (" << (X_ad - X_fd).cwiseAbs().maxCoeff() << ")" << endl;
-  // cout << endl;
+  const SpatialMatrix X_err = (X_ad - X_fd).cwiseAbs();
+  const double error = X_err.maxCoeff();
+
+  if (error > 1e-7)
+  {
+    cout << "S:" << S.transpose() << endl;
+    // cout << "w:" << w.transpose() << endl;
+    // cout << "v0:" << v0.transpose() << endl;
+
+    cout << "X_fd: " << endl << X_fd << endl;
+    cout << "X_ad: " << endl << X_ad << endl;
+    cout << "error(max): " << " (" << error << ")" << endl
+      << endl << X_err << endl;
+    cout << endl;
+  }
 
   // test result
   CHECK_ARRAY_CLOSE(X_fd.data(), X_ad.data(), X.size(), TEST_PRECISION);
@@ -105,6 +117,205 @@ TEST(Xtransz_analytic_derivative_of_spatial_transform){
   std::function<SpatialTransform (const double &)> Xtransz
     = [](const double &q) { return Xtrans(Vector3d(0., 0., q)); };
   analytic_derivative_of_spatial_transform(*this, Xtransz, S, 1e-8);
+}
+
+// -----------------------------------------------------------------------------
+/*! \brief We want to compute the derivative of d X(q(t)) / dt
+*/
+
+SpatialTransform get_random_spatial_transform()
+{
+  Matrix3d Z = Matrix3d::Random();
+  Eigen::ColPivHouseholderQR<Eigen::Matrix3d> dec(Z);
+  Eigen::Matrix3d Q = dec.householderQ();
+  Eigen::Matrix3d R = dec.matrixQR();
+  Eigen::Vector3d d = R.diagonal();
+  Eigen::Vector3d ph = d.cwiseQuotient(d.cwiseAbs());
+  // std::cout << "ph = " << ph.transpose() << std::endl;
+  // std::cout << "Q = " << endl << Q << std::endl;
+  Q = Q.array().rowwise() * ph.transpose().array();
+  // std::cout << "Q = " << endl << Q << std::endl;
+
+  // std::cout << "Q = " << endl << Q << std::endl;
+  const Eigen::Matrix3d Q_err = (Q*Q.transpose() - Eigen::Matrix3d::Identity()).cwiseAbs();
+  const double error = Q_err.maxCoeff();;
+
+  if (error > 1e-14)
+  {
+    std::cerr << "Not orthogonal Q" << std::endl;
+    std::cerr << "Q * Q.transpose() = " << endl << Q * Q.transpose() << std::endl;
+    abort();
+  }
+
+
+  return SpatialTransform(Q, Vector3d::Random());
+}
+
+Eigen::Index get_index_of_one(const SpatialVector& S)
+{
+  for(Eigen::Index i=0; i < S.size(); ++i){
+    if(S(i) != 0.0){
+      return i;
+    }
+  }
+  return S.size();
+}
+
+SpatialMatrix spatialDerivativeToMatrix (
+  SpatialTransform const& X,
+  SpatialTransform const& X_ad
+) {
+  SpatialMatrix ret;
+
+  ret.block<3, 3>(0, 0) = X_ad.E;
+  ret.block<3, 3>(0, 3) = Matrix3d::Zero();
+  ret.block<3, 3>(3, 0)
+    = -(X_ad.E*VectorCrossMatrix(X.r) + X.E * VectorCrossMatrix(X_ad.r));
+  ret.block<3, 3>(3, 3) = ret.block<3, 3>(0, 0);
+
+  return ret;
+}
+
+
+template <typename T>
+void analytic_derivative_of_spatial_transform_using_plt(
+  T & obj,
+  std::function<SpatialTransform (const double &)> get_transform,
+  const SpatialVector & S,
+  const double TEST_PRECISION=1e-8
+) {
+  const VectorNd Q = VectorNd::Random(1);
+  // const VectorNd Qdot = VectorNd::Random(1);
+  VectorNd Qdot = VectorNd::Random(1);
+  Qdot << 1.0;
+
+  // nominal evaluation
+  SpatialTransform Y = get_random_spatial_transform();
+  SpatialTransform X = get_transform(Q(0))*Y;
+
+  // derivative evaluation
+  SpatialTransform X_fd = get_transform(Q(0) + EPS * Qdot(0))*Y;
+  X_fd = (X_fd - X) * (1. / EPS);
+
+  SpatialMatrix X_an = -crossm(S*Qdot(0))*X.toMatrix();
+
+  // analytic derivative
+  const Math::Matrix3d wx = VectorCrossMatrix(S.head(3)*Qdot);
+  // const Math::Matrix3d v0x = VectorCrossMatrix(S.tail(3)*Qdot);
+  SpatialTransform X_ad;
+
+  // if (get_index_of_one(S) < 3)
+  // {
+  //   X_ad = SpatialTransform(-wx*X.E, Vector3d::Zero());
+  // }
+  // else if (get_index_of_one(S) < 6)
+  // {
+  //   X_ad = SpatialTransform(Matrix3d::Zero(), Qdot(0) * S.tail(3).transpose() * X.E);
+  // }
+  // else
+  // {
+  //   cout << "Index out of bounds of S" << endl;
+  //   abort();
+  // }
+
+  X_ad = SpatialTransform(-wx*X.E, Qdot(0) * S.tail(3).transpose() * X.E);
+
+  // print results
+  SpatialMatrix SD_ad = spatialDerivativeToMatrix(X, X_ad);
+  SpatialMatrix SD_fd = spatialDerivativeToMatrix(X, X_fd);
+
+  const SpatialMatrix X_err = (SD_ad - SD_fd).cwiseAbs();
+  const double error = X_err.maxCoeff();
+
+  if (error > TEST_PRECISION)
+  {
+    cout << "Q:" << Q.transpose() << endl;
+    cout << "Qdot:" << Qdot.transpose() << endl;
+    cout << "S:" << S.transpose() << endl;
+    // cout << "w:" << w.transpose() << endl;
+    // cout << "v0:" << v0.transpose() << endl;
+    // cout << "wx:" << wx << endl;
+    // cout << "v0x:" << v0x << endl;
+
+    // cout << "X: " << endl << X << endl;
+    // cout << "X_fd: " << endl << X_fd << endl;
+    // cout << "X_ad: " << endl << X_ad << endl;
+    cout << "X_fd: " << endl << SD_fd << endl;
+    cout << "X_ad: " << endl << SD_ad << endl;
+    cout << "X_an: " << endl << X_an << endl;
+    cout << "error(max): " << " (" << error << ")" << endl
+      << endl << X_err << endl;
+  }
+
+  // test result
+  CHECK_ARRAY_CLOSE(
+    X_ad.E.data(),
+    X_fd.E.data(),
+    X.E.size(),
+    TEST_PRECISION
+  );
+
+  CHECK_ARRAY_CLOSE(
+    X_ad.r.data(),
+    X_fd.r.data(),
+    X.r.size(),
+    TEST_PRECISION
+  );
+
+  CHECK_ARRAY_CLOSE(
+    spatialDerivativeToMatrix(X, X_ad).data(),
+    spatialDerivativeToMatrix(X, X_fd).data(),
+    X.toMatrix().size(),
+    TEST_PRECISION
+  );
+}
+
+TEST(Xrotx_analytic_derivative_of_spatial_transform_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(0) = 1.0;
+  analytic_derivative_of_spatial_transform_using_plt(*this, Xrotx, S, 1e-7);
+}
+
+TEST(Xroty_analytic_derivative_of_spatial_transform_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(1) = 1.0;
+  analytic_derivative_of_spatial_transform_using_plt(*this, Xroty, S, 1e-8);
+}
+
+TEST(Xrotz_analytic_derivative_of_spatial_transform_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(2) = 1.0;
+  analytic_derivative_of_spatial_transform_using_plt(*this, Xrotz, S, 1e-8);
+}
+
+TEST(Xtransx_analytic_derivative_of_spatial_transform_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(3) = 1.0;
+  std::function<SpatialTransform (const double &)> Xtransx
+    = [](const double &q) { return Xtrans(Vector3d(q, 0., 0.)); };
+  analytic_derivative_of_spatial_transform_using_plt(*this, Xtransx, S, 1e-8);
+}
+
+TEST(Xtransy_analytic_derivative_of_spatial_transform_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(4) = 1.0;
+  std::function<SpatialTransform (const double &)> Xtransy
+    = [](const double &q) { return Xtrans(Vector3d(0., q, 0.)); };
+  analytic_derivative_of_spatial_transform_using_plt(*this, Xtransy, S, 1e-8);
+}
+
+TEST(Xtransz_analytic_derivative_of_spatial_transform_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(5) = 1.0;
+  std::function<SpatialTransform (const double &)> Xtransz
+    = [](const double &q) { return Xtrans(Vector3d(0., 0., q)); };
+  analytic_derivative_of_spatial_transform_using_plt(*this, Xtransz, S, 1e-8);
 }
 
 // -----------------------------------------------------------------------------
@@ -192,6 +403,117 @@ TEST(Xtransz_analytic_derivative_of_spatial_transform_times_v){
 }
 
 // -----------------------------------------------------------------------------
+/*! \brief We want to compute the derivative of d X(q(t)) / dt * v
+*/
+template <typename T>
+void analytic_derivative_of_spatial_transform_times_v_using_plt(
+  T & obj,
+  std::function<SpatialTransform (const double &)> get_transform,
+  const SpatialVector & S,
+  const double TEST_PRECISION=1e-8
+) {
+  const VectorNd Q = VectorNd::Random(1);
+  const VectorNd Qdot = VectorNd::Random(1);
+
+  // nominal evaluation
+  SpatialTransform X = get_transform(Q(0));
+  SpatialVector v = SpatialVector::Random();
+  SpatialVector res = X.apply(v);
+
+  // derivative evaluation
+  SpatialTransform X_fd = get_transform(Q(0) + EPS * Qdot(0));
+  SpatialVector res_fd = (X_fd.apply(v) - res) / EPS;
+
+
+  // analytic derivative
+  SpatialVector res_an = -crossm(S*Qdot(0), res);
+
+  // recover derivative from spatial transform derivative
+  const Math::Matrix3d wx = VectorCrossMatrix(S.head(3)*Qdot);
+  SpatialTransform X_ad = SpatialTransform(-wx*X.E, Qdot(0) * S.tail(3).transpose() * X.E);
+
+  SpatialVector res_ad; // =  X_ad.apply(v)
+  res_ad.head(3) = X_ad.E * v.head(3);
+  res_ad.tail(3) = X_ad.E * ( v.tail<3>() + v.head<3>().cross(X.r))
+    - X.E * X_ad.r.cross(v.head<3>()) ;
+
+  // print results
+  const SpatialVector v_err = (res_ad - res_fd).cwiseAbs();
+  const double error = v_err.maxCoeff();
+
+  if (error > TEST_PRECISION)
+  {
+    cout << "Q:" << Q.transpose() << endl;
+    cout << "Qdot:" << Qdot.transpose() << endl;
+    cout << "S:" << S.transpose() << endl;
+    // cout << "w:" << w.transpose() << endl;
+    // cout << "v0:" << v0.transpose() << endl;
+    // cout << "wx:" << wx << endl;
+    // cout << "v0x:" << v0x << endl;
+
+    // cout << "X: " << endl << X << endl;
+    // cout << "X_fd: " << endl << X_fd << endl;
+    // cout << "X_ad: " << endl << X_ad << endl;
+    cout << "v_fd: " << res_fd.transpose() << endl;
+    cout << "v_ad: " << res_ad.transpose() << endl;
+    cout << "v_an: " << res_an.transpose() << endl;
+    cout << "error(max): " << " (" << error << ")" << endl
+      << endl << v_err.transpose() << endl;
+  }
+
+  // test result
+  CHECK_ARRAY_CLOSE(res_fd.data(), res_ad.data(), res.size(), TEST_PRECISION);
+}
+
+TEST(Xrotx_analytic_derivative_of_spatial_transform_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(0) = 1.0;
+  analytic_derivative_of_spatial_transform_times_v_using_plt(*this, Xrotx, S, 1e-8);
+}
+
+TEST(Xroty_analytic_derivative_of_spatial_transform_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(1) = 1.0;
+  analytic_derivative_of_spatial_transform_times_v_using_plt(*this, Xroty, S, 1e-7);
+}
+
+TEST(Xrotz_analytic_derivative_of_spatial_transform_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(2) = 1.0;
+  analytic_derivative_of_spatial_transform_times_v_using_plt(*this, Xrotz, S, 1e-8);
+}
+
+TEST(Xtransx_analytic_derivative_of_spatial_transform_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(3) = 1.0;
+  std::function<SpatialTransform (const double &)> Xtransx
+    = [](const double &q) { return Xtrans(Vector3d(q, 0., 0.)); };
+  analytic_derivative_of_spatial_transform_times_v_using_plt(*this, Xtransx, S, 1e-8);
+}
+
+TEST(Xtransy_analytic_derivative_of_spatial_transform_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(4) = 1.0;
+  std::function<SpatialTransform (const double &)> Xtransy
+    = [](const double &q) { return Xtrans(Vector3d(0., q, 0.)); };
+  analytic_derivative_of_spatial_transform_times_v_using_plt(*this, Xtransy, S, 1e-8);
+}
+
+TEST(Xtransz_analytic_derivative_of_spatial_transform_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(5) = 1.0;
+  std::function<SpatialTransform (const double &)> Xtransz
+    = [](const double &q) { return Xtrans(Vector3d(0., 0., q)); };
+  analytic_derivative_of_spatial_transform_times_v_using_plt(*this, Xtransz, S, 1e-8);
+}
+
+// -----------------------------------------------------------------------------
 /*! \brief We want to compute the derivative of d X(q(t))^* / dt * f
 */
 template <typename T>
@@ -273,6 +595,119 @@ TEST(Xtransz_analytic_derivative_of_spatial_transform_transpose_times_f){
   std::function<SpatialTransform (const double &)> Xtransz
     = [](const double &q) { return Xtrans(Vector3d(0., 0., q)); };
   analytic_derivative_of_spatial_transform_transpose_times_f(*this, Xtransz, S, 1e-8);
+}
+
+// -----------------------------------------------------------------------------
+/*! \brief We want to compute the derivative of d X(q(t)) / dt * v
+*/
+template <typename T>
+void analytic_derivative_of_spatial_transform_inverse_times_v_using_plt(
+  T & obj,
+  std::function<SpatialTransform (const double &)> get_transform,
+  const SpatialVector & S,
+  const double TEST_PRECISION=1e-8
+) {
+  const VectorNd Q = VectorNd::Random(1);
+  const VectorNd Qdot = VectorNd::Random(1);
+
+  // nominal evaluation
+  SpatialTransform X = get_transform(Q(0));
+  SpatialVector v = SpatialVector::Random();
+  SpatialVector res = X.inverse().apply(v);
+
+  // derivative evaluation
+  SpatialTransform X_fd = get_transform(Q(0) + EPS * Qdot(0));
+  SpatialVector res_fd = (X_fd.inverse().apply(v) - res) / EPS;
+
+
+  // analytic derivative
+  SpatialVector res_an = -crossm(S*Qdot(0), res);
+
+  // recover derivative from spatial transform derivative
+  const Math::Matrix3d wx = VectorCrossMatrix(S.head(3)*Qdot);
+  SpatialTransform X_ad = SpatialTransform(-wx*X.E, Qdot(0) * S.tail(3).transpose() * X.E);
+
+  SpatialVector res_ad; // =  X_ad.apply(v)
+  res_ad.head(3) = X_ad.E.transpose() * v.head(3);
+  res_ad.tail(3) = X_ad.E.transpose() * (
+    v.tail<3>() - v.head<3>().cross(X.E*X.r)
+  ) + X.E.transpose() * (X_ad.E*X.r + X.E*X_ad.r).cross(v.head<3>()) ;
+
+  // print results
+  const SpatialVector v_err = (res_ad - res_fd).cwiseAbs();
+  const double error = v_err.maxCoeff();
+
+  if (error > TEST_PRECISION)
+  {
+    cout << "Q:" << Q.transpose() << endl;
+    cout << "Qdot:" << Qdot.transpose() << endl;
+    cout << "S:" << S.transpose() << endl;
+    // cout << "w:" << w.transpose() << endl;
+    // cout << "v0:" << v0.transpose() << endl;
+    // cout << "wx:" << wx << endl;
+    // cout << "v0x:" << v0x << endl;
+
+    // cout << "X: " << endl << X << endl;
+    // cout << "X_fd: " << endl << X_fd << endl;
+    // cout << "X_ad: " << endl << X_ad << endl;
+    cout << "v_fd: " << res_fd.transpose() << endl;
+    cout << "v_ad: " << res_ad.transpose() << endl;
+    cout << "v_an: " << res_an.transpose() << endl;
+    cout << "error(max): " << " (" << error << ")" << endl
+      << endl << v_err.transpose() << endl;
+  }
+
+  // test result
+  CHECK_ARRAY_CLOSE(res_fd.data(), res_ad.data(), res.size(), TEST_PRECISION);
+}
+
+TEST(Xrotx_analytic_derivative_of_spatial_transform_inverse_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(0) = 1.0;
+  analytic_derivative_of_spatial_transform_inverse_times_v_using_plt(*this, Xrotx, S, 1e-8);
+}
+
+
+TEST(Xroty_analytic_derivative_of_spatial_transform_inverse_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(1) = 1.0;
+  analytic_derivative_of_spatial_transform_inverse_times_v_using_plt(*this, Xroty, S, 1e-7);
+}
+
+TEST(Xrotz_analytic_derivative_of_spatial_transform_inverse_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(2) = 1.0;
+  analytic_derivative_of_spatial_transform_inverse_times_v_using_plt(*this, Xrotz, S, 1e-8);
+}
+
+TEST(Xtransx_analytic_derivative_of_spatial_transform_inverse_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(3) = 1.0;
+  std::function<SpatialTransform (const double &)> Xtransx
+    = [](const double &q) { return Xtrans(Vector3d(q, 0., 0.)); };
+  analytic_derivative_of_spatial_transform_inverse_times_v_using_plt(*this, Xtransx, S, 1e-8);
+}
+
+TEST(Xtransy_analytic_derivative_of_spatial_transform_inverse_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(4) = 1.0;
+  std::function<SpatialTransform (const double &)> Xtransy
+    = [](const double &q) { return Xtrans(Vector3d(0., q, 0.)); };
+  analytic_derivative_of_spatial_transform_inverse_times_v_using_plt(*this, Xtransy, S, 1e-8);
+}
+
+TEST(Xtransz_analytic_derivative_of_spatial_transform_inverse_times_v_using_plt){
+  srand (421337);
+  SpatialVector S = SpatialVector::Zero();
+  S(5) = 1.0;
+  std::function<SpatialTransform (const double &)> Xtransz
+    = [](const double &q) { return Xtrans(Vector3d(0., 0., q)); };
+  analytic_derivative_of_spatial_transform_inverse_times_v_using_plt(*this, Xtransz, S, 1e-8);
 }
 
 

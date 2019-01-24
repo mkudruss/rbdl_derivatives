@@ -100,7 +100,6 @@ void InverseDynamics(
     // nominal evaluation
     model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
     // derivative evaluation
-
     ed_model.c[i].leftCols(ndirs) =
         crossm(model.v[i])*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
         - crossm(model.v_J[i]) * (ed_model.v[i].leftCols(ndirs) );

@@ -32,6 +32,7 @@ ADModel::ADModel (RigidBodyDynamics::Model& model) {
     X_lambda.resize(model.mBodies.size(), T);
     X_base.resize(model.mBodies.size(), T);
     X_J.resize(model.mBodies.size(), T);
+    X_0.resize(ndirs, SpatialTransform::Zero());
 
     v_J.resize(model.mBodies.size(), vec);
     v.resize(model.mBodies.size(), vec);
@@ -73,6 +74,8 @@ void ADModel::resize_directions (const unsigned & requested_ndirs)
         for (unsigned int i = 0; i < X_J.size(); ++i) {
             X_J[i].resize(ndirs, SpatialTransform::Zero());
         }
+
+        X_0.resize(ndirs, SpatialTransform::Zero());
 
         for (unsigned int i = 0; i < v_J.size(); ++i) {
             v_J[i].resize(ndirs, SpatialVector::Zero());

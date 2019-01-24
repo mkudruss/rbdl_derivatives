@@ -403,6 +403,33 @@ struct RBDL_DLLAPI SpatialTransform {
         );
   }
 
+  SpatialTransform operator+ (const SpatialTransform &XT) const {
+    return SpatialTransform (E + XT.E, r + XT.r);
+  }
+
+  void operator+= (const SpatialTransform &XT) {
+    r += XT.r;
+    E += XT.E;
+  }
+
+  SpatialTransform operator- (const SpatialTransform &XT) const {
+    return SpatialTransform (E - XT.E, r - XT.r);
+  }
+
+  void operator-= (const SpatialTransform &XT) {
+    r -= XT.r;
+    E -= XT.E;
+  }
+
+  SpatialTransform operator* (const double& value) const {
+    return SpatialTransform (E * value, r * value);
+  }
+
+  void operator*= (const double& value) {
+    E *= value;
+    r *= value;
+  }
+
   SpatialTransform operator* (const SpatialTransform &XT) const {
     return SpatialTransform (E * XT.E, XT.r + XT.E.transpose() * r);
   }

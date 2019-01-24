@@ -818,7 +818,7 @@ void CalcPointJacobianEDvsADTemplate(
           std::cout << "error = \n" << error << std::endl;
           std::cout << "max   = " << max << std::endl;
           std::cout << "ad_G_dirs[" << idir << "] = \n"<< ad_G_dirs[idir] << std::endl;
-          std::cout << "fd_G_dirs[" << idir << "] = \n"<< fd_G_dirs[idir] << std::endl;
+          std::cout << "ed_G_dirs[" << idir << "] = \n"<< fd_G_dirs[idir] << std::endl;
           std::cout << endl;
         }
 
@@ -833,16 +833,16 @@ void CalcPointJacobianEDvsADTemplate(
   }
 }
 
-// TEST_FIXTURE (CartPendulum, CartPendulumCalcPointJacobianEDvsAD)
-// {
-//   CalcPointJacobianEDvsADTemplate (*this, 1, 1e-10);
-// }
+TEST_FIXTURE (CartPendulum, CartPendulumCalcPointJacobianEDvsAD)
+{
+  CalcPointJacobianEDvsADTemplate (*this, 1, 1e-10);
+}
 
-/*
 TEST_FIXTURE (Arm2DofX, Arm2DofXCalcPointJacobianEDvsAD)
 {
   CalcPointJacobianEDvsADTemplate (*this, 10, 1e-10);
 }
+
 
 TEST_FIXTURE (Arm2DofZ, Arm2DofZCalcPointJacobianEDvsAD)
 {
@@ -887,7 +887,7 @@ TEST_FIXTURE (Human36, Human36CalcPointJacobianEDvsAD)
 {
   CalcPointJacobianEDvsADTemplate (*this, 10, 1e-9);
 }
-*/
+
 
 // -----------------------------------------------------------------------------
 template <typename T>

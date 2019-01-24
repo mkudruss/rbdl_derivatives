@@ -216,6 +216,7 @@ void CalcContactSystemVariablesEDvsADTemplate(
     );
 
     checkModelsADvsED(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+    checkConstraintSetsADvsED(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
 
     q.setRandom();
     qd.setRandom();
@@ -231,7 +232,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactSystemVariablesEDvsAD) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  CalcContactSystemVariablesEDvsADTemplate(*this, 10);
+  CalcContactSystemVariablesEDvsADTemplate(*this, 1);
 }
 
 
@@ -312,7 +313,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsConstraintsDirect) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  ForwardDynamicsConstraintsDirectTemplate(*this, 10, 1e-4);
+  ForwardDynamicsConstraintsDirectTemplate(*this, 10, 1e-3);
 }
 
 // -----------------------------------------------------------------------------

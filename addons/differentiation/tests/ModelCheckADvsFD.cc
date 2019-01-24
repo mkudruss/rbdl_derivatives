@@ -337,12 +337,61 @@ void checkModelsADvsED(
     CHECK_ARRAY_CLOSE(ad_model.X_lambda[i].r.data(), ed_model.X_lambda[i].r.data(), 3, 1e-7);
   }
   // derivative check
-  // for (unsigned idir = 0; idir < ndirs; idir++) {
-  //   for (unsigned i = 0; i < ad_model.X_lambda.size(); i++) {
-  //     CHECK_ARRAY_CLOSE(ad_d_model.X_lambda[i][idir].E.data(), ed_d_model.X_lambda[i][idir].E.data(), 9, 1e-7);
-  //     CHECK_ARRAY_CLOSE(ad_d_model.X_lambda[i][idir].r.data(), ed_d_model.X_lambda[i][idir].r.data(), 3, 1e-7);
-  //   }
-  // }
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    for (unsigned i = 0; i < ad_model.X_lambda.size(); i++) {
+      // DEBUG OUTPUT
+      RigidBodyDynamics::Math::Matrix3d X_E_error
+        = (ad_d_model.X_lambda[i][idir].E - ed_d_model.X_lambda[i][idir].E).cwiseAbs();
+      RigidBodyDynamics::Math::Vector3d X_r_error
+        = (ad_d_model.X_lambda[i][idir].r - ed_d_model.X_lambda[i][idir].r).cwiseAbs();
+      const double error = X_E_error.maxCoeff() + X_r_error.maxCoeff();
+      if (error > 1e-12) {
+        std::cout << "error   [" << idir << "] = " << error << std::endl;
+        std::cout << "E_error [" << idir << "] = \n" << X_E_error << std::endl;
+        std::cout << "ad_d_model.X_lambda[" << i << "][" << idir << "].E = \n"
+          << ad_d_model.X_lambda[i][idir].E << std::endl;
+        std::cout << "ed_d_model.X_lambda[" << i << "][" << idir << "].E = \n"
+          << ed_d_model.X_lambda[i][idir].E << std::endl;
+        std::cout << "r_error [" << idir << "] = \n" << X_r_error.transpose() << std::endl;
+        std::cout << "ad_d_model.X_lambda[" << i << "][" << idir << "].r = \n"
+          << ad_d_model.X_lambda[i][idir].r << std::endl;
+        std::cout << "ed_d_model.X_lambda[" << i << "][" << idir << "].r = \n"
+          << ed_d_model.X_lambda[i][idir].r << std::endl;
+        std::cout << endl;
+      }
+
+      CHECK_ARRAY_CLOSE(ad_d_model.X_lambda[i][idir].E.data(), ed_d_model.X_lambda[i][idir].E.data(), 9, 1e-7);
+      CHECK_ARRAY_CLOSE(ad_d_model.X_lambda[i][idir].r.data(), ed_d_model.X_lambda[i][idir].r.data(), 3, 1e-7);
+    }
+  }
+
+  // nominal check
+  // derivative check
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+      // DEBUG OUTPUT
+      RigidBodyDynamics::Math::Matrix3d X_E_error
+        = (ad_d_model.X_0[idir].E - ed_d_model.X_0[idir].E).cwiseAbs();
+      RigidBodyDynamics::Math::Vector3d X_r_error
+        = (ad_d_model.X_0[idir].r - ed_d_model.X_0[idir].r).cwiseAbs();
+      const double error = X_E_error.maxCoeff() + X_r_error.maxCoeff();
+      if (error > 1e-12) {
+        std::cout << "error   [" << idir << "] = " << error << std::endl;
+        std::cout << "E_error [" << idir << "] = \n" << X_E_error << std::endl;
+        std::cout << "ad_d_model.X_0[" << idir << "].E = \n"
+          << ad_d_model.X_0[idir].E << std::endl;
+        std::cout << "ed_d_model.X_0[" << idir << "].E = \n"
+          << ed_d_model.X_0[idir].E << std::endl;
+        std::cout << "r_error [" << idir << "] = \n" << X_r_error.transpose() << std::endl;
+        std::cout << "ad_d_model.X_0[" << idir << "].r = \n"
+          << ad_d_model.X_0[idir].r << std::endl;
+        std::cout << "ed_d_model.X_0[" << idir << "].r = \n"
+          << ed_d_model.X_0[idir].r << std::endl;
+        std::cout << endl;
+      }
+    CHECK_ARRAY_CLOSE(ad_d_model.X_0[idir].E.data(), ed_d_model.X_0[idir].E.data(), 9, 1e-7);
+    CHECK_ARRAY_CLOSE(ad_d_model.X_0[idir].r.data(), ed_d_model.X_0[idir].r.data(), 3, 1e-7);
+  }
+
 
   /*
   // nominal check
@@ -378,22 +427,44 @@ void checkModelsADvsED(
       CHECK_ARRAY_CLOSE(ad_d_model.IA[i][idir].data(), ed_d_model.IA[i][idir].data(), 36, 1e-5);
     }
   }
+*/
 
   // nominal check
   // std::cout << "Check X_base disabled!" << std::endl;
-  // CHECK_EQUAL(ad_model.X_base.size(), ed_model.X_base.size());
-  // for (unsigned i = 0; i < ad_model.X_base.size(); i++) {
-  //   CHECK_ARRAY_EQUAL(ad_model.X_base[i].E.data(), ed_model.X_base[i].E.data(), 9);
-  //   CHECK_ARRAY_EQUAL(ad_model.X_base[i].r.data(), ed_model.X_base[i].r.data(), 3);
-  // }
-  // // derivative check
-  // for (unsigned idir = 0; idir < ndirs; idir++) {
-  //   for (unsigned i = 0; i < ad_model.X_base.size(); i++) {
-  //     CHECK_ARRAY_CLOSE(ad_d_model.X_base[i][idir].E.data(), ed_d_model.X_base[i][idir].E.data(), 9, 1e-7);
-  //     CHECK_ARRAY_CLOSE(ad_d_model.X_base[i][idir].r.data(), ed_d_model.X_base[i][idir].r.data(), 3, 1e-7);
-  //   }
-  // }
+  CHECK_EQUAL(ad_model.X_base.size(), ed_model.X_base.size());
+  for (unsigned i = 0; i < ad_model.X_base.size(); i++) {
+    CHECK_ARRAY_EQUAL(ad_model.X_base[i].E.data(), ed_model.X_base[i].E.data(), 9);
+    CHECK_ARRAY_EQUAL(ad_model.X_base[i].r.data(), ed_model.X_base[i].r.data(), 3);
+  }
+  // derivative check
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    for (unsigned i = 0; i < ad_model.X_base.size(); i++) {
+      RigidBodyDynamics::Math::Matrix3d X_E_error
+        = (ad_d_model.X_base[i][idir].E - ed_d_model.X_base[i][idir].E).cwiseAbs();
+      RigidBodyDynamics::Math::Vector3d X_r_error
+        = (ad_d_model.X_base[i][idir].r - ed_d_model.X_base[i][idir].r).cwiseAbs();
+      const double error = X_E_error.maxCoeff() + X_r_error.maxCoeff();
+      if (error > 1e-12) {
+        std::cout << "error   [" << idir << "] = " << error << std::endl;
+        std::cout << "E_error [" << idir << "] = \n" << X_E_error << std::endl;
+        std::cout << "ad_d_model.X_base[" << i << "][" << idir << "].E = \n"
+          << ad_d_model.X_base[i][idir].E << std::endl;
+        std::cout << "ed_d_model.X_base[" << i << "][" << idir << "].E = \n"
+          << ed_d_model.X_base[i][idir].E << std::endl;
+        std::cout << "r_error [" << idir << "] = \n" << X_r_error.transpose() << std::endl;
+        std::cout << "ad_d_model.X_base[" << i << "][" << idir << "].r = \n"
+          << ad_d_model.X_base[i][idir].r << std::endl;
+        std::cout << "ed_d_model.X_base[" << i << "][" << idir << "].r = \n"
+          << ed_d_model.X_base[i][idir].r << std::endl;
+        std::cout << endl;
+      }
 
+      CHECK_ARRAY_CLOSE(ad_d_model.X_base[i][idir].E.data(), ed_d_model.X_base[i][idir].E.data(), 9, 1e-7);
+      CHECK_ARRAY_CLOSE(ad_d_model.X_base[i][idir].r.data(), ed_d_model.X_base[i][idir].r.data(), 3, 1e-7);
+    }
+  }
+
+/*
   // nominal check
   CHECK_EQUAL(ad_model.v.size(), ed_model.v.size());
   for (unsigned i = 0; i < ad_model.v.size(); i++) {
@@ -620,6 +691,172 @@ void checkConstraintSetsADvsFD (
                       ad_d_cs.d_a[i].rows() * ad_d_cs.d_a[i].cols(), 1e-6);
   }
 
+
+}
+
+
+void checkConstraintSetsADvsED (
+    unsigned ndirs,
+    ConstraintSet const & ad_cs,
+    ADConstraintSet const & ad_d_cs,
+    ConstraintSet const & fd_cs,
+    EDConstraintSet const & fd_d_cs
+) {
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.H.rows(), fd_cs.H.rows());
+  CHECK_EQUAL(ad_cs.H.cols(), fd_cs.H.cols());
+  CHECK_ARRAY_CLOSE(ad_cs.H.data(), fd_cs.H.data(),
+                    fd_cs.H.rows() * fd_cs.H.cols(),
+                    1e-12);
+  // derivative check
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    CHECK_ARRAY_CLOSE(ad_d_cs.H[idir].data(), fd_d_cs.H[idir].data(),
+                      fd_cs.H.rows() * fd_cs.H.cols(),
+                      1e-12);
+  }
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.G.rows(), fd_cs.G.rows());
+  CHECK_EQUAL(ad_cs.G.cols(), fd_cs.G.cols());
+  CHECK_ARRAY_CLOSE(ad_cs.G.data(), fd_cs.G.data(),
+                    fd_cs.G.rows() * fd_cs.G.cols(),
+                    1e-12);
+  // derivative check
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    CHECK_ARRAY_CLOSE(ad_d_cs.G[idir].data(), fd_d_cs.G[idir].data(),
+                      fd_cs.G.rows() * fd_cs.G.cols(),
+                      1e-12);
+  }
+
+  /*
+  // nominal check
+  CHECK_EQUAL(ad_cs.A.rows(), fd_cs.A.rows());
+  CHECK_EQUAL(ad_cs.A.cols(), fd_cs.A.cols());
+  CHECK_ARRAY_CLOSE(ad_cs.A.data(), fd_cs.A.data(),
+                    fd_cs.A.rows() * fd_cs.A.cols(),
+                    1e-6);
+  // derivative check
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    CHECK_ARRAY_CLOSE(ad_d_cs.A[idir].data(), fd_d_cs.A[idir].data(),
+                      fd_cs.A.rows() * fd_cs.A.cols(),
+                      1e-6);
+  }
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.Gi.rows(), fd_cs.Gi.rows());
+  CHECK_EQUAL(ad_cs.Gi.cols(), fd_cs.Gi.cols());
+  CHECK_ARRAY_CLOSE(ad_cs.Gi.data(), fd_cs.Gi.data(),
+                    fd_cs.Gi.rows() * fd_cs.Gi.cols(),
+                    1e-6);
+  // derivative check
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    CHECK_ARRAY_CLOSE(ad_d_cs.Gi[idir].data(), fd_d_cs.Gi[idir].data(),
+                      fd_cs.Gi.rows() * fd_cs.Gi.cols(),
+                      1e-6);
+  }
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.GSpi.rows(), fd_cs.GSpi.rows());
+  CHECK_EQUAL(ad_cs.GSpi.cols(), fd_cs.GSpi.cols());
+  CHECK_ARRAY_CLOSE(ad_cs.GSpi.data(), fd_cs.GSpi.data(),
+                    fd_cs.GSpi.rows() * fd_cs.GSpi.cols(),
+                    1e-6);
+  // derivative check
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    CHECK_ARRAY_CLOSE(ad_d_cs.GSpi[idir].data(), fd_d_cs.GSpi[idir].data(),
+                      fd_cs.GSpi.rows() * fd_cs.GSpi.cols(),
+                      1e-6);
+  }
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.GSsi.rows(), fd_cs.GSsi.rows());
+  CHECK_EQUAL(ad_cs.GSsi.cols(), fd_cs.GSsi.cols());
+  CHECK_ARRAY_CLOSE(ad_cs.GSsi.data(), fd_cs.GSsi.data(),
+                    fd_cs.GSsi.rows() * fd_cs.GSsi.cols(),
+                    1e-6);
+  // derivative check
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    CHECK_ARRAY_CLOSE(ad_d_cs.GSsi[idir].data(), fd_d_cs.GSsi[idir].data(),
+                      fd_cs.GSsi.rows() * fd_cs.GSsi.cols(),
+                      1e-6);
+  }
+*/
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.C.rows(), fd_cs.C.rows());
+  CHECK_ARRAY_CLOSE(ad_cs.C.data(), fd_cs.C.data(), ad_cs.C.rows(), 1e-12);
+  // derivative check
+  CHECK_EQUAL(ad_d_cs.C.rows(), fd_d_cs.C.rows());
+  CHECK_EQUAL(ad_d_cs.C.cols(), fd_d_cs.C.cols());
+  CHECK_ARRAY_CLOSE(ad_d_cs.C.data(), fd_d_cs.C.data(),
+                    ad_d_cs.C.rows() * ad_d_cs.C.cols(), 1e-12);
+
+/*
+  // nominal check
+  CHECK_EQUAL(ad_cs.err.rows(), fd_cs.err.rows());
+  CHECK_ARRAY_CLOSE(ad_cs.err.data(), fd_cs.err.data(), ad_cs.err.rows(), 1e-6);
+  // derivative check
+  CHECK_EQUAL(ad_d_cs.err.rows(), fd_d_cs.err.rows());
+  CHECK_EQUAL(ad_d_cs.err.cols(), fd_d_cs.err.cols());
+  CHECK_ARRAY_CLOSE(ad_d_cs.err.data(), fd_d_cs.err.data(),
+                    ad_d_cs.err.rows() * ad_d_cs.err.cols(), 1e-6);
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.errd.rows(), fd_cs.errd.rows());
+  CHECK_ARRAY_CLOSE(ad_cs.errd.data(), fd_cs.errd.data(),
+                    ad_cs.errd.rows(), 1e-6);
+  // derivative check
+  CHECK_EQUAL(ad_d_cs.errd.rows(), fd_d_cs.errd.rows());
+  CHECK_EQUAL(ad_d_cs.errd.cols(), fd_d_cs.errd.cols());
+  CHECK_ARRAY_CLOSE(ad_d_cs.errd.data(), fd_d_cs.errd.data(),
+                    ad_d_cs.errd.rows() * ad_d_cs.errd.cols(), 1e-6);
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.QDDot_0.rows(), fd_cs.QDDot_0.rows());
+  CHECK_ARRAY_CLOSE(ad_cs.QDDot_0.data(), fd_cs.QDDot_0.data(),
+                    ad_cs.QDDot_0.rows(), 1e-6);
+  // derivative check
+  CHECK_EQUAL(ad_d_cs.QDDot_0.rows(), fd_d_cs.QDDot_0.rows());
+  CHECK_EQUAL(ad_d_cs.QDDot_0.cols(), fd_d_cs.QDDot_0.cols());
+  CHECK_ARRAY_CLOSE(ad_d_cs.QDDot_0.data(), fd_d_cs.QDDot_0.data(),
+                    ad_d_cs.QDDot_0.rows() * ad_d_cs.QDDot_0.cols(), 1e-6);
+
+  */
+  // nominal check
+  CHECK_EQUAL(ad_cs.gamma.rows(), fd_cs.gamma.rows());
+  CHECK_ARRAY_CLOSE(ad_cs.gamma.data(), fd_cs.gamma.data(),
+                    ad_cs.gamma.rows(), 1e-12);
+  // derivative check
+  CHECK_EQUAL(ad_d_cs.gamma.rows(), fd_d_cs.gamma.rows());
+  CHECK_EQUAL(ad_d_cs.gamma.cols(), fd_d_cs.gamma.cols());
+  CHECK_ARRAY_CLOSE(ad_d_cs.gamma.data(), fd_d_cs.gamma.data(),
+                    ad_d_cs.gamma.rows() * ad_d_cs.gamma.cols(), 1e-12);
+
+  /*
+  // nominal check
+  CHECK_EQUAL(ad_cs.d_u.rows(), fd_cs.d_u.rows());
+  CHECK_ARRAY_CLOSE(ad_cs.d_u.data(), fd_cs.d_u.data(),
+                    ad_cs.d_u.rows(), 1e-6);
+  // derivative check
+  CHECK_EQUAL(ad_d_cs.d_u.rows(), fd_d_cs.d_u.rows());
+  CHECK_EQUAL(ad_d_cs.d_u.cols(), fd_d_cs.d_u.cols());
+  CHECK_ARRAY_CLOSE(ad_d_cs.d_u.data(), fd_d_cs.d_u.data(),
+                    ad_d_cs.d_u.rows() * ad_d_cs.d_u.cols(), 1e-6);
+
+  // nominal check
+  CHECK_EQUAL(ad_cs.d_a.size(), fd_cs.d_a.size());
+  for (unsigned i = 0; i < ad_cs.d_a.size(); i++) {
+    CHECK_ARRAY_CLOSE(ad_cs.d_a[i].data(), fd_cs.d_a[i].data(),
+                      ad_cs.d_a[i].rows(), 1e-6);
+    // derivative check
+    CHECK_EQUAL(ad_d_cs.d_a[i].rows(), fd_d_cs.d_a[i].rows());
+    CHECK_EQUAL(ad_d_cs.d_a[i].cols(), fd_d_cs.d_a[i].cols());
+    CHECK_ARRAY_CLOSE(ad_d_cs.d_a[i].data(), fd_d_cs.d_a[i].data(),
+                      ad_d_cs.d_a[i].rows() * ad_d_cs.d_a[i].cols(), 1e-6);
+  }
+
+*/
 
 }
 

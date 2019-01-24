@@ -29,6 +29,8 @@ struct EDConstraintSet {
   std::vector<Math::MatrixNd> H;
   std::vector<Math::MatrixNd> K;
 
+  std::vector<Math::SpatialTransform> prev_body_X_1_dirs;
+  std::vector<Math::SpatialTransform> prev_body_X_2_dirs;
 
   Math::MatrixNd a;
   Math::MatrixNd b;

@@ -696,7 +696,7 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
   }
   // nominal evaluation
   return Vector3d (
-        p_a_i[3] + a_dash[0],
+      p_a_i[3] + a_dash[0],
       p_a_i[4] + a_dash[1],
       p_a_i[5] + a_dash[2]);
 }
@@ -739,9 +739,9 @@ void CalcPointJacobian (
         );
 
   // derivative evaluation
-  vector<SpatialTransform> ad_point_trans (ndirs, SpatialTransform::Zero());
+  // vector<SpatialTransform> ad_model.X_0 (ndirs, SpatialTransform::Zero());
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    ad_point_trans[idir].r = ad_r.col(idir);
+    ad_model.X_0[idir].r = ad_r.col(idir);
   }
   // nominal evaluation
   // NOTE vector r is already evaluated in derivative evaluation
@@ -797,7 +797,7 @@ void CalcPointJacobian (
         SpatialVector ptv;
         vector<SpatialVector> ad_ptv(ndirs);
         applySTSV(ndirs,
-                  point_trans, ad_point_trans,
+                  point_trans, ad_model.X_0,
                   v, ad_v,
                   ptv, ad_ptv);
 

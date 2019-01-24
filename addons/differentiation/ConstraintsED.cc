@@ -1,5 +1,6 @@
 #include "rbdl/Constraints.h"
 #include "ConstraintsED.h"
+#include "KinematicsED.h"
 #include "DynamicsED.h"
 #include "rbdl/SpatialAlgebraOperators.h"
 #include "SpatialAlgebraOperatorsAD.h"
@@ -33,6 +34,9 @@ EDConstraintSet::EDConstraintSet(const ConstraintSet & CS_, int _dof_count) :
   A.resize(ndirs,  MatrixNd::Zero(CS->A.rows(), CS->A.cols()));
   H.resize(ndirs,  MatrixNd::Zero(CS->H.rows(), CS->H.cols()));
   K.resize(ndirs,  MatrixNd::Zero(CS->K.rows(), CS->K.cols()));
+
+  prev_body_X_1_dirs.resize(ndirs, SpatialTransform::Zero());
+  prev_body_X_2_dirs.resize(ndirs, SpatialTransform::Zero());
 
   a             = MatrixNd::Zero(CS->a.rows(), ndirs);
   b             = MatrixNd::Zero(CS->b.rows(), ndirs);
@@ -75,6 +79,9 @@ void EDConstraintSet::resize_directions(const unsigned int& requested_ndirs) {
     A.resize(ndirs,  MatrixNd::Zero(CS->A.rows(), CS->A.cols()));
     H.resize(ndirs,  MatrixNd::Zero(CS->H.rows(), CS->H.cols()));
     K.resize(ndirs,  MatrixNd::Zero(CS->K.rows(), CS->K.cols()));
+
+    prev_body_X_1_dirs.resize(ndirs, SpatialTransform::Zero());
+    prev_body_X_2_dirs.resize(ndirs, SpatialTransform::Zero());
 
     a             = MatrixNd::Zero(CS->a.rows(), ndirs);
     b             = MatrixNd::Zero(CS->b.rows(), ndirs);
@@ -155,7 +162,6 @@ void ComputeConstraintImpulsesDirect (
 }
 */
 
-/*
 RBDL_DLLAPI void SolveConstrainedSystemDirect (
     const MatrixNd &H,
     const vector<MatrixNd> &H_dirs,
@@ -264,9 +270,9 @@ RBDL_DLLAPI void SolveConstrainedSystemDirect (
       assert (0);
       break;
   }
-  LOG << "x = " << std::endl << x << std::endl;
 }
 
+/*
 RBDL_DLLAPI void CalcConstraintsPositionError (
     Model &model,
     EDModel &ed_model,
@@ -398,7 +404,12 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
   ed_CS.resize_directions(ndirs);
 
   if (update_kinematics) {
-    UpdateKinematicsCustom (model, &q, NULL, NULL);
+    UpdateKinematicsCustom (
+      model, ed_model,
+      &q, &q_dirs,
+      nullptr, nullptr,
+      nullptr, nullptr
+    );
   }
 
   // variables to check whether we need to recompute G.
@@ -420,28 +431,42 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
     {
 
       // Compute the jacobian for the point.
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        ed_CS.Gi[idir].setZero();
+      }
       CS.Gi.setZero();
-      CalcPointJacobian (model, q, CS.body[c], CS.point[c], CS.Gi, false);
-      // std::cout << "CS.Gi = \n" << CS.Gi << std::endl;
-      // std::cout << std::endl;
+      CalcPointJacobian (
+        model, ed_model, q, q_dirs,
+        CS.body[c], CS.point[c],
+        CS.Gi, ed_CS.Gi,
+        false
+      );
       prev_constraint_type = ConstraintSet::ContactConstraint;
 
       // Update variables for optimization check.
       prev_body_id_1 = CS.body[c];
+      // derivative evaluation
+      // for (unsigned idir = 0; idir < ndirs; idir++) {
+      //   ed_model.prev_body_X_1_dirs[idir].setZero();
+      // }
+      // nominal evaluation
       prev_body_X_1 = Xtrans(CS.point[c]);
     }
 
     for(unsigned int j = 0; j < model.dof_count; j++) {
+      // derivative evaluation
+      MatrixNd gaxis_dirs(3, ndirs);
+      for (unsigned idir = 0; idir < ndirs; idir++) {
+        gaxis_dirs.col(idir) = ed_CS.Gi[idir].col(j);
+        G_dirs[idir](c,j) = gaxis_dirs.col(idir).transpose() * CS.normal[c];
+      }
+      // nominal evaluation
       Vector3d gaxis (CS.Gi(0,j), CS.Gi(1,j), CS.Gi(2,j));
       G(c,j) = gaxis.transpose() * CS.normal[c];
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        // G_dirs[idir].block<3,1>(0, q_index) = ad_ptv[idir].segment<3>(3);
-      }
     }
 
   }
 
-  /*
   // Variables used for computations.
   Vector3d normal;
   SpatialVector axis;
@@ -450,8 +475,12 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
   SpatialTransform X_0p;
 
   for (unsigned int i = 0; i < CS.loopConstraintIndices.size(); i++) {
-    const unsigned int c = CS.loopConstraintIndices[i];
+      cerr << __FILE__ << " " << __LINE__
+           << ": Error: Loop constraints not supported!" << std::endl;
+      assert (0);
 
+  /*
+    const unsigned int c = CS.loopConstraintIndices[i];
     // Only recompute variables if necessary.
     if( prev_body_id_1 != CS.body_p[c]
         || prev_body_id_2 != CS.body_s[c]
@@ -487,8 +516,8 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
 
     // Compute the constraint Jacobian row.
     G.block(c, 0, 1, model.dof_count) = axis.transpose() * CS.GSJ;
-  }
   */
+  }
 }
 
 RBDL_DLLAPI void CalcConstrainedSystemVariables (
@@ -527,15 +556,36 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
   // Compute G
   // We have to update model.X_base as they are not automatically computed
   // by NonlinearEffects()
-  for (unsigned int i = 1; i < model.mBodies.size(); i++) {
-    // nominal evaluation
-    model.X_base[i] = model.X_lambda[i] * model.X_base[model.lambda[i]];
-  }
+  UpdateKinematicsCustom(
+    model, ed_model,
+    &q, &q_dirs,
+    NULL, NULL,
+    NULL, NULL
+  );
+  // TODO replace with exact code, saves computation of model.X_lambda
+  // NOTE we have to compute ed_model.X_lambda on top
+  // for (unsigned int i = 1; i < model.mBodies.size(); i++) {
+  //   unsigned int lambda = model.lambda[i];
+  //   for (unsigned idir = 0; idir < ndirs; idir++) {
+  //     // derivative evaluation
+  //     ed_model.X_base[i][idir] = SpatialTransform (
+  //       // E * XT.E,
+  //       ed_model.X_lambda[i][idir].E * model.X_base[lambda].E
+  //       + model.X_lambda[i].E * ed_model.X_base[lambda][idir].E,
+  //       // XT.r + XT.E.transpose() * r
+  //       ed_model.X_base[lambda][idir].r
+  //       + ed_model.X_base[lambda][idir].E.transpose() * model.X_lambda[i].r
+  //       + model.X_base[lambda].E.transpose() * ed_model.X_lambda[i][idir].r
+  //     );
+  //   }
+  //   // nominal evaluation
+  //   model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+  // }
   RigidBodyDynamics::ED::CalcConstraintsJacobian(
     model, ed_model, q, q_dirs, CS, ed_CS, CS.G, ed_CS.G, false
   );
-  /*
 
+  /*
   // Compute position error for Baumgarte Stabilization.
   CalcConstraintsPositionError (model, ed_model, q, q_dirs,
                                 CS, ed_CS, CS.err, ed_CS.err, false);
@@ -545,6 +595,7 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     ed_CS.errd.col(idir) = ed_CS.G[idir] * qdot + CS.G * qdot_dirs.col(idir);
   }
   CS.errd = CS.G * qdot;
+  */
 
   // Compute gamma
   unsigned int prev_body_id = 0;
@@ -555,31 +606,36 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
 
   ed_CS.QDDot_0.setZero();
   CS.QDDot_0.setZero();
-  UpdateKinematicsCustom(model, ed_model,
-                         NULL, NULL,
-                         NULL, NULL,
-                         &CS.QDDot_0, &ed_CS.QDDot_0);
+  UpdateKinematicsCustom(
+      model, ed_model,
+      NULL, NULL,
+      NULL, NULL,
+      &CS.QDDot_0, &ed_CS.QDDot_0
+    );
+
 
   for (unsigned int i = 0; i < CS.contactConstraintIndices.size(); i++) {
     unsigned const c = CS.contactConstraintIndices[i];
 
     // only compute point accelerations when necessary
     if (prev_body_id != CS.body[c] || prev_body_point != CS.point[c]) {
-      gamma_i = CalcPointAcceleration(
+      gamma_i = RigidBodyDynamics::ED::CalcPointAcceleration(
             model, ed_model, q, q_dirs, qdot, qdot_dirs,
             CS.QDDot_0, ed_CS.QDDot_0, CS.body[c], CS.point[c], ed_gamma_i,
             false);
+      // gamma_i = CalcPointAcceleration (
+      //   model, Q, QDot, CS.QDDot_0, CS.body[c], CS.point[c], false
+      // );
       prev_body_id = CS.body[c];
       prev_body_point = CS.point[c];
     }
 
     // we also substract ContactData[c].acceleration such that the contact
     // point will have the desired acceleration
-    ed_CS.gamma.row(c).segment(0, ndirs) =
-        -CS.normal[c].transpose() * ed_gamma_i;
+    // ed_CS.gamma.row(c).segment(0, ndirs) =
+    //     -CS.normal[c].transpose() * ed_gamma_i;
     CS.gamma[c] = CS.acceleration[c] - CS.normal[c].dot(gamma_i);
   }
-  */
 
   // LOOP CONSTRAINTS NOT SUPPORTED
   /*
@@ -716,9 +772,11 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
   for (unsigned idir = 0; idir < ndirs; idir++) {
     ed_c.col(idir) = tau_dirs.col(idir) - ed_CS.C.col(idir);
   }
-  // SolveConstrainedSystemDirect (CS.H, ed_CS.H, CS.G, ed_CS.G, c, ed_c,
-  //                           CS.gamma, ed_CS.gamma, CS.A, ed_CS.A, CS.b, ed_CS.b,
-  //                           CS.x, ed_CS.x, CS.linear_solver, ndirs);
+  RigidBodyDynamics::ED::SolveConstrainedSystemDirect (
+    CS.H, ed_CS.H, CS.G, ed_CS.G, c, ed_c,
+    CS.gamma, ed_CS.gamma, CS.A, ed_CS.A, CS.b, ed_CS.b,
+    CS.x, ed_CS.x, CS.linear_solver, ndirs
+  );
 
   // Copy back QDDot
   // derivative code

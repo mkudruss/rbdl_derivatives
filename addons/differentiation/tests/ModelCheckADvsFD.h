@@ -5,6 +5,7 @@
 #include "ModelAD.h"
 #include "ModelED.h"
 #include "ConstraintsAD.h"
+#include "ConstraintsED.h"
 
 // -----------------------------------------------------------------------------
 namespace RigidBodyDynamics {
@@ -30,6 +31,14 @@ void checkConstraintSetsADvsFD (
     ADConstraintSet const & ad_d_cs,
     ConstraintSet const & fd_cs,
     ADConstraintSet const & fd_d_cs);
+
+void checkConstraintSetsADvsED (
+    unsigned ndirs,
+    ConstraintSet const & ad_cs,
+    ADConstraintSet const & ad_d_cs,
+    ConstraintSet const & fd_cs,
+    EDConstraintSet const & fd_d_cs
+);
 
 // -----------------------------------------------------------------------------
 } // namespace RigidBodyDynamics

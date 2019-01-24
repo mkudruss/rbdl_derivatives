@@ -48,6 +48,7 @@ EDModel::EDModel (RigidBodyDynamics::Model& model) {
     X_lambda.resize(model.mBodies.size(), T);
     X_base.resize(model.mBodies.size(), T);
     X_J.resize(model.mBodies.size(), T);
+    X_0.resize(ndirs, SpatialTransform::Zero());
 
     // spatial vectors
     v_J.resize(model.mBodies.size(), vec_dir);
@@ -117,6 +118,8 @@ void EDModel::resize_directions (const unsigned int &requested_ndirs)
     for (unsigned int i = 0; i < X_J.size(); ++i) {
         X_J[i].resize(ndirs, SpatialTransform::Zero());
     }
+
+    X_0.resize(ndirs, SpatialTransform::Zero());
 
     // spatial vectors
     for (unsigned int i = 0; i < v_J.size(); ++i) {

@@ -12,7 +12,7 @@ namespace ED {
 /*
 RBDL_DLLAPI Math::Vector3d CalcBodyToBaseCoordinates (
     Model &model,
-    EDModel &ad_model,
+    EDModel &ed_model,
     const Math::VectorNd &q,
     const Math::MatrixNd &q_dirs,
     unsigned int body_id,
@@ -22,7 +22,7 @@ RBDL_DLLAPI Math::Vector3d CalcBodyToBaseCoordinates (
 
 RBDL_DLLAPI Math::Vector3d CalcBaseToBodyCoordinates (
     Model & model,
-    EDModel & ad_model,
+    EDModel & ed_model,
     Math::VectorNd const & q,
     Math::MatrixNd const & q_dirs,
     unsigned int body_id,
@@ -34,7 +34,7 @@ RBDL_DLLAPI Math::Vector3d CalcBaseToBodyCoordinates (
 
 RBDL_DLLAPI void UpdateKinematicsCustom (
     Model &model,
-    EDModel & ad_model,
+    EDModel & ed_model,
     Math::VectorNd const * q,
     Math::MatrixNd const * q_dirs,
     Math::VectorNd const * qdot,
@@ -42,10 +42,9 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
     Math::VectorNd const * qddot,
     Math::MatrixNd const * qddot_dirs);
 
-/*
 RBDL_DLLAPI void UpdateKinematics (
     Model & model,
-    EDModel & ad_model,
+    EDModel & ed_model,
     Math::VectorNd const & q,
     Math::MatrixNd const & q_dirs,
     Math::VectorNd const & qdot,
@@ -55,16 +54,17 @@ RBDL_DLLAPI void UpdateKinematics (
 
 RBDL_DLLAPI Math::Matrix3d CalcBodyWorldOrientation (
     Model & model,
-    EDModel & ad_model,
+    EDModel & ed_model,
     Math::VectorNd const & q,
     Math::MatrixNd const & q_dirs,
     const unsigned int body_id,
     std::vector<Math::Matrix3d> & ad_derivative,
     bool update_kinematics = true);
 
+/*
 RBDL_DLLAPI Math::Vector3d CalcPointVelocity (
     Model & model,
-    EDModel & ad_model,
+    EDModel & ed_model,
     Math::VectorNd const & q,
     Math::MatrixNd const & q_dirs,
     Math::VectorNd const & qdot,
@@ -76,7 +76,7 @@ RBDL_DLLAPI Math::Vector3d CalcPointVelocity (
 
 RBDL_DLLAPI Math::SpatialVector CalcPointVelocity6D (
     Model &model,
-    EDModel &ad_model,
+    EDModel &ed_model,
     const Math::VectorNd &q,
     const Math::MatrixNd &q_dirs,
     const Math::VectorNd &qdot,
@@ -85,10 +85,11 @@ RBDL_DLLAPI Math::SpatialVector CalcPointVelocity6D (
     const Math::Vector3d &point_position,
     std::vector<Math::SpatialVector> &pv6d_dirs,
     bool update_kinematics = true);
+*/
 
 RBDL_DLLAPI Math::Vector3d CalcPointAcceleration (
     Model & model,
-    EDModel & ad_model,
+    EDModel & ed_model,
     Math::VectorNd const & q,
     Math::MatrixNd const & q_dirs,
     Math::VectorNd const & qdot,
@@ -99,11 +100,10 @@ RBDL_DLLAPI Math::Vector3d CalcPointAcceleration (
     Math::Vector3d const & point_position,
     Math::MatrixNd & ad_derivative,
     bool update_kinematics = true);
-*/
 
 RBDL_DLLAPI void CalcPointJacobian (
     Model &model,
-    EDModel &ad_model,
+    EDModel &ed_model,
     Math::VectorNd const &Q,
     Math::MatrixNd const &Q_dirs,
     unsigned int body_id,
@@ -116,7 +116,7 @@ RBDL_DLLAPI void CalcPointJacobian (
 /*
 RBDL_DLLAPI void CalcPointJacobian6D (
     Model &model,
-    EDModel &ad_model,
+    EDModel &ed_model,
     Math::VectorNd const &q,
     Math::MatrixNd const &q_dirs,
     unsigned body_id,

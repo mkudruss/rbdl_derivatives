@@ -137,13 +137,14 @@ RBDL_DLLAPI Vector3d CalcBaseToBodyCoordinates (
 
 RBDL_DLLAPI void UpdateKinematicsCustom (
     Model &model,
-    EDModel & ad_model,
+    EDModel & ed_model,
     const VectorNd * q,
     const MatrixNd * q_dirs,
     const VectorNd * qdot,
     const MatrixNd * qdot_dirs,
     const VectorNd * qddot,
-    const MatrixNd * qddot_dirs) {
+    const MatrixNd * qddot_dirs
+) {
   LOG << "-------- " << __func__ << " --------" << std::endl;
   unsigned int i;
   unsigned int ndirs = 0;
@@ -159,21 +160,52 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
     ndirs = qddot_dirs->cols();
   }
 
-  ad_model.resize_directions(ndirs);
+  ed_model.resize_directions(ndirs);
 
   if (q) {
     for (i = 1; i < model.mBodies.size(); i++) {
+      unsigned int q_index = model.mJoints[i].q_index;
       unsigned int lambda = model.lambda[i];
 
       VectorNd QDot_zero (VectorNd::Zero (model.q_size));
 
       jcalc (model, i, (*q), QDot_zero);
 
+      // nominal evaluation
       model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+      // derivative evaluation
+      for (unsigned int idir = 0; idir < ndirs; ++idir)
+      {
+        SpatialVector v = model.S[i]*q_dirs->row(q_index)[idir];
+        ed_model.X_lambda[i][idir] = SpatialTransform(
+          -VectorCrossMatrix(v.head(3)) * model.X_lambda[i].E,
+          v.tail(3).transpose() * model.X_lambda[i].E
+        );
+      }
 
       if (lambda != 0) {
+        // derivative evaluation
+        for (unsigned int idir = 0; idir < ndirs; ++idir)
+        {
+          ed_model.X_base[i][idir] = SpatialTransform (
+                // E * XT.E,
+                ed_model.X_lambda[i][idir].E * model.X_base[lambda].E
+                + model.X_lambda[i].E * ed_model.X_base[lambda][idir].E,
+                // XT.r + XT.E.transpose() * r
+                ed_model.X_base[lambda][idir].r
+                  + ed_model.X_base[lambda][idir].E.transpose() * model.X_lambda[i].r
+                  + model.X_base[lambda].E.transpose() * ed_model.X_lambda[i][idir].r
+          );
+        }
+        // nominal evaluation
         model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
       } else {
+        // derivative evaluation
+        for (unsigned int idir = 0; idir < ndirs; ++idir)
+        {
+          ed_model.X_base[i][idir] = ed_model.X_lambda[i][idir];
+        }
+        // nominal evaluation
         model.X_base[i] = model.X_lambda[i];
       }
     }
@@ -199,138 +231,180 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
   }
 
   if (qddot) {
-    std::cerr << "NOT SUPPORTED" << std::endl;
-    abort();
+    for (i = 1; i < model.mBodies.size(); i++) {
+      unsigned int q_index = model.mJoints[i].q_index;
+      unsigned int lambda = model.lambda[i];
+
+      if (lambda != 0) {
+        SpatialVector a = model.X_lambda[i].apply(model.a[lambda]);
+
+        // derivative evaluation
+        ed_model.a[i].leftCols(ndirs) =
+        //   = crossm(a)*model.S[i]*(*q_dirs).row(model.mJoints[i].q_index)
+          model.X_lambda[i].toMatrix()*ed_model.a[lambda].leftCols(ndirs)
+          + ed_model.c[i].leftCols(ndirs);
+
+        // nominal evaluation
+        model.a[i] = a + model.c[i];
+      } else {
+        // derivative evaluation
+        // ed_model.a[i].leftCols(ndirs) = ed_model.c[i].leftCols(ndirs);
+        // nominal evaluation
+        model.a[i] = model.c[i];
+      }
+
+      if( model.mJoints[i].mJointType != JointTypeCustom){
+        if (model.mJoints[i].mDoFCount == 1) {
+          // derivative evaluation
+          // ed_model.a[i].leftCols(ndirs) += model.S[i] * (*qddot_dirs).row(q_index);
+          // nominal evaluation
+          model.a[i] = model.a[i] + model.S[i] * (*qddot)[q_index];
+        } else if (model.mJoints[i].mDoFCount == 3) {
+          std::cerr << "NOT SUPPORTED" << std::endl;
+          abort();
+        }
+      } else {
+          std::cerr << "NOT SUPPORTED" << std::endl;
+          abort();
+      }
+    }
   }
 }
 
-/*
 RBDL_DLLAPI void UpdateKinematics (
     Model &model,
-    EDModel &ad_model,
+    EDModel &ed_model,
     const VectorNd &q,
     const MatrixNd &q_dirs,
     const VectorNd &qdot,
     const MatrixNd &qdot_dirs,
     const VectorNd &qddot,
-    const MatrixNd &qddot_dirs) {
+    const MatrixNd &qddot_dirs
+) {
   LOG << "-------- " << __func__ << " --------" << std::endl;
 
-  unsigned int i;
-  unsigned int ndirs = q_dirs.cols();
-
-  ad_model.resize_directions(ndirs);
+  unsigned int i = 0;
+  const unsigned int ndirs = q_dirs.cols();
+  ed_model.resize_directions(ndirs);
 
   // derivative evaluation
   for (unsigned int idir = 0; idir < ndirs; ++idir) {
-    ad_model.a[0][idir].setZero();
+    ed_model.a[0].setZero();
   }
   // nominal evaluation
   model.a[0].setZero();
-  //model.a[0] = spatial_gravity;
 
   for (i = 1; i < model.mBodies.size(); i++) {
     unsigned int q_index = model.mJoints[i].q_index;
-
-    Joint joint = model.mJoints[i];
     unsigned int lambda = model.lambda[i];
 
-    // nominal + derivative evaluation
-    jcalc (model, ad_model, i, q, q_dirs, qdot, qdot_dirs);
+    // nominal evaluation
+    // NOTE a derivative is analytically computed later on
+    jcalc (model, i, q, qdot);
 
-    mulSTST(ndirs,
-            model.X_J[i], ad_model.X_J[i],
-            model.X_T[i],
-            model.X_lambda[i], ad_model.X_lambda[i]);
+    // nominal evaluation
+    model.X_lambda[i] = model.X_J[i] * model.X_T[i];
+    // derivative evaluation
+    for (unsigned int idir = 0; idir < ndirs; ++idir)
+    {
+      SpatialVector v = model.S[i]*q_dirs.row(q_index)[idir];
+      ed_model.X_lambda[i][idir] = SpatialTransform(
+        -VectorCrossMatrix(v.head(3)) * model.X_lambda[i].E,
+        v.tail(3).transpose() * model.X_lambda[i].E
+      );
+    }
 
     if (lambda != 0) {
-      mulSTST(ndirs,
-              model.X_lambda[i], ad_model.X_lambda[i],
-              model.X_base[lambda], ad_model.X_base[lambda],
-              model.X_base[i], ad_model.X_base[i]);
-
-      applySTSV(ndirs,
-                model.X_lambda[i], ad_model.X_lambda[i],
-                model.v[lambda], ad_model.v[lambda],
-                model.v[i], ad_model.v[i]);
-      for (unsigned idir = 0; idir < ndirs; idir++) {
-        ad_model.v[i][idir] += ad_model.v_J[i][idir];
+      // derivative evaluation
+      for (unsigned int idir = 0; idir < ndirs; ++idir)
+      {
+        ed_model.X_base[i][idir] = SpatialTransform (
+              // E * XT.E,
+              ed_model.X_lambda[i][idir].E * model.X_base[lambda].E
+              + model.X_lambda[i].E * ed_model.X_base[lambda][idir].E,
+              // XT.r + XT.E.transpose() * r
+              ed_model.X_base[lambda][idir].r
+                + ed_model.X_base[lambda][idir].E.transpose() * model.X_lambda[i].r
+                + model.X_base[lambda].E.transpose() * ed_model.X_lambda[i][idir].r
+        );
       }
+      // nominal evaluation
+      model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
+
+      // nominal evaluation
+      model.v[i] = model.X_lambda[i].apply(model.v[lambda]);
+      // derivative evaluation
+      ed_model.v[i].leftCols(ndirs)
+          = crossm(ed_model.v[i])*model.S[i]*q_dirs.row(q_index)
+          + model.X_lambda[i].toMatrix()*ed_model.v[lambda].leftCols(ndirs)
+          + model.S[i]*qdot_dirs.row(q_index);
+
+      // nominal evaluation continued
       model.v[i] += model.v_J[i];
 
     } else {
       // derivative evaluation
-      for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-        ad_model.X_base[i][idirs] = ad_model.X_lambda[i][idirs];
-        ad_model.v[i][idirs] = ad_model.v_J[i][idirs];
+      for (unsigned int idir = 0; idir < ndirs; ++idir)
+      {
+        ed_model.X_base[i][idir] = ed_model.X_lambda[i][idir];
       }
       // nominal evaluation
       model.X_base[i] = model.X_lambda[i];
+
+      // derivative evaluation
+      ed_model.v[i].leftCols(ndirs) = model.S[i]*qdot_dirs.row(q_index);
+      // nominal evaluation
       model.v[i] = model.v_J[i];
     }
 
-    // derivative evaluation
-    for (unsigned idir = 0; idir < ndirs; ++idir) {
-      ad_model.c[i][idir] = ad_model.c_J[i][idir]
-          + ED::crossm(
-            model.v[i], ad_model.v[i][idir],
-            model.v_J[i], ad_model.v_J[i][idir]
-            );
-    }
     // nominal evaluation
-    model.c[i] = model.c_J[i] + Math::crossm(model.v[i],model.v_J[i]);
+    model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
+    // derivative evaluation
+    ed_model.c[i].leftCols(ndirs) =
+        crossm(model.v[i])*model.S[i]*qdot_dirs.row(model.mJoints[i].q_index)
+        - crossm(model.v_J[i]) * (ed_model.v[i].leftCols(ndirs) );
 
-    applySTSV(ndirs,
-              model.X_lambda[i], ad_model.X_lambda[i],
-              model.a[lambda], ad_model.a[lambda],
-              model.a[i], ad_model.a[i]);
-    for (unsigned idir = 0; idir < ndirs; idir++) {
-      ad_model.a[i][idir] += ad_model.c[i][idir];
-    }
+    // nominal evaluation
+    // model.a[i] = model.X_lambda[i].apply(model.a[lambda]) + model.c[i];
+    model.a[i] = model.X_lambda[i].apply(model.a[lambda]);
+    // derivative evaluation
+    ed_model.a[i] = crossm(model.a[i])*model.S[i]*q_dirs.row(q_index)
+        + model.X_lambda[i].toMatrix()*ed_model.a[lambda].leftCols(ndirs)
+        + ed_model.c[i].leftCols(ndirs);
+    // nominal evaluation continued
     model.a[i] += model.c[i];
 
-    if (model.mJoints[i].mDoFCount == 3
-        || model.mJoints[i].mJointType == JointTypeCustom) {
-      cerr << __FILE__ << " " << __LINE__
-           << ": Multi-DoF and custom joints not supported!" << endl;
-      abort();
-    } else {
-      // derivative evaluation
-      for (unsigned int idir = 0; idir < ndirs; ++idir) {
-        ad_model.a[i][idir] = ad_model.a[i][idir]
-            + model.S[i] * qddot_dirs(q_index, idir);
+    if(model.mJoints[i].mJointType != JointTypeCustom){
+      if (model.mJoints[i].mDoFCount == 1) {
+        model.a[i] = model.a[i] + model.S[i] * qddot[q_index];
+      } else if (model.mJoints[i].mDoFCount == 3) {
+        cerr << "Multi-dof not supported." << endl;
+        abort();
       }
-      // nominal evaluation
-      model.a[i] = model.a[i] + model.S[i] * qddot[q_index];
+    } else {
+      cerr << __FILE__ << " " << __LINE__
+           << ": Custom joints not supported." << endl;
+      abort();
     }
-  }
-
-  for (i = 1; i < model.mBodies.size(); i++) {
-    // derivative evaluation
-    for (unsigned int idirs = 0; idirs < ndirs; ++idirs) {
-      LOG << "ad_a[" << i << "][" << idirs << "] = "
-          << ad_model.a[i][idirs].transpose() << std::endl;
-    }
-    // nominal evaluation
-    LOG << "a[" << i << "] = " << model.a[i].transpose() << std::endl;
   }
 }
 
 
 RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
     Model & model,
-    EDModel & ad_model,
+    EDModel & ed_model,
     VectorNd const & q,
     MatrixNd const & q_dirs,
     const unsigned int body_id,
     vector<Matrix3d> & ad_derivative,
-    bool update_kinematics) {
-  unsigned ndirs = q_dirs.cols();
+    bool update_kinematics
+) {
+  const unsigned ndirs = q_dirs.cols();
   assert(ad_derivative.size() == ndirs);
 
   // update the Kinematics if necessary
   if (update_kinematics) {
-    UpdateKinematicsCustom (model, ad_model, &q, &q_dirs, 0, 0, 0, 0);
+    RigidBodyDynamics::ED::UpdateKinematicsCustom (model, ed_model, &q, &q_dirs, 0, 0, 0, 0);
   }
 
   if (body_id >= model.fixed_body_discriminator) {
@@ -339,13 +413,14 @@ RBDL_DLLAPI Matrix3d CalcBodyWorldOrientation (
   }
 
   for (unsigned int idir = 0; idir < ndirs; idir++) {
-    ad_derivative[idir] = ad_model.X_base[body_id][idir].E;
+    ad_derivative[idir] = ed_model.X_base[body_id][idir].E;
   }
   // nominal evaluation
   return model.X_base[body_id].E;
 }
 
 
+/*
 RBDL_DLLAPI Vector3d CalcPointVelocity (
     Model & model,
     EDModel & ad_model,
@@ -510,10 +585,11 @@ RBDL_DLLAPI SpatialVector CalcPointVelocity6D(
             pv6d, pv6d_dirs);
   return pv6d;
 }
+*/
 
 RBDL_DLLAPI Vector3d CalcPointAcceleration (
     Model &model,
-    EDModel &ad_model,
+    EDModel &ed_model,
     const Math::VectorNd &q,
     const Math::MatrixNd &q_dirs,
     const Math::VectorNd &qdot,
@@ -522,16 +598,16 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
     const Math::MatrixNd &qddot_dirs,
     unsigned int body_id,
     const Math::Vector3d &point_position,
-    Math::MatrixNd &ad_derivative,
+    Math::MatrixNd &ed_derivative,
     bool update_kinematics
 ) {
   LOG << "-------- " << __func__ << " --------" << std::endl;
 
   int const ndirs = q_dirs.cols();
-//  assert(ndirs == ad_derivative.cols());
-  assert(3     == ad_derivative.rows());
+//  assert(ndirs == ed_derivative.cols());
+  assert(3     == ed_derivative.rows());
 
-  ad_model.resize_directions(ndirs);
+  ed_model.resize_directions(ndirs);
 
   // Reset the velocity of the root body
   model.v[0].setZero();
@@ -539,12 +615,13 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
 
   if (update_kinematics) {
     // derivative evaluation
-    UpdateKinematics (model, ad_model, q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs);
+    RigidBodyDynamics::ED::UpdateKinematics (
+      model, ed_model, q, q_dirs, qdot, qdot_dirs, qddot, qddot_dirs
+    );
     // nominal evaluation
     // NOTE: Kinematics are already updated in ad_UpdateKinematics
     //UpdateKinematics (model, q, qdot, qddot);
   }
-
   LOG << std::endl;
 
   unsigned int reference_body_id = body_id;
@@ -556,11 +633,12 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
   }
 
   vector<Matrix3d> ad_E(ndirs);
-  Matrix3d E = CalcBodyWorldOrientation(
-    model, ad_model, q, q_dirs, reference_body_id, ad_E, false
+  Matrix3d E = RigidBodyDynamics::ED::CalcBodyWorldOrientation(
+    model, ed_model, q, q_dirs, reference_body_id, ad_E, false
   );
 
   // derivative evaluation
+  // TODO directly build up SpatialTransform
   vector<SpatialMatrix> ad_p_X_i(ndirs);
   for (int idir = 0; idir < ndirs; idir++) {
     Matrix3d ad_ETrx = ad_E[idir].transpose() * Matrix3d(
@@ -580,7 +658,7 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
   vector<SpatialVector> ad_p_v_i(ndirs);
   for (int idir = 0; idir < ndirs; idir++) {
     ad_p_v_i[idir] = ad_p_X_i[idir] * model.v[reference_body_id]
-        + p_X_i.apply(ad_model.v[reference_body_id][idir]);
+        + p_X_i.apply(ed_model.v[reference_body_id].col(idir));
   }
   // nominal evaluation
   SpatialVector p_v_i = p_X_i.apply(model.v[reference_body_id]);
@@ -602,24 +680,24 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
   vector<SpatialVector> ad_p_a_i(ndirs);
   for (int idir = 0; idir < ndirs; idir++) {
     ad_p_a_i[idir] = ad_p_X_i[idir] * model.a[reference_body_id]
-        + p_X_i.apply(ad_model.a[reference_body_id][idir]);
+        + p_X_i.apply(ed_model.a[reference_body_id].col(idir));
   }
   // nominal evaluation
   SpatialVector p_a_i = p_X_i.apply(model.a[reference_body_id]);
 
   // derivative evaluation
   for (int idir = 0; idir < ndirs; idir++) {
-    ad_derivative(0, idir) = ad_p_a_i[idir][3] + ad_a_dash[idir][0];
-    ad_derivative(1, idir) = ad_p_a_i[idir][4] + ad_a_dash[idir][1];
-    ad_derivative(2, idir) = ad_p_a_i[idir][5] + ad_a_dash[idir][2];
+    ed_derivative(0, idir) = ad_p_a_i[idir][3] + ad_a_dash[idir][0];
+    ed_derivative(1, idir) = ad_p_a_i[idir][4] + ad_a_dash[idir][1];
+    ed_derivative(2, idir) = ad_p_a_i[idir][5] + ad_a_dash[idir][2];
   }
   // nominal evaluation
   return Vector3d (
-        p_a_i[3] + a_dash[0],
+      p_a_i[3] + a_dash[0],
       p_a_i[4] + a_dash[1],
-      p_a_i[5] + a_dash[2]);
+      p_a_i[5] + a_dash[2]
+  );
 }
-*/
 
 RBDL_DLLAPI
 void CalcPointJacobian (
@@ -641,11 +719,27 @@ void CalcPointJacobian (
   // update the Kinematics if necessary
   if (update_kinematics)
   {
-    UpdateKinematicsCustom (model, &q, NULL, NULL);
+    UpdateKinematicsCustom (
+      model, ed_model,
+      &q, &q_dirs,
+      nullptr, nullptr,
+      nullptr, nullptr
+    );
   }
 
-  SpatialTransform point_trans =
-    SpatialTransform (
+  // derivative evaluation
+  for (unsigned idir = 0; idir < ndirs; idir++) {
+    // NOTE point_body_coordinates is constant, no derivative needed!
+    ed_model.X_0[idir] = SpatialTransform (
+        Matrix3d::Zero(),
+        // code from CalcBodyToBaseCoordinates
+        ed_model.X_base[body_id][idir].r
+        + ed_model.X_base[body_id][idir].E.transpose() * point_position
+    );
+  }
+
+  // nominal evaluation
+  SpatialTransform point_trans = SpatialTransform (
       Matrix3d::Identity(),
       CalcBodyToBaseCoordinates (
         model,
@@ -656,6 +750,12 @@ void CalcPointJacobian (
       )
     );
 
+  // derivative evaluation
+  for (unsigned int idirs = 0; idirs < ndirs; idirs++) {
+    assert (G_dirs[idirs].rows() == 3);
+    assert (G_dirs[idirs].cols() == model.qdot_size );
+  }
+  // nominal evaluation
   assert (G.rows() == 3 && G.cols() == model.qdot_size );
 
   unsigned int reference_body_id = body_id;
@@ -668,6 +768,13 @@ void CalcPointJacobian (
 
   unsigned int j = reference_body_id;
 
+  if (body_id >= model.fixed_body_discriminator) {
+    cerr << __FILE__ << " " << __LINE__
+         << ": Fixed bodies not yet supported!" << endl;
+    abort();
+  }
+
+
   // e[j] is set to 1 if joint j contributes to the Jacobian that we are
   // computing. For all other joints the column will be zero.
   while (j != 0)
@@ -679,19 +786,34 @@ void CalcPointJacobian (
       if (model.mJoints[j].mDoFCount == 1)
       {
         // nominal evaluation
-        G.block(0,q_index, 3, 1) =
-          point_trans.apply(
-              model.X_base[j].inverse().apply(
-                model.S[j])).block(3,0,3,1);
+        SpatialVector v = model.X_base[j].inverse().apply(model.S[j]);
+        SpatialVector w = point_trans.apply(v);
+        SpatialVector dv, dw;
         // derivative evaluation
         for (unsigned idir = 0; idir < ndirs; idir++)
         {
+          // derivative evaluation
+          dv.head(3) = ed_model.X_base[j][idir].E.transpose() * model.S[j].head(3);
+          dv.tail(3) = ed_model.X_base[j][idir].E.transpose() * (
+                model.S[j].tail<3>() - model.S[j].head<3>().cross(model.X_base[j].E * model.X_base[j].r)
+            ) + model.X_base[j].E.transpose() * (
+              ed_model.X_base[j][idir].E * model.X_base[j].r
+              + model.X_base[j].E * ed_model.X_base[j][idir].r
+            ).cross(model.S[j].head<3>());
 
-          G_dirs[idir].block<3, 1>(0, q_index) =
-           point_trans.apply(
-              model.X_base[j].inverse().apply(
-                model.S[j])).block(3,0,3,1);
+          // derivative evaluation
+          dw.head(3) = ed_model.X_0[idir].E * v.head(3) + point_trans.E * dv.head(3);
+          dw.tail(3) = point_trans.E * (
+              dv.tail<3>()
+              + dv.head<3>().cross(point_trans.r)
+              + v.head<3>().cross(ed_model.X_0[idir].r)
+            ) - ed_model.X_0[idir].E * point_trans.r.cross(v.head<3>());
+
+          // derivative evaluation
+          G_dirs[idir].block<3, 1>(0, q_index) = dw.tail(3);
         }
+        // nominal evaluation
+        G.block(0,q_index, 3, 1) = w.tail<3>();
       }
       else if (model.mJoints[j].mDoFCount == 3)
       {
@@ -709,7 +831,7 @@ void CalcPointJacobian (
 
     j = model.lambda[j];
   }
-}
+};
 
 /*
 RBDL_DLLAPI void CalcPointJacobian6D (

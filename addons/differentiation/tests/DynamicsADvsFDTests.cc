@@ -819,11 +819,11 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
     );
 
     // check derivatives of model quantities
-    checkModelsADvsED(
-      ndirs,
-      ad_model, ad_d_model,
-      ed_model, ed_d_model
-    );
+    // checkModelsADvsED(
+    //   ndirs,
+    //   ad_model, ad_d_model,
+    //   ed_model, ed_d_model
+    // );
 
     // check nominal values for consistency
     const double NOM_TOL = 1e-16;
