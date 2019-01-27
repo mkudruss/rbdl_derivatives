@@ -212,21 +212,43 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
   }
 
   if (qdot) {
-    std::cerr << "NOT SUPPORTED" << std::endl;
-    abort();
     for (i = 1; i < model.mBodies.size(); i++) {
+      unsigned int q_index = model.mJoints[i].q_index;
       unsigned int lambda = model.lambda[i];
 
       jcalc (model, i, *q, *qdot);
 
       if (lambda != 0) {
-        model.v[i] = model.X_lambda[i].apply(model.v[lambda]) + model.v_J[i];
+        // nominal evaluation
+        model.v[i] = model.X_lambda[i].apply(model.v[lambda]);
+        // derivative evaluation
+        ed_model.v[i].leftCols(ndirs)
+            = crossm(ed_model.v[i])*model.S[i]*q_dirs->row(q_index)
+            + model.X_lambda[i].toMatrix()*ed_model.v[lambda].leftCols(ndirs)
+            + model.S[i]*qdot_dirs->row(q_index);
+        // nominal evaluation continued
+        model.v[i] += model.v_J[i];
+
+        // nominal evaluation
         model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
+        // derivative evaluation
+        ed_model.c[i].leftCols(ndirs) =
+            crossm(model.v[i])*model.S[i]*qdot_dirs->row(q_index)
+            - crossm(model.v_J[i]) * (ed_model.v[i].leftCols(ndirs) );
+
       } else {
+        // derivative evaluation
+        ed_model.v[i].leftCols(ndirs) = model.S[i]*qdot_dirs->row(q_index);
+        // nominal evaluation
         model.v[i] = model.v_J[i];
+
+        // nominal evaluation
         model.c[i] = model.c_J[i] + crossm(model.v[i],model.v_J[i]);
+        // derivative evaluation
+        ed_model.c[i].leftCols(ndirs) =
+            crossm(model.v[i])*model.S[i]*qdot_dirs->row(q_index)
+            - crossm(model.v_J[i]) * (ed_model.v[i].leftCols(ndirs) );
       }
-      // LOG << "v[" << i << "] = " << model.v[i].transpose() << std::endl;
     }
   }
 

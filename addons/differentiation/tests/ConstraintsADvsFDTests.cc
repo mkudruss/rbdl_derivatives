@@ -109,6 +109,87 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobian) {
 // -----------------------------------------------------------------------------
 
 template <typename T>
+void CalcContactJacobianEDvsADTemplate(
+    T & obj,
+    const unsigned trial_count,
+    const double array_close_prec
+) {
+  Model   ad_model   = obj.model;
+  Model   ed_model   = obj.model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  EDModel ed_d_model = EDModel(ed_model);
+
+  ConstraintSet ad_cs = obj.constraint_set;
+  ConstraintSet ed_cs = obj.constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  EDConstraintSet ed_d_cs = EDConstraintSet(ed_cs, ed_model.dof_count);
+
+  // set up input quantities
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
+  bool update_kinematics = true;
+
+  VectorNd q = VectorNd::Zero(nq);
+  MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    // set up no output quantities
+    MatrixNd G = MatrixNd::Zero (3, nq);
+    MatrixNd G_ad = MatrixNd::Zero (3, nq);
+    MatrixNd G_fd = MatrixNd::Zero (3, nq);
+
+    // set up derivative output quantities
+    vector<MatrixNd> ad_d_G (ndirs, G_ad);
+    vector<MatrixNd> ed_d_G (ndirs, G_fd);
+
+    // call nominal version
+    CalcConstraintsJacobian(ad_model, q, ad_cs, G, update_kinematics);
+
+    RigidBodyDynamics::AD::CalcConstraintsJacobian(
+          ad_model, ad_d_model,
+          q, q_dirs,
+          ad_cs, ad_d_cs,
+          G_ad, ad_d_G,
+          update_kinematics
+          );
+
+    RigidBodyDynamics::ED::CalcConstraintsJacobian(
+          ed_model, ed_d_model,
+          q, q_dirs,
+          ed_cs, ed_d_cs,
+          G_fd, ed_d_G
+          );
+
+    checkModelsADvsED(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
+    checkConstraintSetsADvsED(ndirs, ad_cs, ad_d_cs, ed_cs, ed_d_cs);
+
+    CHECK_ARRAY_CLOSE(G.data(), G_ad.data(), G.size(), array_close_prec);
+    CHECK_ARRAY_CLOSE(G.data(), G_fd.data(), G.size(), array_close_prec);
+    CHECK_ARRAY_CLOSE(G_fd.data(), G_ad.data(), G.size(), array_close_prec);
+
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      CHECK_ARRAY_CLOSE(
+            ed_d_G[idir].data(),
+            ad_d_G[idir].data(),
+            ad_d_G[idir].size(),
+            array_close_prec);
+    }
+    q.setRandom();
+    q_dirs.setRandom();
+  }
+}
+
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobianEDvsAD) {
+  // add contacts and bind them to constraint set
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+  constraint_set.Bind (model);
+  CalcContactJacobianEDvsADTemplate(*this, 1, 1e-12);
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename T>
 void CalcContactSystemVariablesTemplate(
     T & obj,
     unsigned trial_count) {
@@ -236,6 +317,85 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactSystemVariablesEDvsAD) {
 }
 
 
+// -----------------------------------------------------------------------------
+
+template <typename T>
+void ForwardDynamicsConstraintsDirectEDvsADTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec
+) {
+  Model   model    = obj.model;
+  Model   ad_model = obj.model;
+  Model   ed_model = obj.model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  EDModel ed_d_model = EDModel(ed_model);
+
+  ConstraintSet cs = obj.constraint_set;
+  ConstraintSet ad_cs = obj.constraint_set;
+  ConstraintSet ed_cs = obj.constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  EDConstraintSet ed_d_cs = EDConstraintSet(ed_cs, ed_model.dof_count);
+
+  // set up input quantities
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
+
+  VectorNd qdd    = VectorNd::Zero(nq);
+  VectorNd ad_qdd = VectorNd::Zero(nq);
+  VectorNd ed_qdd = VectorNd::Zero(nq);
+  MatrixNd ad_qdd_dirs = MatrixNd::Zero(nq, nq);
+  MatrixNd ed_qdd_dirs = MatrixNd::Zero(nq, nq);
+
+  MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+  MatrixNd qd_dirs = MatrixNd::Identity(nq, nq);
+  MatrixNd tau_dirs = MatrixNd::Identity(nq, nq);
+
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    VectorNd q = VectorNd::Random(nq);
+    VectorNd qd = VectorNd::Random(nq);
+    VectorNd tau = VectorNd::Random(nq);
+
+    RigidBodyDynamics::ForwardDynamicsConstraintsDirect(model, q, qd, tau, cs, qdd);
+
+    RigidBodyDynamics::AD::ForwardDynamicsConstraintsDirect(
+          ad_model, ad_d_model,
+          q, q_dirs,
+          qd, qd_dirs,
+          tau, tau_dirs,
+          ad_cs, ad_d_cs,
+          ad_qdd, ad_qdd_dirs);
+
+    RigidBodyDynamics::ED::ForwardDynamicsConstraintsDirect(
+          ed_model, ed_d_model,
+          q, q_dirs,
+          qd, qd_dirs,
+          tau, tau_dirs,
+          ed_cs, ed_d_cs,
+          ed_qdd, ed_qdd_dirs);
+
+    // checkModelsADvsED(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
+    checkConstraintSetsADvsED(ndirs, ad_cs, ad_d_cs, ed_cs, ed_d_cs);
+
+    CHECK_ARRAY_CLOSE(qdd.data(), ad_qdd.data(), nq, array_close_prec);
+    CHECK_ARRAY_CLOSE(qdd.data(), ed_qdd.data(), nq, array_close_prec);
+    CHECK_ARRAY_CLOSE(ad_qdd_dirs.data(), ed_qdd_dirs.data(), nq*nq,
+                      array_close_prec);
+
+    q_dirs.setRandom();
+    qd_dirs.setRandom();
+    tau_dirs.setRandom();
+  }
+}
+
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsConstraintsDirectEDvsAD) {
+  // add contacts and bind them to constraint set
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+  constraint_set.Bind (model);
+  ForwardDynamicsConstraintsDirectEDvsADTemplate(*this, 1, 1e-12);
+}
 // -----------------------------------------------------------------------------
 
 template <typename T>

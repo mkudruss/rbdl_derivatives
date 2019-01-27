@@ -83,6 +83,132 @@ TEST_FIXTURE ( Human36, Human36UpdateKinematicsCustom) {
 
 // -----------------------------------------------------------------------------
 
+template<typename T>
+void UpdateKinematicsCustomEDvsADTemplate(
+    T & obj,
+    unsigned const & trial_count
+) {
+  Model   ad_model = obj.model;
+  Model   ed_model = obj.model;
+
+  ADModel ad_d_model(ad_model);
+  EDModel ed_d_model(ed_model);
+
+  int const nq = obj.model.dof_count;
+  unsigned ndirs = 3 * nq;
+  ndirs = 1;
+
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    VectorNd q    = VectorNd::Random(nq);
+    VectorNd qd   = VectorNd::Random(nq);
+    VectorNd qdd  = VectorNd::Random(nq);
+
+    MatrixNd q_dirs = MatrixNd::Random(nq, ndirs);
+    MatrixNd qd_dirs = MatrixNd::Random(nq, ndirs);
+    MatrixNd qdd_dirs = MatrixNd::Random(nq, ndirs);
+
+    RigidBodyDynamics::AD::UpdateKinematicsCustom(ad_model, ad_d_model, &q, &q_dirs, &qd, &qd_dirs, &qdd, &qdd_dirs);
+
+    RigidBodyDynamics::ED::UpdateKinematicsCustom(ed_model, ed_d_model, &q, &q_dirs, &qd, &qd_dirs, &qdd, &qdd_dirs);
+
+    checkModelsADvsED (
+          ndirs,
+          ad_model, ad_d_model,
+          ed_model, ed_d_model);
+  }
+}
+
+TEST_FIXTURE ( CartPendulum, CartPendulumUpdateKinematicsCustomEDvsAD ) {
+  UpdateKinematicsCustomEDvsADTemplate(*this, 1);
+}
+
+// TEST_FIXTURE ( Arm2DofX, Arm2DofXUpdateKinematicsCustomEDvsAD) {
+//   UpdateKinematicsCustomEDvsADTemplate(*this, 10);
+// }
+
+/*
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZUpdateKinematicsCustomEDvsAD) {
+  UpdateKinematicsCustomEDvsADTemplate(*this, 10);
+}
+
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpUpdateKinematicsCustomEDvsAD) {
+  UpdateKinematicsCustomEDvsADTemplate(*this, 10);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpUpdateKinematicsCustomEDvsAD) {
+  UpdateKinematicsCustomEDvsADTemplate(*this, 10);
+}
+
+TEST_FIXTURE ( Human36, Human36UpdateKinematicsCustomEDvsAD) {
+  UpdateKinematicsCustomEDvsADTemplate(*this, 10);
+}
+*/
+
+// -----------------------------------------------------------------------------
+
+template<typename T>
+void UpdateKinematicsEDvsADTemplate(
+    T & obj,
+    unsigned const & trial_count
+) {
+  Model   ad_model = obj.model;
+  Model   ed_model = obj.model;
+
+  ADModel ad_d_model(ad_model);
+  EDModel ed_d_model(ed_model);
+
+  int const nq = obj.model.dof_count;
+  unsigned ndirs = 3 * nq;
+
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    VectorNd q    = VectorNd::Random(nq);
+    VectorNd qd   = VectorNd::Random(nq);
+    VectorNd qdd  = VectorNd::Random(nq);
+
+    MatrixNd q_dirs = MatrixNd::Random(nq, ndirs);
+    MatrixNd qd_dirs = MatrixNd::Random(nq, ndirs);
+    MatrixNd qdd_dirs = MatrixNd::Random(nq, ndirs);
+
+    RigidBodyDynamics::AD::UpdateKinematics(ad_model, ad_d_model, q, q_dirs, qd, qd_dirs, qdd, qdd_dirs);
+
+    RigidBodyDynamics::ED::UpdateKinematics(ed_model, ed_d_model, q, q_dirs, qd, qd_dirs, qdd, qdd_dirs);
+
+    checkModelsADvsED (
+          ndirs,
+          ad_model, ad_d_model,
+          ed_model, ed_d_model);
+  }
+}
+
+// TEST_FIXTURE ( CartPendulum, CartPendulumUpdateKinematicsEDvsAD ) {
+//   UpdateKinematicsEDvsADTemplate(*this, 1);
+// }
+
+/*
+TEST_FIXTURE ( Arm2DofX, Arm2DofXUpdateKinematicsEDvsAD) {
+  UpdateKinematicsEDvsADTemplate(*this, 10);
+}
+
+TEST_FIXTURE ( Arm2DofZ, Arm2DofZUpdateKinematicsEDvsAD) {
+  UpdateKinematicsEDvsADTemplate(*this, 10);
+}
+
+TEST_FIXTURE ( Arm3DofXZYp, Arm3DofXZYpUpdateKinematicsEDvsAD) {
+  UpdateKinematicsEDvsADTemplate(*this, 10);
+}
+
+TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpUpdateKinematicsEDvsAD) {
+  UpdateKinematicsEDvsADTemplate(*this, 10);
+}
+
+TEST_FIXTURE ( Human36, Human36UpdateKinematicsEDvsAD) {
+  UpdateKinematicsEDvsADTemplate(*this, 10);
+}
+*/
+
+
+// -----------------------------------------------------------------------------
+
 template <typename T>
 void CalcPointVelocityTemplate(
     T & obj,
