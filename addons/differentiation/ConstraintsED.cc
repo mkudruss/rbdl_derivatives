@@ -633,8 +633,8 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
 
     // we also substract ContactData[c].acceleration such that the contact
     // point will have the desired acceleration
-    // ed_CS.gamma.row(c).segment(0, ndirs) =
-    //     -CS.normal[c].transpose() * ed_gamma_i;
+     ed_CS.gamma.row(c).segment(0, ndirs) =
+         -CS.normal[c].transpose() * ed_gamma_i;
     CS.gamma[c] = CS.acceleration[c] - CS.normal[c].dot(gamma_i);
   }
 
