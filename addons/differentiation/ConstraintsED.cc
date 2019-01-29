@@ -67,6 +67,9 @@ EDConstraintSet::EDConstraintSet(const ConstraintSet & CS_, int _dof_count) :
 
 void EDConstraintSet::resize_directions(const unsigned int& requested_ndirs) {
   // std::cout << "in " << __func__ << std::endl;
+  QDDot_t       = MatrixNd::Zero(CS->QDDot_t.rows(), requested_ndirs);
+  QDDot_0       = MatrixNd::Zero(CS->QDDot_0.rows(), requested_ndirs);
+
   if (ndirs < requested_ndirs) {
     // std::cout << "resized!" << std::endl;
     ndirs = requested_ndirs;
@@ -88,8 +91,6 @@ void EDConstraintSet::resize_directions(const unsigned int& requested_ndirs) {
     v_plus        = MatrixNd::Zero(CS->v_plus.rows(), ndirs);
     x             = MatrixNd::Zero(CS->x.rows(), ndirs);
     impulse       = MatrixNd::Zero(CS->impulse.rows(), ndirs);
-    QDDot_t       = MatrixNd::Zero(CS->QDDot_t.rows(), ndirs);
-    QDDot_0       = MatrixNd::Zero(CS->QDDot_0.rows(), ndirs);
     C             = MatrixNd::Zero(CS->C.rows(), ndirs);
     gamma         = MatrixNd::Zero(CS->gamma.rows(), ndirs);
     force         = MatrixNd::Zero(CS->force.rows(), ndirs);
@@ -397,7 +398,7 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
     bool update_kinematics
 ) {
   const unsigned int ndirs = q_dirs.cols();
-  assert(ndirs == G_dirs.size());
+  assert(ndirs <= G_dirs.size());
 
   // resize if required
   ed_model.resize_directions(ndirs);
@@ -608,7 +609,7 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
   CS.QDDot_0.setZero();
   UpdateKinematicsCustom(
       model, ed_model,
-      NULL, NULL,
+      NULL, &q_dirs,
       NULL, NULL,
       &CS.QDDot_0, &ed_CS.QDDot_0
     );

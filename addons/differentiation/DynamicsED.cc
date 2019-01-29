@@ -345,7 +345,7 @@ RBDL_DLLAPI void NonlinearEffects (
       // nominal evaluation
       model.a[i] = model.X_lambda[i].apply(spatial_gravity);
       // derivative evaluation
-      ed_model.a[i] = crossm(model.a[i])*model.S[i]*q_dirs.row(model.mJoints[i].q_index);
+      ed_model.a[i].leftCols(ndirs) = crossm(model.a[i])*model.S[i]*q_dirs.row(model.mJoints[i].q_index);
 // deprecated
 //      // d a[i] / d q
 //      ed_model.a_q[i].leftCols(ndirs)
@@ -451,7 +451,7 @@ RBDL_DLLAPI void NonlinearEffects (
         tau[q_index] = model.f[i](bodyidx2s1idx[i]);
       // derivative evaluation
       // d tau [i] = d tau [i] / d q + d tau [i] / d qdot
-        ed_tau.row(q_index) = ed_model.f[i].leftCols(ndirs).row(bodyidx2s1idx[i]);
+        ed_tau.leftCols(ndirs).row(q_index) = ed_model.f[i].leftCols(ndirs).row(bodyidx2s1idx[i]);
 
     } else if(model.mJoints[i].mJointType == JointTypeCustom) {
       cerr << __FILE__ << " " << __LINE__

@@ -122,11 +122,10 @@ TEST_FIXTURE ( CartPendulum, CartPendulumUpdateKinematicsCustomEDvsAD ) {
   UpdateKinematicsCustomEDvsADTemplate(*this, 1);
 }
 
-// TEST_FIXTURE ( Arm2DofX, Arm2DofXUpdateKinematicsCustomEDvsAD) {
-//   UpdateKinematicsCustomEDvsADTemplate(*this, 10);
-// }
+TEST_FIXTURE ( Arm2DofX, Arm2DofXUpdateKinematicsCustomEDvsAD) {
+  UpdateKinematicsCustomEDvsADTemplate(*this, 10);
+}
 
-/*
 TEST_FIXTURE ( Arm2DofZ, Arm2DofZUpdateKinematicsCustomEDvsAD) {
   UpdateKinematicsCustomEDvsADTemplate(*this, 10);
 }
@@ -142,7 +141,6 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpUpdateKinematicsCustomEDvsAD) {
 TEST_FIXTURE ( Human36, Human36UpdateKinematicsCustomEDvsAD) {
   UpdateKinematicsCustomEDvsADTemplate(*this, 10);
 }
-*/
 
 // -----------------------------------------------------------------------------
 
@@ -180,11 +178,10 @@ void UpdateKinematicsEDvsADTemplate(
   }
 }
 
-// TEST_FIXTURE ( CartPendulum, CartPendulumUpdateKinematicsEDvsAD ) {
-//   UpdateKinematicsEDvsADTemplate(*this, 1);
-// }
+TEST_FIXTURE ( CartPendulum, CartPendulumUpdateKinematicsEDvsAD ) {
+  UpdateKinematicsEDvsADTemplate(*this, 1);
+}
 
-/*
 TEST_FIXTURE ( Arm2DofX, Arm2DofXUpdateKinematicsEDvsAD) {
   UpdateKinematicsEDvsADTemplate(*this, 10);
 }
@@ -204,7 +201,6 @@ TEST_FIXTURE ( Arm3DofXZZp, Arm3DofXZZpUpdateKinematicsEDvsAD) {
 TEST_FIXTURE ( Human36, Human36UpdateKinematicsEDvsAD) {
   UpdateKinematicsEDvsADTemplate(*this, 10);
 }
-*/
 
 
 // -----------------------------------------------------------------------------

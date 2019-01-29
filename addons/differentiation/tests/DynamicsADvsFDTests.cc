@@ -130,24 +130,24 @@ void ForwardDynamicsADTestTemplate(
       array_close_prec
     );
 
-//    checkModelsADvsFD(
-//          ndirs,
-//          ad_model, ad_d_model,
-//          fd_model, fd_d_model);
+    checkModelsADvsFD(
+          ndirs,
+          ad_model, ad_d_model,
+          fd_model, fd_d_model);
 
-//    CHECK_ARRAY_CLOSE(
-//      ad_qddot.data(),
-//      fd_qddot.data(),
-//      obj.model.q_size,
-//      array_close_prec
-//    );
+    CHECK_ARRAY_CLOSE(
+      ad_qddot.data(),
+      fd_qddot.data(),
+      obj.model.q_size,
+      array_close_prec
+    );
 
-//    CHECK_ARRAY_CLOSE(
-//      fd_dqddot.data(),
-//      ad_dqddot.data(),
-//      fd_dqddot.cols() * fd_dqddot.rows(),
-//      array_close_prec
-//    );
+    CHECK_ARRAY_CLOSE(
+      fd_dqddot.data(),
+      ad_dqddot.data(),
+      fd_dqddot.cols() * fd_dqddot.rows(),
+      array_close_prec
+    );
   }
 }
 
@@ -171,10 +171,10 @@ TEST_FIXTURE(Arm3DofXZZp, Arm3DofXZZpForwardDynamicsADTest){
   ForwardDynamicsADTestTemplate(*this, 10, 1e-5);
 }
 
-TEST_FIXTURE( Human36, Human36ForwardDynamicsADTest) {
-  srand (421337);
-  ForwardDynamicsADTestTemplate(*this, 1, 1e-5);
-}
+//TEST_FIXTURE( Human36, Human36ForwardDynamicsADTest) {
+//  srand (421337);
+//  ForwardDynamicsADTestTemplate(*this, 1, 1e-5);
+//}
 
 // -----------------------------------------------------------------------------
 
@@ -392,8 +392,8 @@ void InverseDynamicsEDTestTemplate(
         CHECK_ARRAY_CLOSE (f1.col(idir).data(), f2.data(), 6, 1e-6);
       }
     }
-    // const unsigned ndirs = ad_model.qdot_size;
-    // checkModelsADvsED(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
+//     const unsigned ndirs = ad_model.qdot_size;
+//     checkModelsADvsED(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
 
     // std::cout << "tau_nom =    " << tau.transpose() << std::endl;
     // std::cout << "tau_ref =    " << tau_ref.transpose() << std::endl;
@@ -518,14 +518,14 @@ TEST_FIXTURE( Human36, Human36NonlinearEffectsADTest) {
   NonlinearEffectsADTestTemplate(*this, 10, 1e-5);
 }
 
-//TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFNonlinearEffectsADTest) {
-//  // add contacts and bind them to constraint set
-//  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
-//  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
-//  constraint_set.Bind (model);
-//  ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
-//  NonlinearEffectsADTestTemplate(*this, 10, 1e-5);
-//}
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFNonlinearEffectsADTest) {
+  // add contacts and bind them to constraint set
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+  constraint_set.Bind (model);
+  ADConstraintSet ad_constraint_set = ADConstraintSet(constraint_set, model.dof_count);
+  NonlinearEffectsADTestTemplate(*this, 10, 1e-5);
+}
 
 // -----------------------------------------------------------------------------
 
@@ -573,7 +573,9 @@ void NonlinearEffectsEDTestTemplate(
       ed_d_tau_nom, ed_tau_der
     );
 
-    // checkModelsADvsFD(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
+//    unsigned ndirs = ad_model.qdot_size;
+//    checkModelsADvsED(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
+
     for (unsigned int i = 0; i < model.mBodies.size(); i++) {
       SpatialDirection v1 = ed_d_model.v[i];
       for (unsigned int idir = 0; idir < ad_model.qdot_size; idir++) {
@@ -684,14 +686,14 @@ TEST_FIXTURE( CartPendulum, CartPendulumNonlinearEffectsEDTest) {
    NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
  }
 
-// TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFNonlinearEffectsEDTest) {
-//   // add contacts and bind them to constraint set
-//   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
-//   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
-//   constraint_set.Bind (model);
-//   ad_constraint_set = EDConstraintSet(constraint_set, model.dof_count);
-//   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
-// }
+ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFNonlinearEffectsEDTest) {
+   // add contacts and bind them to constraint set
+   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+   constraint_set.Bind (model);
+   EDConstraintSet ad_constraint_set(constraint_set, model.dof_count);
+   NonlinearEffectsEDTestTemplate(*this, 10, 1e-5);
+ }
 
 // -----------------------------------------------------------------------------
 template<typename T>
@@ -818,12 +820,12 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
       ad_model, ad_d_model, q, q_dirs, ad_H, ad_H_dirs
     );
 
-    // check derivatives of model quantities
-    // checkModelsADvsED(
-    //   ndirs,
-    //   ad_model, ad_d_model,
-    //   ed_model, ed_d_model
-    // );
+    //     check derivatives of model quantities
+//     checkModelsADvsED(
+//       ndirs,
+//       ad_model, ad_d_model,
+//       ed_model, ed_d_model
+//     );
 
     // check nominal values for consistency
     const double NOM_TOL = 1e-16;
@@ -876,7 +878,7 @@ void CompositeRigidBodyAlgorithmEDTestTemplate(
       NOM_TOL
     );
 
-    // check AD vs FD derivatives for consistency
+    // check AD vs ED derivatives for consistency
     for (size_t idir = 0; idir < model.qdot_size; idir++) {
       error = (ed_H_dirs[idir] - ad_H_dirs[idir]).cwiseAbs();
       max = error.maxCoeff();

@@ -158,6 +158,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
     assert(!qddot || qddot_dirs->cols() == ndirs);
   } else if (qddot) {
     ndirs = qddot_dirs->cols();
+    assert(q_dirs && q_dirs->cols() == ndirs);
   }
 
   ed_model.resize_directions(ndirs);
@@ -221,9 +222,10 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
       if (lambda != 0) {
         // nominal evaluation
         model.v[i] = model.X_lambda[i].apply(model.v[lambda]);
+
         // derivative evaluation
         ed_model.v[i].leftCols(ndirs)
-            = crossm(ed_model.v[i])*model.S[i]*q_dirs->row(q_index)
+            = crossm(model.v[i])*model.S[i]*q_dirs->row(q_index)
             + model.X_lambda[i].toMatrix()*ed_model.v[lambda].leftCols(ndirs)
             + model.S[i]*qdot_dirs->row(q_index);
         // nominal evaluation continued
@@ -261,8 +263,8 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
         SpatialVector a = model.X_lambda[i].apply(model.a[lambda]);
 
         // derivative evaluation
-        ed_model.a[i].leftCols(ndirs) =
-        //   = crossm(a)*model.S[i]*(*q_dirs).row(model.mJoints[i].q_index)
+        ed_model.a[i].leftCols(ndirs)
+        = crossm(a)*model.S[i]*(*q_dirs).row(model.mJoints[i].q_index) +
           model.X_lambda[i].toMatrix()*ed_model.a[lambda].leftCols(ndirs)
           + ed_model.c[i].leftCols(ndirs);
 
@@ -270,7 +272,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
         model.a[i] = a + model.c[i];
       } else {
         // derivative evaluation
-        // ed_model.a[i].leftCols(ndirs) = ed_model.c[i].leftCols(ndirs);
+        ed_model.a[i].leftCols(ndirs) = ed_model.c[i].leftCols(ndirs);
         // nominal evaluation
         model.a[i] = model.c[i];
       }
@@ -278,7 +280,7 @@ RBDL_DLLAPI void UpdateKinematicsCustom (
       if( model.mJoints[i].mJointType != JointTypeCustom){
         if (model.mJoints[i].mDoFCount == 1) {
           // derivative evaluation
-          // ed_model.a[i].leftCols(ndirs) += model.S[i] * (*qddot_dirs).row(q_index);
+          ed_model.a[i].leftCols(ndirs) += model.S[i] * (*qddot_dirs).row(q_index);
           // nominal evaluation
           model.a[i] = model.a[i] + model.S[i] * (*qddot)[q_index];
         } else if (model.mJoints[i].mDoFCount == 3) {
@@ -357,7 +359,7 @@ RBDL_DLLAPI void UpdateKinematics (
       model.v[i] = model.X_lambda[i].apply(model.v[lambda]);
       // derivative evaluation
       ed_model.v[i].leftCols(ndirs)
-          = crossm(ed_model.v[i])*model.S[i]*q_dirs.row(q_index)
+          = crossm(model.v[i])*model.S[i]*q_dirs.row(q_index)
           + model.X_lambda[i].toMatrix()*ed_model.v[lambda].leftCols(ndirs)
           + model.S[i]*qdot_dirs.row(q_index);
 
@@ -398,6 +400,9 @@ RBDL_DLLAPI void UpdateKinematics (
 
     if(model.mJoints[i].mJointType != JointTypeCustom){
       if (model.mJoints[i].mDoFCount == 1) {
+        // derivative evaluation
+        ed_model.a[i] += model.S[i] * qddot_dirs.row(q_index);
+        // nominal evaluation
         model.a[i] = model.a[i] + model.S[i] * qddot[q_index];
       } else if (model.mJoints[i].mDoFCount == 3) {
         cerr << "Multi-dof not supported." << endl;

@@ -235,11 +235,11 @@ void checkModelsADvsED(
     CHECK_ARRAY_EQUAL(ad_model.v_J[i].data(), ed_model.v_J[i].data(), 6);
   }
   // // derivative check
-  // for (unsigned idir = 0; idir < ndirs; idir++) {
-  //   for (unsigned i = 0; i < ad_model.v_J.size(); i++) {
-  //     CHECK_ARRAY_CLOSE(ad_d_model.v_J[i][idir].data(), ed_d_model.v_J[i].col(idir).data(), 6, 1e-12 );
-  //   }
-  // }
+//   for (unsigned idir = 0; idir < ndirs; idir++) {
+//     for (unsigned i = 0; i < ad_model.v_J.size(); i++) {
+//       CHECK_ARRAY_CLOSE(ad_d_model.v_J[i][idir].data(), ed_d_model.v_J[i].col(idir).data(), 6, 1e-12 );
+//     }
+//   }
 
   // nominal check
   CHECK_EQUAL(ad_model.c_J.size(), ed_model.c_J.size());
@@ -247,11 +247,11 @@ void checkModelsADvsED(
     CHECK_ARRAY_EQUAL(ad_model.c_J[i].data(), ed_model.c_J[i].data(), 6);
   }
   // derivative check
-  // for (unsigned idir = 0; idir < ndirs; idir++) {
-  //   for (unsigned i = 0; i < ad_model.c_J.size(); i++) {
-  //     CHECK_ARRAY_CLOSE(ad_d_model.c_J[i][idir].data(), ed_d_model.c_J[i].col(idir).data(), 6, 1e-12 );
-  //   }
-  // }
+//   for (unsigned idir = 0; idir < ndirs; idir++) {
+//     for (unsigned i = 0; i < ad_model.c_J.size(); i++) {
+//       CHECK_ARRAY_CLOSE(ad_d_model.c_J[i][idir].data(), ed_d_model.c_J[i].col(idir).data(), 6, 1e-12 );
+//     }
+//   }
 
   // nominal check
   CHECK_EQUAL(ad_model.X_J.size(), ed_model.X_J.size());
@@ -488,7 +488,6 @@ void checkModelsADvsED(
     }
   }
 
-/*
   // nominal check
   CHECK_EQUAL(ad_model.c.size(), ed_model.c.size());
   for (unsigned i = 0; i < ad_model.c.size(); i++) {
@@ -536,7 +535,7 @@ void checkModelsADvsED(
       CHECK_ARRAY_CLOSE(ad_d_model.a[i][idir].data(), ed_d_model.a[i].col(idir).data(), 6, 5e-5);
     }
   }
-*/
+
 /*
   // nominal check
   CHECK_EQUAL(ad_model.pA.size(), ed_model.pA.size());
@@ -867,7 +866,7 @@ void checkConstraintSetsADvsED (
   // derivative check
   CHECK_EQUAL(ad_d_cs.gamma.rows(), ed_d_cs.gamma.rows());
   CHECK_EQUAL(ad_d_cs.gamma.cols(), ed_d_cs.gamma.cols());
-  RigidBodyDynamics::Math::VectorNd v_error
+  RigidBodyDynamics::Math::MatrixNd v_error
     = (ad_d_cs.gamma - ed_d_cs.gamma).cwiseAbs();
   const double error = v_error.maxCoeff();
   if (error > 1e-12) {
