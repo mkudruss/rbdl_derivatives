@@ -1,4 +1,4 @@
-#include <unittest++/UnitTest++.h>
+#include <UnitTest++.h>
 
 #include "rbdl/Logging.h"
 #include "rbdl/rbdl_math.h"

@@ -4,9 +4,11 @@
 
 SET (UNITTEST++_FOUND FALSE)
 
-FIND_PATH (UNITTEST++_INCLUDE_DIR UnitTest++.h
-  /usr/include/unittest++
+FIND_PATH (UNITTEST++_INCLUDE_DIR
+  NAMES UnitTest++.h
+  PATHS
   /usr/include/UnitTest++
+  /usr/include/unittest++
   /usr/local/include/unittest++
   /usr/local/include/UnitTest++
   /opt/local/include/unittest++
@@ -19,7 +21,7 @@ FIND_LIBRARY (UNITTEST++_LIBRARY NAMES UnitTest++ PATHS
   /usr/local/lib
   /opt/local/lib
   $ENV{UNITTESTXX_PATH}
-  ENV{UNITTESTXX_LIBRARY_PATH}
+  $ENV{UNITTESTXX_LIBRARY_PATH}
   )
 
 IF (UNITTEST++_INCLUDE_DIR AND UNITTEST++_LIBRARY)
@@ -28,7 +30,7 @@ ENDIF (UNITTEST++_INCLUDE_DIR AND UNITTEST++_LIBRARY)
 
 IF (UNITTEST++_FOUND)
   IF (NOT UnitTest++_FIND_QUIETLY)
-    MESSAGE(STATUS "Found UnitTest++: ${UNITTEST++_LIBRARY}")
+    MESSAGE(STATUS "Found UnitTest++: ${UNITTEST++_LIBRARY} ${UNITTEST++_INCLUDE_DIR}")
   ENDIF (NOT UnitTest++_FIND_QUIETLY)
 ELSE (UNITTEST++_FOUND)
   IF (UnitTest++_FIND_REQUIRED)
