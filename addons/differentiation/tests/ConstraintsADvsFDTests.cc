@@ -72,14 +72,14 @@ void CalcContactJacobianTemplate(
           update_kinematics
           );
 
-    FD::CalcConstraintsJacobian(
+    FDC::CalcConstraintsJacobian(
           fd_model, &fd_d_model,
           q, q_dirs,
-          fd_cs, fd_d_cs,
+          fd_cs, &fd_d_cs,
           G_fd, fd_d_G
           );
 
-    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+    // checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
     // checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
 
     CHECK_ARRAY_CLOSE(G.data(), G_ad.data(), G.size(), array_close_prec);
@@ -103,7 +103,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobian) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  CalcContactJacobianTemplate(*this, 10, 1e-5);
+  CalcContactJacobianTemplate(*this, 10, 1e-10);
 }
 
 // -----------------------------------------------------------------------------
@@ -184,7 +184,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobianEDvsAD) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  CalcContactJacobianEDvsADTemplate(*this, 1, 1e-12);
+  CalcContactJacobianEDvsADTemplate(*this, 10, 1e-12);
 }
 
 // -----------------------------------------------------------------------------
@@ -218,11 +218,13 @@ void CalcContactSystemVariablesTemplate(
   MatrixNd tau_dirs = MatrixNd::Identity(nq, nq);
   for (unsigned trial = 0; trial < trial_count; trial++) {
     CalcConstrainedSystemVariables(model, q, qd, tau, cs);
+
     AD::CalcConstrainedSystemVariables(
       ad_model, ad_d_model,
       q, q_dirs, qd, qd_dirs,
       tau, tau_dirs, ad_cs, ad_d_cs
     );
+
     FDC::CalcConstrainedSystemVariables(
       fd_model, &fd_d_model,
       q, q_dirs, qd, qd_dirs,
@@ -230,7 +232,7 @@ void CalcContactSystemVariablesTemplate(
     );
 
     checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
-    // checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
+    checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
 
     q.setRandom();
     qd.setRandom();
@@ -296,7 +298,7 @@ void CalcContactSystemVariablesEDvsADTemplate(
       tau, tau_dirs, fd_cs, fd_d_cs
     );
 
-    checkModelsADvsED(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+    // checkModelsADvsED(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
     checkConstraintSetsADvsED(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
 
     q.setRandom();
@@ -313,7 +315,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactSystemVariablesEDvsAD) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  CalcContactSystemVariablesEDvsADTemplate(*this, 1);
+  CalcContactSystemVariablesEDvsADTemplate(*this, 10);
 }
 
 

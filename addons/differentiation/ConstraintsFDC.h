@@ -15,6 +15,7 @@ namespace RigidBodyDynamics {
 namespace FDC {
 // -----------------------------------------------------------------------------
 
+
 RBDL_DLLAPI
 void CalcConstrainedSystemVariables (
     Model &model,
@@ -28,6 +29,7 @@ void CalcConstrainedSystemVariables (
     ConstraintSet        &cs,
     ADConstraintSet      *fd_cs);
 
+
 RBDL_DLLAPI
 void CalcConstraintsJacobian (
     Model &model,
@@ -39,6 +41,7 @@ void CalcConstraintsJacobian (
     Math::MatrixNd &G,
     std::vector<Math::MatrixNd> &G_dirs);
 
+/*
 RBDL_DLLAPI
 void ComputeConstraintImpulsesDirect (
     Model &model,
@@ -106,6 +109,7 @@ void SolveConstrainedSystemDirect (
     Math::LinearSolver & linear_solver,
     int ndirs
 );
+*/
 
 RBDL_DLLAPI
 void ForwardDynamicsContactsKokkevis (
@@ -124,7 +128,7 @@ void ForwardDynamicsContactsKokkevis (
 );
 
 // -----------------------------------------------------------------------------
-} // namespace FD
+} // namespace FDC
 // -----------------------------------------------------------------------------
 } // namespace RigidBodyDynamics
 // -----------------------------------------------------------------------------

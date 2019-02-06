@@ -87,6 +87,7 @@ void CalcConstrainedSystemVariables (
 
 }
 
+/*
 
 RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
   Model &model,
@@ -98,7 +99,7 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
   const VectorNd &tau,
   const MatrixNd &tau_dirs,
   ConstraintSet   &cs,
-  ADConstraintSet &fd_cs,
+  ADConstraintSet *fd_cs,
   VectorNd  &qddot,
   MatrixNd  &fd_qddot
 ) {
@@ -123,7 +124,12 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
       modelh = &model;
     }
 
-    ConstraintSet csh = cs_in;
+    ConstraintSet * csh;
+    if (fd_cs) {
+      csh = new ConstraintSet(cs);
+    } else {
+      csh = &cs;
+    }
 
     ForwardDynamicsConstraintsDirect(
       *modelh,
@@ -149,11 +155,17 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
     // computeFDEntry(cs, csh, EPS, idir, fd_cs);
 
     if (fd_model) {
-      computeFDCEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCEntry(*modelh, model, EPS, idir, *fd_model);
       delete modelh;
+    }
+
+    if (fd_cs) {
+      computeFDCEntry(*csh, cs, EPS, idir, *fd_cs);
+      delete csh;
     }
   }
 }
+*/
 
 RBDL_DLLAPI void ForwardDynamicsContactsKokkevis (
   Model &model,
@@ -241,39 +253,66 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
     const VectorNd & q,
     const MatrixNd & q_dirs,
     ConstraintSet & cs,
-    ADConstraintSet & fd_CS,
+    ADConstraintSet * fd_cs,
     MatrixNd & G,
-    vector<MatrixNd> & G_dirs) {
+    vector<MatrixNd> & G_dirs
+) {
   unsigned const ndirs = q_dirs.cols();
   assert(ndirs == G_dirs.size());
 
   bool const update_kinematics = true;
-  ConstraintSet const cs_in = cs;
 
   CalcConstraintsJacobian(model, q, cs, G, update_kinematics);
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    VectorNd qh = q + EPS * q_dirs.col(idir);
-    ConstraintSet csh = cs_in;
-    MatrixNd Gh = MatrixNd::Zero (G.rows(), G.cols());
-
-    Model *modelh;
+    Model * modelh;
     if (fd_model) {
       modelh = new Model(model);
     } else {
       modelh = &model;
     }
 
-    CalcConstraintsJacobian(*modelh, qh, csh, Gh, update_kinematics);
-    G_dirs[idir] = (Gh - G) / EPS;
+    ConstraintSet * csh;
+    if (fd_cs) {
+      csh = new ConstraintSet(cs);
+    } else {
+      csh = &cs;
+    }
+
+    MatrixNd Ghp = MatrixNd::Zero (G.rows(), G.cols());
+    MatrixNd Ghm = MatrixNd::Zero (G.rows(), G.cols());
+
+    CalcConstraintsJacobian(
+      *modelh,
+      q + EPS * q_dirs.col(idir),
+      *csh,
+      Ghp,
+      update_kinematics
+    );
+
+    CalcConstraintsJacobian(
+      model,
+      q - EPS * q_dirs.col(idir),
+      cs,
+      Ghm,
+      update_kinematics
+    );
+
+    G_dirs[idir] = (Ghp - Ghm) / EPSx2;
 
     if (fd_model) {
-      computeFDCEntry(model, *modelh, EPS, idir, *fd_model);
+      computeFDCEntry(*modelh, model, EPS, idir, *fd_model);
       delete modelh;
+    }
+
+    if (fd_cs) {
+      computeFDCEntry(*csh, cs, EPS, idir, *fd_cs);
+      delete csh;
     }
   }
 }
 
+/*
 RBDL_DLLAPI void ComputeConstraintImpulsesDirect (
     Model & model,
     ADModel * fd_model,
@@ -316,7 +355,8 @@ RBDL_DLLAPI void ComputeConstraintImpulsesDirect (
     }
   }
 }
-
+*/
+/*
 RBDL_DLLAPI
 void ComputeConstraintImpulsesDirect (
     Model & model,
@@ -366,7 +406,8 @@ void ComputeConstraintImpulsesDirect (
     }
   }
 }
-
+*/
+/*
 RBDL_DLLAPI
 void SolveConstrainedSystemDirect (
     const MatrixNd &H,
@@ -404,6 +445,7 @@ void SolveConstrainedSystemDirect (
     x_fd.col(i) = (xh - x) / EPS;
   }
 }
+*/
 
 
 // -----------------------------------------------------------------------------
