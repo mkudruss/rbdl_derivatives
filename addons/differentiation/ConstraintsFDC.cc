@@ -87,7 +87,6 @@ void CalcConstrainedSystemVariables (
 
 }
 
-/*
 
 RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
   Model &model,
@@ -136,23 +135,20 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
       q + EPS * q_dirs.col(idir),
       qdot + EPS * qdot_dirs.col(idir),
       tau + EPS * tau_dirs.col(idir),
-      csh,
+      *csh,
       qddotph
     );
 
     ForwardDynamicsConstraintsDirect(
-      *modelh,
+      model,
       q - EPS * q_dirs.col(idir),
       qdot - EPS * qdot_dirs.col(idir),
       tau - EPS * tau_dirs.col(idir),
-      csh,
+      cs,
       qddotmh
     );
 
     fd_qddot.col(idir) = (qddotph - qddotmh) / EPSx2;
-
-    // TODO add pointer arithmetic for fd_cs
-    // computeFDEntry(cs, csh, EPS, idir, fd_cs);
 
     if (fd_model) {
       computeFDCEntry(*modelh, model, EPS, idir, *fd_model);
@@ -165,7 +161,6 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
     }
   }
 }
-*/
 
 RBDL_DLLAPI void ForwardDynamicsContactsKokkevis (
   Model &model,

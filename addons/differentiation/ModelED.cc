@@ -19,13 +19,7 @@ namespace RigidBodyDynamics {
 // namespace ED {
 // -----------------------------------------------------------------------------
 
-EDModel::EDModel () {
-    // TODO: should not be called, I think!
-    //std::cerr << "Data structure can only be initialized with argument RigidBodyDynamics::Model!" << std::endl;
-    //throw std::exception;
-}
-
-EDModel::EDModel (RigidBodyDynamics::Model& model) {
+EDModel::EDModel (RigidBodyDynamics::Model const & model) {
     ndirs = 10 * model.dof_count;
 
     // NOTE: old initialization values
@@ -170,6 +164,8 @@ void EDModel::resize_directions (const unsigned int &requested_ndirs)
     Iv.resize(6, ndirs);
   }
 }
+
+EDModel::~EDModel () {};
 
 // -----------------------------------------------------------------------------
 // } // ED

@@ -83,8 +83,9 @@ struct EDModel {
     RigidBodyDynamics::Math::MatrixNd d;
     SpatialDirection Iv;
 
-    EDModel ();
-    EDModel (RigidBodyDynamics::Model& model);
+    EDModel () = delete;
+    EDModel (RigidBodyDynamics::Model const& model);
+    ~EDModel ();
 
     void resize_directions (const unsigned int &requested_ndirs);
 

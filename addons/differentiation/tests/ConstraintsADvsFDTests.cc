@@ -438,9 +438,9 @@ void ForwardDynamicsConstraintsDirectTemplate(
     VectorNd qd = VectorNd::Random(nq);
     VectorNd tau = VectorNd::Random(nq);
 
-    ForwardDynamicsConstraintsDirect(model, q, qd, tau, cs, qdd);
+    RigidBodyDynamics::ForwardDynamicsConstraintsDirect(model, q, qd, tau, cs, qdd);
 
-    AD::ForwardDynamicsConstraintsDirect(
+    RigidBodyDynamics::AD::ForwardDynamicsConstraintsDirect(
           ad_model, ad_d_model,
           q, q_dirs,
           qd, qd_dirs,
@@ -448,16 +448,16 @@ void ForwardDynamicsConstraintsDirectTemplate(
           ad_cs, ad_d_cs,
           ad_qdd, ad_qdd_dirs);
 
-    FD::ForwardDynamicsConstraintsDirect(
+    RigidBodyDynamics::FDC::ForwardDynamicsConstraintsDirect(
           fd_model, &fd_d_model,
           q, q_dirs,
           qd, qd_dirs,
           tau, tau_dirs,
-          fd_cs, fd_d_cs,
+          fd_cs, &fd_d_cs,
           fd_qdd, fd_qdd_dirs);
 
-    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
-    // checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model, 1e-3);
+    checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs, 1e-4);
 
     CHECK_ARRAY_CLOSE(qdd.data(), ad_qdd.data(), nq, array_close_prec);
     CHECK_ARRAY_CLOSE(qdd.data(), fd_qdd.data(), nq, array_close_prec);
@@ -475,7 +475,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsConstraintsDirect) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  ForwardDynamicsConstraintsDirectTemplate(*this, 10, 1e-3);
+  ForwardDynamicsConstraintsDirectTemplate(*this, 10, 1e-7);
 }
 
 // -----------------------------------------------------------------------------

@@ -55,6 +55,7 @@ void ComputeConstraintImpulsesDirect (
     Math::VectorNd  & qdot_plus,
     Math::MatrixNd  & fd_qdot_plus
     );
+*/
 
 RBDL_DLLAPI
 void ForwardDynamicsConstraintsDirect (
@@ -67,12 +68,12 @@ void ForwardDynamicsConstraintsDirect (
     const Math::VectorNd &tau,
     const Math::MatrixNd &tau_dirs,
     ConstraintSet   &cs,
-    ADConstraintSet &fd_cs,
+    ADConstraintSet *fd_cs,
     Math::VectorNd  &qddot,
     Math::MatrixNd  &fd_qddot
     );
 
-
+/*
 RBDL_DLLAPI
 void ComputeConstraintImpulsesDirect (
     Model & model,
