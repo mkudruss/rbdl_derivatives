@@ -79,8 +79,8 @@ void CalcContactJacobianTemplate(
           G_fd, fd_d_G
           );
 
-    // checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
-    // checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+    checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
 
     CHECK_ARRAY_CLOSE(G.data(), G_ad.data(), G.size(), array_close_prec);
     CHECK_ARRAY_CLOSE(G.data(), G_fd.data(), G.size(), array_close_prec);
@@ -103,10 +103,11 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobian) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
-  CalcContactJacobianTemplate(*this, 10, 1e-10);
+  CalcContactJacobianTemplate(*this, 10, 1e-9);
 }
 
 // -----------------------------------------------------------------------------
+
 
 template <typename T>
 void CalcContactJacobianEDvsADTemplate(
@@ -189,6 +190,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactJacobianEDvsAD) {
 
 // -----------------------------------------------------------------------------
 
+
 template <typename T>
 void CalcContactSystemVariablesTemplate(
     T & obj,
@@ -251,6 +253,7 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFCalcContactSystemVariables) {
   CalcContactSystemVariablesTemplate(*this, 10);
 }
 
+
 // -----------------------------------------------------------------------------
 
 template <typename T>
@@ -298,7 +301,7 @@ void CalcContactSystemVariablesEDvsADTemplate(
       tau, tau_dirs, fd_cs, fd_d_cs
     );
 
-    // checkModelsADvsED(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+    checkModelsADvsED(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
     checkConstraintSetsADvsED(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
 
     q.setRandom();
@@ -377,7 +380,7 @@ void ForwardDynamicsConstraintsDirectEDvsADTemplate(
           ed_cs, ed_d_cs,
           ed_qdd, ed_qdd_dirs);
 
-    // checkModelsADvsED(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
+    checkModelsADvsED(ndirs, ad_model, ad_d_model, ed_model, ed_d_model);
     checkConstraintSetsADvsED(ndirs, ad_cs, ad_d_cs, ed_cs, ed_d_cs);
 
     CHECK_ARRAY_CLOSE(qdd.data(), ad_qdd.data(), nq, array_close_prec);
@@ -456,8 +459,8 @@ void ForwardDynamicsConstraintsDirectTemplate(
           fd_cs, &fd_d_cs,
           fd_qdd, fd_qdd_dirs);
 
-    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model, 1e-3);
-    checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs, 1e-4);
+    checkModelsADvsFD(ndirs, ad_model, ad_d_model, fd_model, fd_d_model);
+    checkConstraintSetsADvsFD(ndirs, ad_cs, ad_d_cs, fd_cs, fd_d_cs);
 
     CHECK_ARRAY_CLOSE(qdd.data(), ad_qdd.data(), nq, array_close_prec);
     CHECK_ARRAY_CLOSE(qdd.data(), fd_qdd.data(), nq, array_close_prec);

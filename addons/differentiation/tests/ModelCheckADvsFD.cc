@@ -245,7 +245,7 @@ void checkModelsADvsED(
 
   // nominal check
   CHECK_CLOSE(ad_model.c_J.size(), ed_model.c_J.size(), PREC);
-  for (unsigned i = 0; i < ad_model.c_J.size(); i++) {
+  for (unsigned i = 0; i < ad_model.c_J.size(); i++) {   
     CHECK_ARRAY_CLOSE(ad_model.c_J[i].data(), ed_model.c_J[i].data(), 6, PREC);
   }
   // derivative check

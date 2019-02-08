@@ -475,15 +475,6 @@ RBDL_DLLAPI void NonlinearEffects (
           += model.X_lambda[i].toMatrixTranspose()
           * (crossf_rhs_T(model.f[i]) * model.S[i]*q_dirs.row(model.mJoints[i].q_index).leftCols(ndirs)
              + ed_model.f[i].leftCols(ndirs));
-// deprecated
-//      // d f[model.lambda[i]] / d q
-//      ed_model.f_q[model.lambda[i]].leftCols(ndirs)
-//        += model.X_lambda[i].toMatrixTranspose()
-//          * (crossf_rhs_T(model.f[i]) * model.S[i]*q_dirs.row(model.mJoints[i].q_index).leftCols(ndirs)
-//             + ed_model.f_q[i].leftCols(ndirs));
-//      // d f[model.lambda[i]] / d qdot
-//      ed_model.f_qdot[model.lambda[i]].leftCols(ndirs)
-//        += model.X_lambda[i].toMatrixTranspose()*ed_model.f_qdot[i].leftCols(ndirs);
     }
   }
 }

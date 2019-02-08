@@ -109,7 +109,6 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
 
   ConstraintSet const cs_in = cs;
 
-  ForwardDynamicsConstraintsDirect(model, q, qdot, tau, cs, qddot);
 
   // temporary variables
   VectorNd qddotph (qddot);
@@ -160,6 +159,8 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
       delete csh;
     }
   }
+
+  ForwardDynamicsConstraintsDirect(model, q, qdot, tau, cs, qddot);
 }
 
 RBDL_DLLAPI void ForwardDynamicsContactsKokkevis (
@@ -257,8 +258,6 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
 
   bool const update_kinematics = true;
 
-  CalcConstraintsJacobian(model, q, cs, G, update_kinematics);
-
   for (unsigned idir = 0; idir < ndirs; idir++) {
     Model * modelh;
     if (fd_model) {
@@ -305,6 +304,8 @@ RBDL_DLLAPI void CalcConstraintsJacobian(
       delete csh;
     }
   }
+
+  CalcConstraintsJacobian(model, q, cs, G, update_kinematics);
 }
 
 /*

@@ -563,6 +563,9 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     NULL, NULL,
     NULL, NULL
   );
+  // TODO: !!! This call to UpdateKinematicsCustom writes an invalid value
+  //           into model.v_J to an invalid value because inside, jcalc is
+  //           without qdot and qdot_dirs !!! CHANGE!
   // TODO replace with exact code, saves computation of model.X_lambda
   // NOTE we have to compute ed_model.X_lambda on top
   // for (unsigned int i = 1; i < model.mBodies.size(); i++) {
@@ -608,10 +611,10 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
   ed_CS.QDDot_0.setZero();
   CS.QDDot_0.setZero();
   UpdateKinematicsCustom(
-      model, ed_model,
-      NULL, &q_dirs,
-      NULL, NULL,
-      &CS.QDDot_0, &ed_CS.QDDot_0
+      model, ed_model,   // changed from
+      &q, &q_dirs,       // NULL, &q_dirs,
+      &qdot, &qdot_dirs, // NULL, NULL    to get valid values for v_J in model
+      &CS.QDDot_0, &ed_CS.QDDot_0 // => this should be improved as it is slow
     );
 
 
