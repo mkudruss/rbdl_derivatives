@@ -65,7 +65,7 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
     const VectorNd &tau,
     const MatrixNd &tau_dirs,
     ConstraintSet   &cs,
-    ADConstraintSet &fd_cs,
+    ADConstraintSet *fd_cs,
     VectorNd  &qddot,
     MatrixNd  &fd_qddot) {
   unsigned const ndirs = q_dirs.cols();
@@ -78,12 +78,13 @@ RBDL_DLLAPI void ForwardDynamicsConstraintsDirect (
 
   ForwardDynamicsConstraintsDirect(model, q, qdot, tau, cs, qddot);
 
+  Model *modelh = &model;
+  ConstraintSet csh = cs_in;
+
   for (unsigned idir = 0; idir < ndirs; idir++) {
-    Model *modelh = &model;
     VectorNd qh    = q + h * q_dirs.col(idir);
     VectorNd qdoth = qdot + h * qdot_dirs.col(idir);
     VectorNd tauh  = tau + h * tau_dirs.col(idir);
-    ConstraintSet csh = cs_in;
     VectorNd qddoth = VectorNd::Zero(qddot.rows());
 
     if (fd_model) {

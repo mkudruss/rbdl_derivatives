@@ -52,6 +52,19 @@ void ComputeConstraintImpulsesDirect (
     Math::MatrixNd  & fd_qdot_plus
     );
 
+//RigidBodyDynamics::FD::ForwardDynamicsConstraintsDirect(RigidBodyDynamics::Model&,
+//     ADModel*,
+//     Eigen::Matrix<double, -1, 1, 0, -1, 1> const&,
+//     Eigen::Matrix<double, -1, -1, 0, -1, -1> const&,
+//     Eigen::Matrix<double, -1, 1, 0, -1, 1> const&,
+//     Eigen::Matrix<double, -1, -1, 0, -1, -1> const&,
+//     Eigen::Matrix<double, -1, 1, 0, -1, 1> const&,
+//     Eigen::Matrix<double, -1, -1, 0, -1, -1> const&,
+//     RigidBodyDynamics::ConstraintSet&,
+//     RigidBodyDynamics::ADConstraintSet*,
+//     Eigen::Matrix<double, -1, 1, 0, -1, 1>&,
+//     Eigen::Matrix<double, -1, -1, 0, -1, -1>&)
+
 RBDL_DLLAPI
 void ForwardDynamicsConstraintsDirect (
     Model   &model,
@@ -63,7 +76,7 @@ void ForwardDynamicsConstraintsDirect (
     const Math::VectorNd &tau,
     const Math::MatrixNd &tau_dirs,
     ConstraintSet   &cs,
-    ADConstraintSet &fd_cs,
+    ADConstraintSet *fd_cs,
     Math::VectorNd  &qddot,
     Math::MatrixNd  &fd_qddot
     );
