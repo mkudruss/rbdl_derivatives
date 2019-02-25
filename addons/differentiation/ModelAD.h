@@ -45,7 +45,8 @@ struct ADModel {
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > f;
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialVector> > h;
 
-//    std::vector<std::vector<RigidBodyDynamics::Math::SpatialMatrix> > Ic;
+    RigidBodyDynamics::Math::SpatialRigidBodyInertia I0;
+    std::vector<RigidBodyDynamics::Math::SpatialRigidBodyInertia> I_temp;
 
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialRigidBodyInertia> > Ic;
 

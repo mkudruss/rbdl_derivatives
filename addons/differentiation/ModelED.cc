@@ -22,6 +22,16 @@ namespace RigidBodyDynamics {
 EDModel::EDModel (RigidBodyDynamics::Model const & model) {
     ndirs = 10 * model.dof_count;
 
+    bodyidx2s1idx = std::vector<uint8_t>(model.mBodies.size(), 0);
+    for (unsigned i = 0; i < model.mBodies.size(); i++) {
+      for (unsigned j = 0; j < 6; j++) {
+        if (model.S[i](j) == 1.) {
+          bodyidx2s1idx[i] = j;
+          break;
+        }
+      }
+    }
+
     // NOTE: old initialization values
     // std::vector<SpatialRigidBodyInertia> SRBI(ndirs);
     std::vector<SpatialRigidBodyInertia> SRBI(ndirs);

@@ -687,22 +687,23 @@ RBDL_DLLAPI void CompositeRigidBodyAlgorithm (
     assert( model.mJoints[i].mDoFCount == 1);
     if (model.lambda[i] != 0) {
       // derivative evaluation
-      SpatialRigidBodyInertia         summand;
-      vector<SpatialRigidBodyInertia> summand_res(ndirs);
+      // SpatialRigidBodyInertia         summand;
+      // vector<SpatialRigidBodyInertia> summand_res(ndirs);
       applyTransposeSTSI(
             ndirs,
             model.X_lambda[i],
             ad_model.X_lambda[i],
             model.Ic[i],
             ad_model.Ic[i],
-            summand,
-            summand_res
+            ad_model.I0,
+            ad_model.I_temp
             );
       for (unsigned idir = 0; idir < ndirs; idir++) {
-        ad_model.Ic[model.lambda[i]][idir] = ad_model.Ic[model.lambda[i]][idir] + summand_res[idir];
+        ad_model.Ic[model.lambda[i]][idir] += ad_model.I_temp[idir];
       }
       // nominal evaluation
-      model.Ic[model.lambda[i]] = model.Ic[model.lambda[i]] + model.X_lambda[i].applyTranspose(model.Ic[i]);
+      model.Ic[model.lambda[i]] += ad_model.I0;
+          // + model.X_lambda[i].applyTranspose(model.Ic[i]);
     }
 
     unsigned int dof_index_i = model.mJoints[i].q_index;
