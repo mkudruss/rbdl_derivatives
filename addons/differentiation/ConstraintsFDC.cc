@@ -403,7 +403,7 @@ void ComputeConstraintImpulsesDirect (
   }
 }
 */
-/*
+
 RBDL_DLLAPI
 void SolveConstrainedSystemDirect (
     const MatrixNd &H,
@@ -426,23 +426,41 @@ void SolveConstrainedSystemDirect (
   VectorNd qddot(H.rows());
   VectorNd lambda(H.rows());
 
+  MatrixNd Ah(A);
+  VectorNd bh(b);
+  VectorNd xh(x);
+
+  for (int i = 0; i < ndirs; i++) {
+    RigidBodyDynamics::SolveConstrainedSystemDirect (
+        H + EPS * H_dirs[i],
+        G + EPS * G_dirs[i],
+        c + EPS * c_dirs.col(i),
+        gamma + EPS * gamma_dirs.col(i),
+        qddot, lambda,
+        Ah, bh, xh,
+        linear_solver
+    );
+
+    RigidBodyDynamics::SolveConstrainedSystemDirect (
+        H - EPS * H_dirs[i],
+        G - EPS * G_dirs[i],
+        c - EPS * c_dirs.col(i),
+        gamma - EPS * gamma_dirs.col(i),
+        qddot, lambda,
+        A, b, x,
+        linear_solver
+    );
+
+    A_dirs[i] = (Ah - A) / EPSx2;
+    b_dirs.col(i) = (bh - b) / EPSx2;
+    x_fd.col(i) = (xh - x) / EPSx2;
+  }
+
   RigidBodyDynamics::SolveConstrainedSystemDirect(
       H, G, c, gamma, qddot, lambda,
       A, b, x, linear_solver);
-  for (int i = 0; i < ndirs; i++) {
-    MatrixNd Ah(A);
-    VectorNd bh(b);
-    VectorNd xh(x);
-    RigidBodyDynamics::SolveConstrainedSystemDirect (H + EPS * H_dirs[i],
-        G + EPS * G_dirs[i], c + EPS * c_dirs.col(i), gamma + EPS * gamma_dirs.col(i),
-        qddot, lambda, Ah, bh, xh, linear_solver);
-    A_dirs[i] = (Ah - A) / EPS;
-    b_dirs.col(i) = (bh - b) / EPS;
-    x_fd.col(i) = (xh - x) / EPS;
-  }
-}
-*/
 
+}
 
 // -----------------------------------------------------------------------------
 } // namespace FD

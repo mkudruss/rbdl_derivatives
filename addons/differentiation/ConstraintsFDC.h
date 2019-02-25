@@ -90,6 +90,7 @@ void ComputeConstraintImpulsesDirect (
     Math::MatrixNd & fd_qdot_plus
     );
 
+*/
 
 RBDL_DLLAPI
 void SolveConstrainedSystemDirect (
@@ -110,7 +111,6 @@ void SolveConstrainedSystemDirect (
     Math::LinearSolver & linear_solver,
     int ndirs
 );
-*/
 
 RBDL_DLLAPI
 void ForwardDynamicsContactsKokkevis (

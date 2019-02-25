@@ -25,7 +25,7 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     const Math::VectorNd &tau,
     const Math::MatrixNd &tau_dirs,
     ConstraintSet   &cs,
-    ADConstraintSet &fd_CS);
+    ADConstraintSet *fd_CS);
 
 RBDL_DLLAPI
 void CalcConstraintsJacobian (

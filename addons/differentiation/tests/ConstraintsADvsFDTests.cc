@@ -276,7 +276,7 @@ void CalcContactSystemVariablesEDvsADTemplate(
 
   // set up input quantities
   int const nq = ad_model.dof_count;
-  unsigned const ndirs = nq;
+  // unsigned const ndirs = nq;
 
   VectorNd q = VectorNd::Zero(nq);
   MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
@@ -345,7 +345,7 @@ void ForwardDynamicsConstraintsDirectEDvsADTemplate(
 
   // set up input quantities
   int const nq = ad_model.dof_count;
-  unsigned const ndirs = nq;
+  // unsigned const ndirs = nq;
 
   VectorNd qdd    = VectorNd::Zero(nq);
   VectorNd ad_qdd = VectorNd::Zero(nq);
@@ -479,6 +479,131 @@ TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFForwardDynamicsConstraintsDirect) {
   constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
   constraint_set.Bind (model);
   ForwardDynamicsConstraintsDirectTemplate(*this, 10, 1e-7);
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename T>
+void SolveConstrainedSystemDirectTemplate(
+    T & obj,
+    unsigned trial_count,
+    double array_close_prec
+) {
+  Model   model    = obj.model;
+  Model   ad_model = obj.model;
+  Model   fd_model = obj.model;
+
+  ADModel ad_d_model = ADModel(ad_model);
+  ADModel fd_d_model = ADModel(fd_model);
+
+  ConstraintSet cs = obj.constraint_set;
+  ConstraintSet ad_cs = obj.constraint_set;
+  ConstraintSet fd_cs = obj.constraint_set;
+  ADConstraintSet ad_d_cs = ADConstraintSet(ad_cs, ad_model.dof_count);
+  ADConstraintSet fd_d_cs = ADConstraintSet(fd_cs, fd_model.dof_count);
+
+  // set up input quantities
+  int const nq = ad_model.dof_count;
+  unsigned const ndirs = nq;
+
+  VectorNd qdd    = VectorNd::Zero(nq);
+  VectorNd ad_qdd = VectorNd::Zero(nq);
+  VectorNd fd_qdd = VectorNd::Zero(nq);
+  MatrixNd ad_qdd_dirs = MatrixNd::Zero(nq, nq);
+  MatrixNd fd_qdd_dirs = MatrixNd::Zero(nq, nq);
+
+  MatrixNd q_dirs = MatrixNd::Identity(nq, nq);
+  MatrixNd qd_dirs = MatrixNd::Identity(nq, nq);
+  MatrixNd tau_dirs = MatrixNd::Identity(nq, nq);
+
+  for (unsigned trial = 0; trial < trial_count; trial++) {
+    VectorNd q = VectorNd::Random(nq);
+    VectorNd qd = VectorNd::Random(nq);
+    VectorNd tau = VectorNd::Random(nq);
+
+    // NOTE we need to compute the system variables first
+    RigidBodyDynamics::AD::CalcConstrainedSystemVariables(
+      fd_model, fd_d_model,
+      q, q_dirs,
+      qd, qd_dirs,
+      tau, tau_dirs,
+      fd_cs, fd_d_cs
+    );
+
+    RigidBodyDynamics::AD::CalcConstrainedSystemVariables(
+      ad_model, ad_d_model,
+      q, q_dirs,
+      qd, qd_dirs,
+      tau, tau_dirs,
+      ad_cs, ad_d_cs
+    );
+
+    VectorNd c = tau - cs.C;
+    MatrixNd cdot(c.rows(), ndirs);
+    for (unsigned idir = 0; idir < ndirs; idir++) {
+      cdot.col(idir) = tau_dirs.col(idir) - ad_cs.C.col(idir);
+    }
+
+    RigidBodyDynamics::SolveConstrainedSystemDirect(
+        cs.H,
+        cs.G,
+        c,
+        cs.gamma,
+        qdd,
+        cs.force,
+        cs.A,
+        cs.b,
+        cs.x,
+        cs.linear_solver
+    );
+
+    RigidBodyDynamics::AD::SolveConstrainedSystemDirect(
+         ad_cs.H, ad_d_cs.H,
+         ad_cs.G, ad_d_cs.G,
+          c, cdot,
+         ad_cs.gamma, ad_d_cs.gamma,
+         ad_cs.A, ad_d_cs.A,
+         ad_cs.b, ad_d_cs.b,
+         ad_cs.x, ad_d_cs.x,
+         ad_cs.linear_solver,
+         ndirs
+    );
+
+    ad_qdd = ad_cs.x.segment(0, ad_model.dof_count);
+    ad_qdd_dirs = ad_d_cs.x.block(0, 0, ad_model.dof_count, ndirs);
+
+    RigidBodyDynamics::FDC::SolveConstrainedSystemDirect(
+         ad_cs.H, ad_d_cs.H,
+         ad_cs.G, ad_d_cs.G,
+         c, cdot,
+         ad_cs.gamma, ad_d_cs.gamma,
+         ad_cs.A, ad_d_cs.A,
+         ad_cs.b, ad_d_cs.b,
+         ad_cs.x, ad_d_cs.x,
+         ad_cs.linear_solver,
+         ndirs
+    );
+
+    fd_qdd = fd_cs.x.segment(0, fd_model.dof_count);
+    fd_qdd_dirs = fd_d_cs.x.block(0, 0, fd_model.dof_count, ndirs);
+
+    CHECK_ARRAY_CLOSE(qdd.data(), ad_qdd.data(), nq, array_close_prec);
+    CHECK_ARRAY_CLOSE(qdd.data(), fd_qdd.data(), nq, array_close_prec);
+    CHECK_ARRAY_CLOSE(ad_qdd_dirs.data(), fd_qdd_dirs.data(), nq*nq,
+                      array_close_prec);
+
+    q_dirs.setRandom();
+    qd_dirs.setRandom();
+    tau_dirs.setRandom();
+  }
+}
+
+TEST_FIXTURE (FixedBase6DoF, FixedBase6DoFSolveConstrainedSystemDirect) {
+  // add contacts and bind them to constraint set
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (1., 0., 0.), contact_normal);
+  constraint_set.AddContactConstraint (contact_body_id, Vector3d (0., 1., 0.), contact_normal);
+  constraint_set.Bind (model);
+  SolveConstrainedSystemDirectTemplate(*this, 10, 1e-7);
 }
 
 // -----------------------------------------------------------------------------

@@ -21,31 +21,39 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     const VectorNd &tau,
     const MatrixNd &tau_dirs,
     ConstraintSet   &cs,
-    ADConstraintSet &fd_cs) {
+    ADConstraintSet *fd_cs) {
   unsigned const ndirs = q_dirs.cols();
   assert(ndirs == qdot_dirs.cols());
   assert(ndirs == tau_dirs.cols());
 
   double const h = 1e-8;
-  ConstraintSet const cs_in = cs;
 
   CalcConstrainedSystemVariables(model, q, qdot, tau, cs);
+
+  ConstraintSet * csh;
 
   for (unsigned idir = 0; idir < ndirs; idir++) {
     Model *modelh = &model;
     VectorNd qh    = q + h * q_dirs.col(idir);
     VectorNd qdoth = qdot + h * qdot_dirs.col(idir);
     VectorNd tauh  = tau + h * tau_dirs.col(idir);
-    ConstraintSet csh = cs_in;
 
     if (fd_model) {
       modelh = new Model(model);
     }
 
-    CalcConstrainedSystemVariables(*modelh, qh, qdoth, tauh, csh);
+    if (fd_cs) {
+      csh = new ConstraintSet(cs);
+    } else {
+      csh = &cs;
+    }
+
+    CalcConstrainedSystemVariables(*modelh, qh, qdoth, tauh, *csh);
 
     // TODO make it analogue to ADMOdel with pointer arithmetic
-    // computeFDEntry(cs, csh, h, idir, fd_cs);
+    if(fd_cs) {
+      computeFDEntry(cs, *csh, h, idir, *fd_cs);
+    }
 
     if (fd_model) {
       computeFDEntry(model, *modelh, h, idir, *fd_model);
