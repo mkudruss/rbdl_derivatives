@@ -659,24 +659,23 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
     abort();
   }
 
-  vector<Matrix3d> ad_E(ndirs);
   Matrix3d E = RigidBodyDynamics::ED::CalcBodyWorldOrientation(
-    model, ed_model, q, q_dirs, reference_body_id, ad_E, false
+    model, ed_model, q, q_dirs, reference_body_id, ed_model.ad_E, false
   );
 
   // derivative evaluation
   // TODO directly build up SpatialTransform
   vector<SpatialMatrix> ad_p_X_i(ndirs);
   for (int idir = 0; idir < ndirs; idir++) {
-    Matrix3d ad_ETrx = ad_E[idir].transpose() * Matrix3d(
+    Matrix3d ad_ETrx = ed_model.ad_E[idir].transpose() * Matrix3d(
           0., -reference_point[2],  reference_point[1],
         reference_point[2],                  0., -reference_point[0],
         -reference_point[1],  reference_point[0],                  0.);
     // + E.transpose() * Matrix3dZero;
-    ad_p_X_i[idir].block<3,3>(0, 0) = ad_E[idir].transpose();
+    ad_p_X_i[idir].block<3,3>(0, 0) = ed_model.ad_E[idir].transpose();
     ad_p_X_i[idir].block<3,3>(0, 3) = Matrix3dZero;
     ad_p_X_i[idir].block<3,3>(3, 0) = -ad_ETrx;
-    ad_p_X_i[idir].block<3,3>(3, 3) = ad_E[idir].transpose();
+    ad_p_X_i[idir].block<3,3>(3, 3) = ed_model.ad_E[idir].transpose();
   }
   // nominal evaluation
   SpatialTransform p_X_i (E.transpose(), reference_point);
