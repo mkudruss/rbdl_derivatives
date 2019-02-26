@@ -522,6 +522,8 @@ void SolveConstrainedSystemDirectTemplate(
     VectorNd tau = VectorNd::Random(nq);
 
     // NOTE we need to compute the system variables first
+    RigidBodyDynamics::CalcConstrainedSystemVariables(model, q, qd, tau, cs);
+
     RigidBodyDynamics::AD::CalcConstrainedSystemVariables(
       fd_model, fd_d_model,
       q, q_dirs,
@@ -544,6 +546,13 @@ void SolveConstrainedSystemDirectTemplate(
       cdot.col(idir) = tau_dirs.col(idir) - ad_cs.C.col(idir);
     }
 
+    CHECK_ARRAY_CLOSE(cs.H.data(), fd_cs.H.data(), cs.H.size(), array_close_prec);
+    CHECK_ARRAY_CLOSE(cs.H.data(), ad_cs.H.data(), cs.H.size(), array_close_prec);
+    CHECK_ARRAY_CLOSE(cs.G.data(), fd_cs.G.data(), cs.G.size(), array_close_prec);
+    CHECK_ARRAY_CLOSE(cs.G.data(), ad_cs.G.data(), cs.G.size(), array_close_prec);
+    CHECK_ARRAY_CLOSE(cs.gamma.data(), fd_cs.gamma.data(), cs.gamma.size(), array_close_prec);
+    CHECK_ARRAY_CLOSE(cs.gamma.data(), ad_cs.gamma.data(), cs.gamma.size(), array_close_prec);
+
     RigidBodyDynamics::SolveConstrainedSystemDirect(
         cs.H,
         cs.G,
@@ -560,7 +569,7 @@ void SolveConstrainedSystemDirectTemplate(
     RigidBodyDynamics::AD::SolveConstrainedSystemDirect(
          ad_cs.H, ad_d_cs.H,
          ad_cs.G, ad_d_cs.G,
-          c, cdot,
+         c, cdot,
          ad_cs.gamma, ad_d_cs.gamma,
          ad_cs.A, ad_d_cs.A,
          ad_cs.b, ad_d_cs.b,
@@ -573,22 +582,23 @@ void SolveConstrainedSystemDirectTemplate(
     ad_qdd_dirs = ad_d_cs.x.block(0, 0, ad_model.dof_count, ndirs);
 
     RigidBodyDynamics::FDC::SolveConstrainedSystemDirect(
-         ad_cs.H, ad_d_cs.H,
-         ad_cs.G, ad_d_cs.G,
+         fd_cs.H, fd_d_cs.H,
+         fd_cs.G, fd_d_cs.G,
          c, cdot,
-         ad_cs.gamma, ad_d_cs.gamma,
-         ad_cs.A, ad_d_cs.A,
-         ad_cs.b, ad_d_cs.b,
-         ad_cs.x, ad_d_cs.x,
-         ad_cs.linear_solver,
+         fd_cs.gamma, fd_d_cs.gamma,
+         fd_cs.A, fd_d_cs.A,
+         fd_cs.b, fd_d_cs.b,
+         fd_cs.x, fd_d_cs.x,
+         fd_cs.linear_solver,
          ndirs
     );
 
+    qdd = cs.x.segment(0, model.dof_count);
     fd_qdd = fd_cs.x.segment(0, fd_model.dof_count);
     fd_qdd_dirs = fd_d_cs.x.block(0, 0, fd_model.dof_count, ndirs);
 
     CHECK_ARRAY_CLOSE(qdd.data(), ad_qdd.data(), nq, array_close_prec);
-    CHECK_ARRAY_CLOSE(qdd.data(), fd_qdd.data(), nq, array_close_prec);
+    CHECK_ARRAY_CLOSE(ad_qdd.data(), fd_qdd.data(), nq, array_close_prec);
     CHECK_ARRAY_CLOSE(ad_qdd_dirs.data(), fd_qdd_dirs.data(), nq*nq,
                       array_close_prec);
 
