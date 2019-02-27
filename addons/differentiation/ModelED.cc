@@ -41,7 +41,12 @@ EDModel::EDModel (RigidBodyDynamics::Model const & model) {
     std::vector<SpatialVector> vec(ndirs, SpatialVector::Zero());
     SpatialDirection vec_dir = MatrixNd::Zero(6, ndirs);
 
-    ad_E.resize(ndirs);
+    ad_E.resize(ndirs, Matrix3dZero);
+    ad_p_X_i.resize(ndirs, SpatialMatrix::Zero());
+    ad_p_v_i.resize(ndirs, SpatialVector::Zero());
+    ad_a_dash.resize(3, ndirs);
+    ad_p_a_i.resize(6, ndirs);
+
     //std::vector<double> double(ndirs, 0.0);
 
     // inertias
@@ -174,7 +179,11 @@ void EDModel::resize_directions (const unsigned int &requested_ndirs)
     d.resize(d.rows(), ndirs);
     d.setZero();
     Iv.resize(6, ndirs);
-    ad_E.resize(ndirs);
+    ad_E.resize(ndirs, Matrix3dZero);
+    ad_p_X_i.resize(ndirs, SpatialMatrix::Zero());
+    ad_p_v_i.resize(ndirs, SpatialVector::Zero());
+    ad_a_dash.resize(3, ndirs);
+    ad_p_a_i.resize(6, ndirs);
   }
 }
 

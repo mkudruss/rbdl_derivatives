@@ -612,8 +612,8 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
   CS.QDDot_0.setZero();
   UpdateKinematicsCustom(
       model, ed_model,   // changed from
-      &q, &q_dirs,       // NULL, &q_dirs,
-      &qdot, &qdot_dirs, // NULL, NULL    to get valid values for v_J in model
+      0, &q_dirs, // &q, &q_dirs,       // NULL, &q_dirs,
+      0, 0, // &qdot, &qdot_dirs, // NULL, NULL    to get valid values for v_J in model
       &CS.QDDot_0, &ed_CS.QDDot_0 // => this should be improved as it is slow
     );
 

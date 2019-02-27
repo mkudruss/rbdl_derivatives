@@ -36,7 +36,10 @@ struct EDModel {
 
     std::vector<uint8_t> bodyidx2s1idx;
     std::vector<RigidBodyDynamics::Math::Matrix3d> ad_E;
-
+    std::vector<RigidBodyDynamics::Math::SpatialMatrix> ad_p_X_i;
+    std::vector<RigidBodyDynamics::Math::SpatialVector> ad_p_v_i;
+    RigidBodyDynamics::Math::MatrixNd ad_a_dash;
+    RigidBodyDynamics::Math::MatrixNd ad_p_a_i;
 
     // inertias
     std::vector<std::vector<RigidBodyDynamics::Math::SpatialRigidBodyInertia> > Ic;
