@@ -563,6 +563,7 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
     NULL, NULL,
     NULL, NULL
   );
+
   // TODO: !!! This call to UpdateKinematicsCustom writes an invalid value
   //           into model.v_J to an invalid value because inside, jcalc is
   //           without qdot and qdot_dirs !!! CHANGE!
@@ -585,6 +586,7 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
   //   // nominal evaluation
   //   model.X_base[i] = model.X_lambda[i] * model.X_base[lambda];
   // }
+
   RigidBodyDynamics::ED::CalcConstraintsJacobian(
     model, ed_model, q, q_dirs, CS, ed_CS, CS.G, ed_CS.G, false
   );
@@ -617,7 +619,7 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
       &CS.QDDot_0, &ed_CS.QDDot_0 // => this should be improved as it is slow
     );
 
-
+  CS.gamma = CS.acceleration;
   for (unsigned int i = 0; i < CS.contactConstraintIndices.size(); i++) {
     unsigned const c = CS.contactConstraintIndices[i];
 
@@ -636,10 +638,11 @@ RBDL_DLLAPI void CalcConstrainedSystemVariables (
 
     // we also substract ContactData[c].acceleration such that the contact
     // point will have the desired acceleration
-     ed_CS.gamma.row(c).segment(0, ndirs) =
-         -CS.normal[c].transpose() * ed_gamma_i;
-    CS.gamma[c] = CS.acceleration[c] - CS.normal[c].dot(gamma_i);
+     ed_CS.gamma.row(c).leftCols(ndirs) = -CS.normal[c].transpose() * ed_gamma_i;
+     CS.gamma[c] -= CS.normal[c].dot(gamma_i);
   }
+
+
 
   // LOOP CONSTRAINTS NOT SUPPORTED
   /*

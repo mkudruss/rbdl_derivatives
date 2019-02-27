@@ -89,9 +89,7 @@ void computeFDEntry(
   fd_cs.force.col(idir) = (csh.force - cs.force) / h;
   fd_cs.err.col(idir) = (csh.err - cs.err) / h;
   fd_cs.errd.col(idir) = (csh.errd - cs.errd) / h;
-  std::cout << "fd_cs.d_a.size() = " << fd_cs.d_a.size() << std::endl;
   for(unsigned i = 0; i < cs.d_a.size(); i++) {
-    std::cout << "fd_cs.d_a[i].size = " << fd_cs.d_a[i].size() << std::endl;
     fd_cs.d_a[i].col(idir) = (csh.d_a[i] - cs.d_a[i]) / h;
   }
   fd_cs.d_u.col(idir) = (csh.d_u - cs.d_u) / h;

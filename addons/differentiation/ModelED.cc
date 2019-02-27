@@ -43,7 +43,7 @@ EDModel::EDModel (RigidBodyDynamics::Model const & model) {
 
     ad_E.resize(ndirs, Matrix3dZero);
     ad_p_X_i.resize(ndirs, SpatialMatrix::Zero());
-    ad_p_v_i.resize(ndirs, SpatialVector::Zero());
+    ad_p_v_i.resize(6, ndirs);
     ad_a_dash.resize(3, ndirs);
     ad_p_a_i.resize(6, ndirs);
 
@@ -181,7 +181,7 @@ void EDModel::resize_directions (const unsigned int &requested_ndirs)
     Iv.resize(6, ndirs);
     ad_E.resize(ndirs, Matrix3dZero);
     ad_p_X_i.resize(ndirs, SpatialMatrix::Zero());
-    ad_p_v_i.resize(ndirs, SpatialVector::Zero());
+    ad_p_v_i.resize(6, ndirs);
     ad_a_dash.resize(3, ndirs);
     ad_p_a_i.resize(6, ndirs);
   }

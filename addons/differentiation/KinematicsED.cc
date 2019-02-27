@@ -680,45 +680,27 @@ RBDL_DLLAPI Vector3d CalcPointAcceleration (
 
   // derivative evaluation
   for (int idir = 0; idir < ndirs; idir++) {
-    ed_model.ad_p_v_i[idir] = ed_model.ad_p_X_i[idir] * model.v[reference_body_id]
+    ed_model.ad_p_v_i.col(idir) = ed_model.ad_p_X_i[idir] * model.v[reference_body_id]
         + p_X_i.apply(ed_model.v[reference_body_id].col(idir));
   }
   // nominal evaluation
   SpatialVector p_v_i = p_X_i.apply(model.v[reference_body_id]);
 
-  Vector3d p_v_i_0t2(p_v_i[0], p_v_i[1], p_v_i[2]);
-  Vector3d p_v_i_3t5(p_v_i[3], p_v_i[4], p_v_i[5]);
   // derivative evaluation
-  for (int idir = 0; idir < ndirs; idir++) {
-    Vector3d ad_p_v_i_0t2_idir = ed_model.ad_p_v_i[idir].block<3,1>(0, 0);
-    Vector3d ad_p_v_i_3t5_idir = ed_model.ad_p_v_i[idir].block<3,1>(3, 0);
-    ed_model.ad_a_dash.col(idir) = p_v_i_0t2.cross(ad_p_v_i_3t5_idir) + ad_p_v_i_0t2_idir.cross(p_v_i_3t5);
-  }
+  ed_model.ad_a_dash.leftCols(ndirs) =
+      RigidBodyDynamics::AD::cross3d(p_v_i.segment<3>(0))*ed_model.ad_p_v_i.bottomRows(3)
+      - RigidBodyDynamics::AD::cross3d(p_v_i.segment<3>(3))*ed_model.ad_p_v_i.topRows(3);
   // nominal evaluation
-  Vector3d a_dash = p_v_i_0t2.cross(p_v_i_3t5);
+  Vector3d a_dash = p_v_i.segment<3>(0).cross(p_v_i.segment<3>(3));
 
   // derivative evaluation
-  MatrixNd ad_p_a_i(6, ndirs);
-  //vector<SpatialVector> ad_p_a_i(ndirs);
   for (int idir = 0; idir < ndirs; idir++) {
-    ad_p_a_i.col(idir) = ed_model.ad_p_X_i[idir] * model.a[reference_body_id] + p_X_i.apply(ed_model.a[reference_body_id].col(idir));
+    ed_derivative.col(idir)
+        = (ed_model.ad_p_X_i[idir] * model.a[reference_body_id] + p_X_i.apply(ed_model.a[reference_body_id].col(idir))).bottomRows(3);
   }
+  ed_derivative.leftCols(ndirs) += ed_model.ad_a_dash;
   // nominal evaluation
-  SpatialVector p_a_i = p_X_i.apply(model.a[reference_body_id]);
-
-  // derivative evaluation
-  ed_derivative.leftCols(ndirs) = ad_p_a_i.bottomRows(3) + ed_model.ad_a_dash;
-//  for (int idir = 0; idir < ndirs; idir++) {
-//    ed_derivative(0, idir) = ad_p_a_i(3, idir) + ed_model.ad_a_dash(0, idir);
-//    ed_derivative(1, idir) = ad_p_a_i(4, idir) + ed_model.ad_a_dash(1, idir);
-//    ed_derivative(2, idir) = ad_p_a_i(5, idir) + ed_model.ad_a_dash(2, idir);
-//  }
-  // nominal evaluation
-  return Vector3d (
-      p_a_i[3] + a_dash[0],
-      p_a_i[4] + a_dash[1],
-      p_a_i[5] + a_dash[2]
-  );
+  return p_X_i.apply(model.a[reference_body_id]).segment<3>(3) + a_dash;
 }
 
 RBDL_DLLAPI
