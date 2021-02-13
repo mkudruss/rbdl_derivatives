@@ -839,20 +839,23 @@ void efficient_analytic_derivative_of_spatial_inertia(
   const SpatialRigidBodyInertia IC = SpatialRigidBodyInertia(m, h, Ic);
 
   // nominal evaluation
-  SpatialTransform X = get_transform(Q(0));
+  SpatialTransform X_T = Xrotx(0.345)*Xtrans(Vector3d(0.3, 0.2, 0.1));
+  SpatialTransform X = get_transform(Q(0))*X_T;
   SpatialRigidBodyInertia I = X.applyTranspose(IC);
 
   // derivative evaluation
-  SpatialTransform X_fd = get_transform(Q(0) + EPS * Qdot(0));
+  SpatialTransform X_fd = get_transform(Q(0) + EPS * Qdot(0))*X_T;
   SpatialRigidBodyInertia I_fd = (X_fd.applyTranspose(IC) - I) * (1.0 / EPS);
 
   // analytic derivative
   // SpatialMatrix I_ad = crossf(S*Qdot(0))*I - I*crossm(S*Qdot(0));
-  SpatialMatrix I_an = crossf(S*Qdot(0))*I.toMatrix() - I.toMatrix()*crossm(S*Qdot(0));
+  // const Math::SpatialVector imv = S;
+  const Math::SpatialVector imv = X.inverse().apply(S);
+  SpatialMatrix I_an = crossf(imv*Qdot(0))*I.toMatrix() - I.toMatrix()*crossm(imv*Qdot(0));
 
   // separate vector into 3D components
-  Vector3d w = S.head(3)*Qdot(0);
-  Vector3d v0 = S.tail(3)*Qdot(0);
+  Vector3d w = imv.head(3)*Qdot(0);
+  Vector3d v0 = imv.tail(3)*Qdot(0);
 
   SpatialRigidBodyInertia I_ad
     = SpatialRigidBodyInertia (
@@ -874,11 +877,12 @@ void efficient_analytic_derivative_of_spatial_inertia(
     );
 
 
-  const SpatialMatrix I_err = (I_ad.toMatrix() - I_an).cwiseAbs();
+  const SpatialMatrix I_err = (I_ad.toMatrix() - I_fd.toMatrix()).cwiseAbs();
   const double error = I_err.maxCoeff();
 
   if (error > 1e-7) {
     cout << "S:" << S.transpose() << endl;
+    cout << "imv:\t" << imv.transpose() << endl;
     cout << "w:" << w.transpose() << endl;
     cout << "v0:" << v0.transpose() << endl;
 
@@ -933,7 +937,7 @@ TEST(Xtransy_efficient_analytic_derivative_of_spatial_inertia){
   S(4) = 1.0;
   std::function<SpatialTransform (const double &)> Xtransy
     = [](const double &q) { return Xtrans(Vector3d(0., q, 0.)); };
-  efficient_analytic_derivative_of_spatial_inertia(*this, Xtransy, S, 1e-8);
+  efficient_analytic_derivative_of_spatial_inertia(*this, Xtransy, S, 1e-7);
 }
 
 TEST(Xtransz_efficient_analytic_derivative_of_spatial_inertia){

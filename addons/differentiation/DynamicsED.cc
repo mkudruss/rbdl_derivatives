@@ -115,8 +115,8 @@ void InverseDynamics(
 
       ed_model.f[i].leftCols(ndirs) =
           Ii_mat * (ed_model.a[i].leftCols(ndirs))
-          + (crossf_rhs_T(ed_model.h[i]) + crossf(model.v[i]) * Ii_mat)
-          * (ed_model.v[i].leftCols(ndirs));
+          + (crossf_rhs_T(ed_model.h[i])
+          + crossf(model.v[i]) * Ii_mat) * (ed_model.v[i].leftCols(ndirs));
     } else {
       // nominal evaluation
       model.f[i].setZero();
